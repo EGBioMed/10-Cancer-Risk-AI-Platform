@@ -257,31 +257,23 @@ const i18n = {
       serviceInfo: "View full service information",
       validationBadge: "Internal research validation",
       validationTitle: "How was the model evaluated?",
-      validationIntro: "The results below are mean validation results for the Pan-Cancer model across 100 independent stratified 80/20 splits of the test data.",
+      validationIntro: "The summary below presents the current model's internal research validation and assessment framework.",
       validationPerformanceLabel: "Research performance",
       validationEvidenceLabel: "Research foundation",
       validationScopeLabel: "Assessment framework",
       metricAucNote: "Risk ranking and discrimination ability",
       metricSensitivity: "Sensitivity",
       metricSensitivityNote: "Ability to reduce missed cases under the selected setting",
-      metricSpecificity: "Specificity",
-      metricSpecificityNote: "Ability to identify healthy controls",
-      metricAccuracy: "Accuracy",
-      metricAccuracyNote: "Overall classification performance in the test data",
-      metricPpv: "PPV (Positive Predictive Value)",
-      metricPpvNote: "Proportion of predicted-positive records that were actually positive",
-      metricNpv: "NPV (Negative Predictive Value)",
-      metricNpvNote: "Proportion of predicted-negative records that were actually negative",
-      trainingDatasetLabel: "independent test records",
-      trainingDatasetNote: "308 positive and 235 negative records",
-      modelTrainingLabel: "independent stratified validations",
-      modelTrainingNote: "Each using an 80/20 data split",
+      trainingDatasetLabel: "training records",
+      trainingDatasetNote: "Covering ten cancer types and healthy controls",
+      modelTrainingLabel: "validation runs",
+      modelTrainingNote: "Repeated evaluation of model performance and stability",
       modelValidationLabel: "random forest models",
       modelValidationNote: "1 Pan-Cancer plus 10 cancer-specific models",
-      assessmentItemLabel: "Current model assessment items",
-      modelFeatureLabel: "Engineered features",
+      assessmentItemLabel: "Assessment items",
+      modelFeatureLabel: "Model features",
       imbalanceCorrectionLabel: "Class imbalance correction",
-      validationNote: "These are mean validation results from internal research data at a Pan-Cancer threshold of 0.40. They are not an individual's probability of developing cancer or the accuracy of each personal report.",
+      validationNote: "This is a summary of model development and validation using internal research data. It is not an individual's probability of developing cancer or the accuracy of each personal report.",
       validationInfo: "Learn about model validation",
       currentSection: "Current Section",
       quick: "Quick Options",
@@ -577,31 +569,23 @@ function applyStaticText() {
   document.querySelector("#heroServiceInfoBtn").textContent = currentLang === "en" ? i18n.en.ui.serviceInfo : "查看完整服務說明";
   document.querySelector("#validationBadge").textContent = currentLang === "en" ? i18n.en.ui.validationBadge : "內部研究驗證";
   document.querySelector("#validationTitle").textContent = currentLang === "en" ? i18n.en.ui.validationTitle : "模型如何被評估？";
-  document.querySelector("#validationIntro").textContent = currentLang === "en" ? i18n.en.ui.validationIntro : "以下為 Pan-Cancer 整體風險模型於獨立測試資料進行 100 次分層 80/20 切分的平均驗證結果。";
+  document.querySelector("#validationIntro").textContent = currentLang === "en" ? i18n.en.ui.validationIntro : "以下為目前模型的內部研究驗證與評估架構摘要。";
   document.querySelector("#validationPerformanceLabel").textContent = currentLang === "en" ? i18n.en.ui.validationPerformanceLabel : "研究表現";
   document.querySelector("#validationEvidenceLabel").textContent = currentLang === "en" ? i18n.en.ui.validationEvidenceLabel : "研究基礎";
   document.querySelector("#validationScopeLabel").textContent = currentLang === "en" ? i18n.en.ui.validationScopeLabel : "評估架構";
   document.querySelector("#metricAucNote").textContent = currentLang === "en" ? i18n.en.ui.metricAucNote : "風險排序與區分能力";
   document.querySelector("#metricSensitivity").textContent = currentLang === "en" ? i18n.en.ui.metricSensitivity : "敏感度";
   document.querySelector("#metricSensitivityNote").textContent = currentLang === "en" ? i18n.en.ui.metricSensitivityNote : "在既定設定下降低遺漏個案的能力";
-  document.querySelector("#metricSpecificity").textContent = currentLang === "en" ? i18n.en.ui.metricSpecificity : "特異度";
-  document.querySelector("#metricSpecificityNote").textContent = currentLang === "en" ? i18n.en.ui.metricSpecificityNote : "辨識健康對照的能力";
-  document.querySelector("#metricAccuracy").textContent = currentLang === "en" ? i18n.en.ui.metricAccuracy : "準確率";
-  document.querySelector("#metricAccuracyNote").textContent = currentLang === "en" ? i18n.en.ui.metricAccuracyNote : "測試資料中的整體分類表現";
-  document.querySelector("#metricPpv").textContent = currentLang === "en" ? i18n.en.ui.metricPpv : "PPV（陽性預測值）";
-  document.querySelector("#metricPpvNote").textContent = currentLang === "en" ? i18n.en.ui.metricPpvNote : "模型判為陽性者中，實際為陽性的比例";
-  document.querySelector("#metricNpv").textContent = currentLang === "en" ? i18n.en.ui.metricNpv : "NPV（陰性預測值）";
-  document.querySelector("#metricNpvNote").textContent = currentLang === "en" ? i18n.en.ui.metricNpvNote : "模型判為陰性者中，實際為陰性的比例";
-  document.querySelector("#trainingDatasetLabel").textContent = currentLang === "en" ? i18n.en.ui.trainingDatasetLabel : "筆獨立測試資料";
-  document.querySelector("#trainingDatasetNote").textContent = currentLang === "en" ? i18n.en.ui.trainingDatasetNote : "308 筆陽性、235 筆陰性";
-  document.querySelector("#modelTrainingLabel").textContent = currentLang === "en" ? i18n.en.ui.modelTrainingLabel : "次獨立分層驗證";
-  document.querySelector("#modelTrainingNote").textContent = currentLang === "en" ? i18n.en.ui.modelTrainingNote : "每次採 80/20 資料切分";
+  document.querySelector("#trainingDatasetLabel").textContent = currentLang === "en" ? i18n.en.ui.trainingDatasetLabel : "筆訓練資料";
+  document.querySelector("#trainingDatasetNote").textContent = currentLang === "en" ? i18n.en.ui.trainingDatasetNote : "涵蓋十種癌症與健康對照";
+  document.querySelector("#modelTrainingLabel").textContent = currentLang === "en" ? i18n.en.ui.modelTrainingLabel : "次驗證";
+  document.querySelector("#modelTrainingNote").textContent = currentLang === "en" ? i18n.en.ui.modelTrainingNote : "重複評估模型表現與穩定性";
   document.querySelector("#modelValidationLabel").textContent = currentLang === "en" ? i18n.en.ui.modelValidationLabel : "個隨機森林模型";
   document.querySelector("#modelValidationNote").textContent = currentLang === "en" ? i18n.en.ui.modelValidationNote : "1 個 Pan-Cancer 加 10 個癌別模型";
-  document.querySelector("#assessmentItemLabel").textContent = currentLang === "en" ? i18n.en.ui.assessmentItemLabel : "現行模型評估項目";
-  document.querySelector("#modelFeatureLabel").textContent = currentLang === "en" ? i18n.en.ui.modelFeatureLabel : "工程特徵";
+  document.querySelector("#assessmentItemLabel").textContent = currentLang === "en" ? i18n.en.ui.assessmentItemLabel : "評估項目";
+  document.querySelector("#modelFeatureLabel").textContent = currentLang === "en" ? i18n.en.ui.modelFeatureLabel : "模型特徵";
   document.querySelector("#imbalanceCorrectionLabel").textContent = currentLang === "en" ? i18n.en.ui.imbalanceCorrectionLabel : "類別不平衡校正";
-  document.querySelector("#validationNote").textContent = currentLang === "en" ? i18n.en.ui.validationNote : "以上為內部研究資料在 Pan-Cancer 判定閾值 0.40 下的平均驗證表現，不是個人罹癌機率，也不代表每份個人報告的準確率。";
+  document.querySelector("#validationNote").textContent = currentLang === "en" ? i18n.en.ui.validationNote : "以上為模型於內部研究資料中的驗證與建置摘要，不是個人罹癌機率，也不代表每份個人報告的準確率。";
   document.querySelector("#validationInfoBtn").textContent = currentLang === "en" ? i18n.en.ui.validationInfo : "了解模型驗證方式";
   document.querySelector("#footerSummary").textContent = currentLang === "en"
     ? "Personalized organization of cancer-related health risk factors and health education information."

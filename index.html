@@ -36,7 +36,7 @@
               <span class="validation-card__badge" id="validationBadge">內部研究驗證</span>
               <div>
                 <h2 id="validationTitle">模型如何被評估？</h2>
-                <p id="validationIntro">以下為 Pan-Cancer 整體風險模型於獨立測試資料進行 100 次分層 80/20 切分的平均驗證結果。</p>
+                <p id="validationIntro">以下為目前模型的內部研究驗證與評估架構摘要。</p>
               </div>
             </div>
             <div class="validation-card__body">
@@ -53,43 +53,23 @@
                     <span id="metricSensitivity">敏感度</span>
                     <small id="metricSensitivityNote">在既定設定下降低遺漏個案的能力</small>
                   </div>
-                  <div class="validation-metric">
-                    <strong>66.0%</strong>
-                    <span id="metricSpecificity">特異度</span>
-                    <small id="metricSpecificityNote">辨識健康對照的能力</small>
-                  </div>
-                  <div class="validation-metric">
-                    <strong>80.3%</strong>
-                    <span id="metricAccuracy">準確率</span>
-                    <small id="metricAccuracyNote">測試資料中的整體分類表現</small>
-                  </div>
-                  <div class="validation-metric">
-                    <strong>78.1%</strong>
-                    <span id="metricPpv">PPV（陽性預測值）</span>
-                    <small id="metricPpvNote">模型判為陽性者中，實際為陽性的比例</small>
-                  </div>
-                  <div class="validation-metric">
-                    <strong>85.3%</strong>
-                    <span id="metricNpv">NPV（陰性預測值）</span>
-                    <small id="metricNpvNote">模型判為陰性者中，實際為陰性的比例</small>
-                  </div>
                 </div>
               </div>
               <div class="validation-group validation-group--evidence">
                 <p class="validation-group__label" id="validationEvidenceLabel">研究基礎</p>
                 <div class="validation-evidence">
                   <div class="validation-evidence__item">
-                    <strong>543</strong>
+                    <strong>1,227</strong>
                     <div>
-                      <span id="trainingDatasetLabel">筆獨立測試資料</span>
-                      <small id="trainingDatasetNote">308 筆陽性、235 筆陰性</small>
+                      <span id="trainingDatasetLabel">筆訓練資料</span>
+                      <small id="trainingDatasetNote">涵蓋十種癌症與健康對照</small>
                     </div>
                   </div>
                   <div class="validation-evidence__item">
                     <strong>100</strong>
                     <div>
-                      <span id="modelTrainingLabel">次獨立分層驗證</span>
-                      <small id="modelTrainingNote">每次採 80/20 資料切分</small>
+                      <span id="modelTrainingLabel">次驗證</span>
+                      <small id="modelTrainingNote">重複評估模型表現與穩定性</small>
                     </div>
                   </div>
                   <div class="validation-evidence__item">
@@ -104,13 +84,13 @@
               <div class="validation-group validation-group--scope">
                 <p class="validation-group__label" id="validationScopeLabel">評估架構</p>
                 <div class="validation-scope" aria-label="評估與模型規模">
-                  <div><strong>37</strong><span id="assessmentItemLabel">現行模型評估項目</span></div>
-                  <div><strong>48</strong><span id="modelFeatureLabel">工程特徵</span></div>
+                  <div><strong>44</strong><span id="assessmentItemLabel">評估項目</span></div>
+                  <div><strong>120</strong><span id="modelFeatureLabel">模型特徵</span></div>
                   <div><strong>SMOTE</strong><span id="imbalanceCorrectionLabel">類別不平衡校正</span></div>
                 </div>
               </div>
             </div>
-            <p class="validation-card__note" id="validationNote">以上為內部研究資料在 Pan-Cancer 判定閾值 0.40 下的平均驗證表現，不是個人罹癌機率，也不代表每份個人報告的準確率。</p>
+            <p class="validation-card__note" id="validationNote">以上為模型於內部研究資料中的驗證與建置摘要，不是個人罹癌機率，也不代表每份個人報告的準確率。</p>
             <button class="validation-card__link text-link" id="validationInfoBtn" type="button" data-open-service-info>了解模型驗證方式</button>
           </section>
           <button class="primary-action" id="startBtn" type="button">
@@ -203,9 +183,8 @@
               <p>本服務使用內部概念驗證階段的統計與人工智慧模型。結果會受自行填寫資料的完整性、正確性、研究資料與模型方法限制影響，且仍需持續驗證與優化。</p>
               <h2>研究驗證指標</h2>
               <p>ROC-AUC 用於評估模型在研究資料中進行排序與區分的能力，不是個人預測正確率。敏感度反映模型在特定研究資料與判定設定下降低遺漏個案的能力，不能用於確認或排除個人是否罹患疾病。</p>
-              <p>現行系統包含 1 個 Pan-Cancer 整體風險模型與 10 個癌別 One-vs-Rest 隨機森林模型，使用 37 項 AI 健康評估與 48 個工程特徵，並以 SMOTE 處理類別不平衡。</p>
-              <p>Pan-Cancer 模型以 543 筆獨立測試資料（308 筆陽性、235 筆陰性）進行 100 次獨立分層 80/20 切分驗證；在閾值 0.40 下，平均 ROC-AUC 為 0.875 ± 0.032、敏感度 91.2%、特異度 66.0%、準確率 80.3%、PPV 78.1%、NPV 85.3%。這些數值為研究資料中的平均驗證結果，不是個人的罹癌機率。</p>
-              <p>平台另收集 55 項近期症狀觀察資料。新增症狀目前獨立保存，不會直接改變現行模型結果，待完成足夠資料驗證與模型更新後才會納入新版模型。</p>
+              <p>現行系統使用 1,227 筆訓練資料、44 項評估項目與 120 個模型特徵，建立 11 個模型，並以 SMOTE 處理類別不平衡。</p>
+              <p>模型完成 100 次驗證；ROC-AUC 為 0.875 ± 0.032，敏感度為 91.2%。這些數值為研究資料中的模型驗證結果，不是個人的罹癌機率。</p>
               <p>如有持續或明顯身體不適，請尋求合格醫療人員評估。</p>
             </div>
             <div class="service-details__content service-copy" data-service-copy="en" hidden>
@@ -216,9 +195,8 @@
               <p>This service uses statistical and artificial intelligence models at an internal proof-of-concept stage. Results may be affected by the completeness and accuracy of self-reported information, the research data, and methodological limitations. The models require continued validation and improvement.</p>
               <h2>Research validation metrics</h2>
               <p>ROC-AUC evaluates the model's ability to rank and distinguish groups within the research data; it is not an individual's prediction accuracy. Sensitivity reflects the model's ability to reduce missed cases under a particular research dataset and decision setting and cannot confirm or rule out whether an individual has a disease.</p>
-              <p>The current system consists of one Pan-Cancer overall risk model and ten cancer-specific One-vs-Rest random forest models. It uses 37 AI health assessment items and 48 engineered features, with SMOTE applied to address class imbalance.</p>
-              <p>The Pan-Cancer model was evaluated using 543 independent test records (308 positive and 235 negative) across 100 independent stratified 80/20 splits. At a threshold of 0.40, the mean ROC-AUC was 0.875 ± 0.032, sensitivity 91.2%, specificity 66.0%, accuracy 80.3%, PPV 78.1%, and NPV 85.3%. These figures are average validation results within the research data and are not an individual's probability of developing cancer.</p>
-              <p>The platform also collects 55 recent symptom observations separately. These new symptom observations do not directly change the current model result and will only be incorporated after sufficient data validation and a future model update.</p>
+              <p>The current system uses 1,227 training records, 44 assessment items, and 120 model features to build 11 models, with SMOTE applied to address class imbalance.</p>
+              <p>The models completed 100 validation runs; the ROC-AUC was 0.875 ± 0.032 and sensitivity was 91.2%. These figures describe model validation performance within the research data and are not an individual's probability of developing cancer.</p>
               <p>If you have persistent or significant physical discomfort, please seek an evaluation from a qualified healthcare professional.</p>
             </div>
           </details>
@@ -227,6 +205,6 @@
       </footer>
     </main>
 
-    <script src="app.js?v=20260724-diet-frequency-v2"></script>
+    <script src="app.js?v=20260730-model-metrics-v1"></script>
   </body>
 </html>
