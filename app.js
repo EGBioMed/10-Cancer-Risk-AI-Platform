@@ -783,12 +783,12 @@ function renderConsentNotice() {
             <div><dt>Who handles the data</dt><dd>EG BioMed Co. Ltd.</dd></div>
             <div><dt>Why we collect it</dt><dd>To organize personalized cancer-related health risk factors, produce your health information report, and support model training and validation.</dd></div>
             <div><dt>What we collect</dt><dd>Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and an email address for report delivery.</dd></div>
-            <div><dt>How we protect your identity</dt><dd>Your questionnaire and health data are assigned a coded record ID and handled in de-identified form. Your email address is used only to deliver the report and is not used as a model feature or included in research analysis.</dd></div>
+            <div><dt>How we protect your identity</dt><dd>Your questionnaire and health data use a coded record ID instead of your email address. The email and code mapping is stored separately in a restricted contact record. Your email is used only to deliver the report and is not used as a model feature or included in research analysis.</dd></div>
             <div><dt>Where it is stored</dt><dd>Microsoft cloud servers in the United States, which meet GDPR and SOC 2 Type II security standards.</dd></div>
-            <div><dt>How long it is kept</dt><dd>De-identified research data are kept for 5 years from the date of completion and are then destroyed or further anonymized.</dd></div>
+            <div><dt>How long it is kept</dt><dd>Research and contact records are kept separately for 5 years from the date of completion. At the end of this period, the contact record and the mapping between your identity and coded record ID will be deleted. The research record will either be destroyed or retained only in a form that can no longer be linked back to you.</dd></div>
             <div><dt>Who may use it</dt><dd>Only authorized EG BioMed staff responsible for research and model validation may use the de-identified data. We will not sell your data or provide it to other companies for advertising, marketing, or unrelated commercial use.</dd></div>
             <div><dt>Overseas processing</dt><dd>Your data are transmitted to and processed on Microsoft servers in the United States.</dd></div>
-            <div><dt>Questions and your rights</dt><dd>For service questions or requests to access, correct, or delete your data, contact egbiomedai@eg-bio.com. We aim to respond within 15 business days. Once data can no longer be linked back to an individual after anonymization, we may be unable to locate a specific record.</dd></div>
+            <div><dt>Questions and your rights</dt><dd>During the 5-year retention period, authorized privacy staff can use the separately stored code mapping to locate your record and assist with a request to access, correct, or delete it. Contact egbiomedai@eg-bio.com; we aim to respond within 15 business days. After the retention period ends and the code mapping has been deleted, we will no longer be able to identify a specific record as yours.</dd></div>
           </dl>
         </div>
         <div class="consent-notice__section consent-notice__section--warning">
@@ -822,12 +822,12 @@ function renderConsentNotice() {
           <div><dt>由誰處理資料</dt><dd>愛立基生醫股份有限公司（EG BioMed Co. Ltd.）。</dd></div>
           <div><dt>為什麼收集</dt><dd>用來整理個人化癌症相關健康風險因子、製作您的健康資訊報告，以及進行模型訓練與驗證。</dd></div>
           <div><dt>會收集哪些資料</dt><dd>年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及寄送報告所需的 Email。</dd></div>
-          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料會以代碼編號取代可直接辨識身分的資訊，並以去識別化方式處理。Email 只用來寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
+          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料會以代碼編號取代 Email。Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。Email 只用來寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
           <div><dt>資料存放在哪裡</dt><dd>Microsoft 位於美國的雲端伺服器，符合 GDPR 與 SOC 2 Type II 安全標準。</dd></div>
-          <div><dt>保存多久</dt><dd>去識別化研究資料自填寫日起保存 5 年，期滿後銷毀或進一步匿名化處理。</dd></div>
+          <div><dt>保存多久</dt><dd>研究資料與聯絡資料會分開保存，自填寫日起保存 5 年。期滿後會刪除聯絡資料及可將代碼連回個人的對應關係；研究資料則會銷毀，或僅以無法再連回您的形式保留。</dd></div>
           <div><dt>誰可以使用</dt><dd>只有愛立基生醫內部經授權、負責研究與模型驗證的工作人員可以使用去識別化資料。我們不會販售您的資料，也不會提供其他公司作廣告、行銷或與本服務無關的商業用途。</dd></div>
           <div><dt>資料會傳到國外嗎</dt><dd>資料會傳送至 Microsoft 位於美國的伺服器儲存及處理。</dd></div>
-          <div><dt>有問題或想行使權利</dt><dd>如有服務問題，或想申請查閱、更正或刪除資料，請聯繫 egbiomedai@eg-bio.com，我們預計於 15 個工作日內回覆。資料若已完成無法回溯個人的匿名化處理，可能無法再找出特定一筆資料。</dd></div>
+          <div><dt>有問題或想行使權利</dt><dd>在 5 年保存期間內，經授權的個資管理人員可透過分開保存的代碼對應資料找到您的紀錄，並協助辦理查閱、更正或刪除。請聯繫 egbiomedai@eg-bio.com，我們預計於 15 個工作日內回覆。保存期滿並刪除代碼對應關係後，我們將無法再確認哪一筆研究資料屬於您。</dd></div>
         </dl>
       </div>
       <div class="consent-notice__section consent-notice__section--warning">
