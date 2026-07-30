@@ -36,13 +36,14 @@ npm start
 - 單選、多選、數字輸入、Email 輸入與條件式跳題
 - 使用者可讀的資料確認列表
 - 完成送出頁，不在前端呈現風險結果
-- 每份填答會在瀏覽器端整理成表格列格式，存於 `window.latestSubmission`、`localStorage.assessment_submissions`，並在完成頁生成隱藏節點 `#submissionRowsJson`
+- 每份填答會在瀏覽器端整理成表格列格式，暫存於 `window.latestSubmission`，並在完成頁生成隱藏節點 `#submissionRowsJson`；不在瀏覽器 `localStorage` 累積保存健康資料
 - 每份填答會另外生成參考 `10Cancer_AI_structure_data_v1.xlsx` 的 71 欄最佳化寬表資料，包含單位轉換、多選編碼、缺失值與矛盾提醒，存於隱藏節點 `#structuredFeaturesJson`
 - 前端送出至同站台 `/api/submit`
 - `server.js` 由環境變數讀取 Power Automate webhook URL，避免把簽章 URL 暴露在公開 JavaScript
 - 送出 payload 同時包含：
   - `optimized_feature_row`：固定 71 欄模型 feature，供模型 API 使用
-  - `excel_row`：Excel 留存列，包含 71 欄 feature 加上 email、送出時間、填答語言、近期身體狀況自由文字與 LLM 結構化摘要
+  - `excel_row`：去識別化研究 Excel 留存列，包含模型與研究欄位，但不含 Email
+  - `contact_row`：獨立聯絡資料表使用，僅包含 record_id、Email、時間與報告語言
 
 ## 正式部署到 Render
 
@@ -75,7 +76,8 @@ https://eg-biomed-cancer-risk-assessment.onrender.com
 使用者瀏覽器
 → Render /api/submit
 → Power Automate
-→ Excel Office Script 寫入 excel_row
+→ 研究 Excel Office Script 寫入 excel_row
+→ 受限權限的聯絡 Excel Office Script 寫入 contact_row
 → 模型 API 使用 optimized_feature_row
 → Email 報告
 ```
@@ -88,6 +90,12 @@ Excel 的「執行指令碼」參數建議使用：
 string(body('Parse_JSON')?['excel_row'])
 ```
 
+聯絡資料 Excel 的第二個「執行指令碼」參數使用：
+
+```text
+string(body('Parse_JSON')?['contact_row'])
+```
+
 模型 API 的 HTTP body 建議繼續使用：
 
 ```text
@@ -98,7 +106,6 @@ body('Parse_JSON')?['optimized_feature_row']
 
 ```text
 submitted_at
-email
 language
 report_language
 recent_discomfort_text

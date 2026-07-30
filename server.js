@@ -75,7 +75,6 @@ function buildFallbackExcelRow(submission) {
     ...submission.optimized_feature_row,
     ...researchExcelFields,
     submitted_at: submission.submitted_at || new Date().toISOString(),
-    email: submission.email || findAnswer(submission.rows, "email"),
     language: submission.language || "zh",
     report_language: submission.report_language || submission.language || "zh-Hant",
     personal_cancer_types: personalCancerTypes,
@@ -112,6 +111,22 @@ function normalizeSubmission(submission) {
     submission.ai_api_feature_row = buildAiApiFeatureRow(submission);
   }
   return submission;
+}
+
+function buildContactRow(submission, email) {
+  const recordId = String(
+    submission.optimized_feature_row?.record_id
+    || submission.excel_row?.record_id
+    || ""
+  ).trim();
+
+  return {
+    record_id: recordId,
+    email,
+    submitted_at: submission.submitted_at || new Date().toISOString(),
+    language: submission.language || "zh",
+    report_language: submission.report_language || submission.language || "zh-Hant"
+  };
 }
 
 function validateAiApiFeatureRow(row) {
@@ -173,8 +188,18 @@ async function forwardSubmission(req, res) {
     return;
   }
   submission.email = validEmail;
+  submission.contact_row = buildContactRow(submission, validEmail);
+  if (Array.isArray(submission.rows)) {
+    submission.rows = submission.rows
+      .filter((row) => row && row.question_id !== "email")
+      .map((row) => {
+        const deidentifiedRow = { ...row };
+        delete deidentifiedRow.email;
+        return deidentifiedRow;
+      });
+  }
   if (submission.excel_row && typeof submission.excel_row === "object") {
-    submission.excel_row.email = validEmail;
+    delete submission.excel_row.email;
   }
   const featureValidationError = validateAiApiFeatureRow(submission.ai_api_feature_row);
   if (featureValidationError) {

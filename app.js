@@ -18,7 +18,7 @@ const modules = [
 ];
 
 const consentOptions = [
-  "我已閱讀並同意個人資料保護告知事項，同意愛立基生醫股份有限公司依所述目的收集、處理及利用我的個人資料。",
+  "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。",
   "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。",
   "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。"
 ];
@@ -419,7 +419,7 @@ const i18n = {
       email: ["Please enter your email", "The result report will be sent to this email.", "name@example.com"]
     },
     options: {
-      "我已閱讀並同意個人資料保護告知事項，同意愛立基生醫股份有限公司依所述目的收集、處理及利用我的個人資料。": "I have read and agree to the personal data protection notice, and consent to EG BioMed Co. Ltd. collecting, processing, and using my personal data for the stated purposes.",
+      "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my email address to send my result report.",
       "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。": "I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer.",
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
@@ -778,16 +778,17 @@ function renderConsentNotice() {
           </ol>
         </div>
         <div class="consent-notice__section">
-          <h3 id="consentNoticeTitle">Personal Data Protection Notice</h3>
+          <h3 id="consentNoticeTitle">Data Use and Privacy Notice</h3>
           <dl>
-            <div><dt>Collector</dt><dd>EG BioMed Co. Ltd.</dd></div>
-            <div><dt>Purpose</dt><dd>Cancer-related health risk factor research, personalized health information summary generation, and model training validation</dd></div>
-            <div><dt>Data categories</dt><dd>Basic information (age, sex, height, weight), health information (recent symptoms, medical history, family history, and lifestyle habits), and email</dd></div>
-            <div><dt>Storage</dt><dd>Microsoft cloud servers in the United States, compliant with GDPR and SOC 2 Type II security standards</dd></div>
-            <div><dt>Retention</dt><dd>5 years from the date of completion, then destroyed or de-identified</dd></div>
-            <div><dt>Users</dt><dd>Our research team. Data will not be sold or provided to third parties for commercial purposes.</dd></div>
-            <div><dt>Transfer</dt><dd>Your data will be stored and processed on Microsoft servers in the United States.</dd></div>
-            <div><dt>Rights</dt><dd>To access, correct, or delete your personal data, contact service@eg-bio.com (response time: 15 business days).</dd></div>
+            <div><dt>Who handles the data</dt><dd>EG BioMed Co. Ltd.</dd></div>
+            <div><dt>Why we collect it</dt><dd>To organize personalized cancer-related health risk factors, produce your health information report, and support model training and validation.</dd></div>
+            <div><dt>What we collect</dt><dd>Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and an email address for report delivery.</dd></div>
+            <div><dt>How we protect your identity</dt><dd>Your questionnaire and health data are assigned a coded record ID and handled in de-identified form. Your email address is used only to deliver the report and is not used as a model feature or included in research analysis.</dd></div>
+            <div><dt>Where it is stored</dt><dd>Microsoft cloud servers in the United States, which meet GDPR and SOC 2 Type II security standards.</dd></div>
+            <div><dt>How long it is kept</dt><dd>De-identified research data are kept for 5 years from the date of completion and are then destroyed or further anonymized.</dd></div>
+            <div><dt>Who may use it</dt><dd>Only authorized EG BioMed staff responsible for research and model validation may use the de-identified data. We will not sell your data or provide it to other companies for advertising, marketing, or unrelated commercial use.</dd></div>
+            <div><dt>Overseas processing</dt><dd>Your data are transmitted to and processed on Microsoft servers in the United States.</dd></div>
+            <div><dt>Questions and your rights</dt><dd>For service questions or requests to access, correct, or delete your data, contact egbiomedai@eg-bio.com. We aim to respond within 15 business days. Once data can no longer be linked back to an individual after anonymization, we may be unable to locate a specific record.</dd></div>
           </dl>
         </div>
         <div class="consent-notice__section consent-notice__section--warning">
@@ -816,16 +817,17 @@ function renderConsentNotice() {
         </ol>
       </div>
       <div class="consent-notice__section">
-        <h3 id="consentNoticeTitle">個人資料保護告知事項</h3>
+        <h3 id="consentNoticeTitle">資料使用與隱私告知事項</h3>
         <dl>
-          <div><dt>收集機構</dt><dd>愛立基生醫股份有限公司（EG BioMed Co. Ltd.）</dd></div>
-          <div><dt>收集目的</dt><dd>癌症相關健康風險因子研究、個人化健康資訊摘要產製及模型訓練驗證</dd></div>
-          <div><dt>個資類別</dt><dd>基本資料（年齡、性別、身高體重）、健康資訊（近期症狀、病史、家族史、生活習慣）、Email</dd></div>
-          <div><dt>儲存位置</dt><dd>Microsoft 雲端伺服器（美國），符合 GDPR 及 SOC 2 Type II 安全標準</dd></div>
-          <div><dt>保存期限</dt><dd>自填寫日起 5 年，期滿後銷毀或去識別化處理</dd></div>
-          <div><dt>利用對象</dt><dd>本公司研究團隊，不對外販售或提供予第三方商業用途</dd></div>
-          <div><dt>跨境傳輸</dt><dd>您的資料將儲存於 Microsoft 美國伺服器進行處理</dd></div>
-          <div><dt>個資權利</dt><dd>如需查閱、更正或刪除您的個人資料，請聯繫：service@eg-bio.com（回覆時限：15 個工作日）</dd></div>
+          <div><dt>由誰處理資料</dt><dd>愛立基生醫股份有限公司（EG BioMed Co. Ltd.）。</dd></div>
+          <div><dt>為什麼收集</dt><dd>用來整理個人化癌症相關健康風險因子、製作您的健康資訊報告，以及進行模型訓練與驗證。</dd></div>
+          <div><dt>會收集哪些資料</dt><dd>年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及寄送報告所需的 Email。</dd></div>
+          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料會以代碼編號取代可直接辨識身分的資訊，並以去識別化方式處理。Email 只用來寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
+          <div><dt>資料存放在哪裡</dt><dd>Microsoft 位於美國的雲端伺服器，符合 GDPR 與 SOC 2 Type II 安全標準。</dd></div>
+          <div><dt>保存多久</dt><dd>去識別化研究資料自填寫日起保存 5 年，期滿後銷毀或進一步匿名化處理。</dd></div>
+          <div><dt>誰可以使用</dt><dd>只有愛立基生醫內部經授權、負責研究與模型驗證的工作人員可以使用去識別化資料。我們不會販售您的資料，也不會提供其他公司作廣告、行銷或與本服務無關的商業用途。</dd></div>
+          <div><dt>資料會傳到國外嗎</dt><dd>資料會傳送至 Microsoft 位於美國的伺服器儲存及處理。</dd></div>
+          <div><dt>有問題或想行使權利</dt><dd>如有服務問題，或想申請查閱、更正或刪除資料，請聯繫 egbiomedai@eg-bio.com，我們預計於 15 個工作日內回覆。資料若已完成無法回溯個人的匿名化處理，可能無法再找出特定一筆資料。</dd></div>
         </dl>
       </div>
       <div class="consent-notice__section consent-notice__section--warning">
@@ -1545,17 +1547,16 @@ function checkOptimizedFeatureRow(row) {
 
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
-  const email = getAnswerValue(answers, "contact.email") || "";
-  return Object.values(answers).map((entry) => ({
+  return Object.values(answers)
+    .filter((entry) => entry.field !== "contact.email")
+    .map((entry) => ({
     submitted_at: submittedAt,
-    email,
     question_id: entry.question_id,
     question_text: entry.label,
     answer: Array.isArray(entry.value) ? entry.value.join("; ") : String(entry.value)
   })).concat([
     {
       submitted_at: submittedAt,
-      email,
       question_id: "derived_bmi",
       question_text: "BMI",
       answer: String(calculateBmi())
@@ -1615,7 +1616,6 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     ...symptomFeatureRow,
     ...researchExcelFields,
     submitted_at: submittedAt,
-    email: getAnswerValue(answers, "contact.email") || "",
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
     personal_cancer_types: personalCancerTypes,
@@ -1639,6 +1639,16 @@ function buildAiApiFeatureRow(optimizedFeatureRow) {
     // AI API schema currently rejects negative quit_smoking values.
     // Keep raw modeling/storage features in optimized_feature_row and excel_row.
     quit_smoking: Math.max(0, normalizeNumber(optimizedFeatureRow.quit_smoking) ?? 0)
+  };
+}
+
+function buildContactRow(optimizedFeatureRow, submittedAt) {
+  return {
+    record_id: optimizedFeatureRow.record_id,
+    email: getAnswerValue(answers, "contact.email") || "",
+    submitted_at: submittedAt,
+    language: currentLang,
+    report_language: currentLang === "en" ? "en" : "zh-Hant"
   };
 }
 
@@ -1666,19 +1676,13 @@ function storeSubmissionForIntegration() {
     research_feature_columns: researchFeatureColumns,
     research_feature_row: researchFeatureRow,
     excel_row: buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, researchFeatureRow),
+    contact_row: buildContactRow(optimizedFeatureRow, submittedAt),
     data_quality: {
       missing_columns: missingColumns,
       contradiction_warnings: checkOptimizedFeatureRow(optimizedFeatureRow)
     }
   };
   window.latestSubmission = submission;
-  try {
-    const existing = JSON.parse(localStorage.getItem("assessment_submissions") || "[]");
-    existing.push(submission);
-    localStorage.setItem("assessment_submissions", JSON.stringify(existing));
-  } catch (error) {
-    window.latestSubmissionStorageError = true;
-  }
   return submission;
 }
 
