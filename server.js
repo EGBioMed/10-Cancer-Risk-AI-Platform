@@ -1,20 +1,15 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const {
+  EXPECTED_VERSIONS,
+  validateTransitionalSubmission
+} = require("./lib/transitional-contract");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
 const MAX_BODY_BYTES = 1024 * 1024;
-const SUBMISSION_VERSIONS = Object.freeze({
-  contract_version: "assessment-submission/1.0.0",
-  questionnaire_version: "questionnaire/2026-08-05-symptom-vnext",
-  consent_version: "consent/2026-08-05",
-  feature_schema_version: "model-features/1.0.0",
-  mapping_version: "answer-mapping/1.0.0",
-  vnext_feature_schema_version: "feature-gap-candidates/2026-08-05",
-  vnext_mapping_version: "answer-mapping-vnext/0.1.0",
-  report_template_version: "email-report/2026-08-05"
-});
+const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
 
 const PUBLIC_DIR = __dirname;
 const MIME_TYPES = {
@@ -85,6 +80,7 @@ function buildFallbackExcelRow(submission) {
     ...submission.optimized_feature_row,
     ...(submission.symptom_feature_row && typeof submission.symptom_feature_row === "object" ? submission.symptom_feature_row : {}),
     ...(submission.vnext_feature_row && typeof submission.vnext_feature_row === "object" ? submission.vnext_feature_row : {}),
+    ...(submission.rule_input_row && typeof submission.rule_input_row === "object" ? submission.rule_input_row : {}),
     ...researchExcelFields,
     submitted_at: submission.submitted_at || new Date().toISOString(),
     language: submission.language || "zh",
@@ -116,7 +112,6 @@ function buildAiApiFeatureRow(submission) {
 }
 
 function normalizeSubmission(submission) {
-  Object.assign(submission, SUBMISSION_VERSIONS);
   if (!submission.excel_row || typeof submission.excel_row !== "object") {
     submission.excel_row = buildFallbackExcelRow(submission);
   }
@@ -187,8 +182,14 @@ async function forwardSubmission(req, res) {
     return;
   }
 
-  if (!submission || typeof submission !== "object" || !submission.optimized_feature_row) {
-    sendJson(res, 422, { ok: false, error: "Missing optimized_feature_row." });
+  const contractErrors = validateTransitionalSubmission(submission);
+  if (contractErrors.length > 0) {
+    sendJson(res, 422, {
+      ok: false,
+      error: "Submission does not match the frozen frontend contract.",
+      contract_version: SUBMISSION_VERSIONS.contract_version,
+      details: contractErrors.slice(0, 20)
+    });
     return;
   }
   submission = normalizeSubmission(submission);

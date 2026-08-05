@@ -2,11 +2,21 @@
 
 Status: questionnaire collection implemented; deployed model input intentionally unchanged
 
-Questionnaire version: `questionnaire/2026-08-05-symptom-vnext`
+Questionnaire version: `questionnaire/2026-08-05-v19.4-phase1`
 
 Current production model feature schema: `model-features/1.0.0`
 
 Candidate extension set: `feature-gap-candidates/2026-08-05`
+
+High-risk rule input specification: `high-risk-rules/19.4`
+
+The backend v19.4 workbook has now been transcribed and its phase-1 questionnaire
+collection has been implemented in
+`contracts/vnext/high-risk-rule-input-v19.4.json`. It defines a separate rule-layer
+contract: 7 new self-report inputs, 16 conditional repeat-count inputs, interval
+metadata, and 12 backend aliases. It must not be merged into the current 71-column
+model request merely because it is available to the rule engine. See
+`V19_4_BACKEND_ALIGNMENT_REPORT.md` for the phased alignment plan.
 
 ## 1. Why the questionnaire changed
 
@@ -71,7 +81,7 @@ not an unversioned flat object:
   "assessment_id": "server-generated-id",
   "feature_schema_version": "model-features/2.0.0",
   "mapping_version": "answer-mapping/2.0.0",
-  "questionnaire_version": "questionnaire/2026-08-05-symptom-vnext",
+  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
   "features": {
     "age": 54,
     "symptom_hematemesis": 0,
