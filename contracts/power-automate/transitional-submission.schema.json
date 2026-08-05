@@ -1,0 +1,214 @@
+{
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "type": "string"
+    },
+    "questionnaire_version": {
+      "type": "string"
+    },
+    "consent_version": {
+      "type": "string"
+    },
+    "feature_schema_version": {
+      "type": "string"
+    },
+    "mapping_version": {
+      "type": "string"
+    },
+    "vnext_feature_schema_version": {
+      "type": "string"
+    },
+    "vnext_mapping_version": {
+      "type": "string"
+    },
+    "report_template_version": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    },
+    "report_language": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "submitted_at": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "submitted_at",
+          "question_id",
+          "question_text",
+          "answer"
+        ]
+      }
+    },
+    "optimized_feature_columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "optimized_feature_row": {
+      "type": "object"
+    },
+    "ai_api_feature_row": {
+      "type": "object"
+    },
+    "symptom_feature_columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "symptom_feature_row": {
+      "type": "object"
+    },
+    "symptom_answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_zh": {
+            "type": "string"
+          },
+          "category_en": {
+            "type": "string"
+          },
+          "answer_status": {
+            "type": "string"
+          },
+          "selected_symptoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "category_id",
+          "category_zh",
+          "category_en",
+          "answer_status",
+          "selected_symptoms"
+        ]
+      }
+    },
+    "vnext_feature_columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "vnext_feature_row": {
+      "type": "object"
+    },
+    "vnext_feature_metadata": {
+      "type": "object"
+    },
+    "research_feature_columns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "research_feature_row": {
+      "type": "object"
+    },
+    "excel_row": {
+      "type": "object"
+    },
+    "contact_row": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "email": {
+          "type": "string"
+        },
+        "submitted_at": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "report_language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "email",
+        "submitted_at",
+        "language",
+        "report_language"
+      ]
+    },
+    "data_quality": {
+      "type": "object",
+      "properties": {
+        "missing_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contradiction_warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "missing_columns",
+        "contradiction_warnings"
+      ]
+    }
+  },
+  "required": [
+    "submitted_at",
+    "email",
+    "language",
+    "report_language",
+    "rows",
+    "optimized_feature_columns",
+    "optimized_feature_row",
+    "ai_api_feature_row",
+    "symptom_feature_columns",
+    "symptom_feature_row",
+    "symptom_answers",
+    "vnext_feature_columns",
+    "vnext_feature_row",
+    "vnext_feature_metadata",
+    "research_feature_columns",
+    "research_feature_row",
+    "excel_row",
+    "contact_row",
+    "data_quality"
+  ]
+}

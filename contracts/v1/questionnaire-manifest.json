@@ -1,0 +1,72 @@
+{
+  "questionnaire_version": "questionnaire/2026-08-05",
+  "question_count": 44,
+  "canonical_answer_question_count": 42,
+  "answer_contract": {
+    "canonical_key": "question_id",
+    "display_labels_are_canonical": false,
+    "unknown_status": "unknown",
+    "not_applicable_status": "not_applicable"
+  },
+  "modules": [
+    {
+      "id": "consent",
+      "question_ids": ["consent_acknowledgement"]
+    },
+    {
+      "id": "basic",
+      "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex"]
+    },
+    {
+      "id": "symptoms",
+      "question_ids": [
+        "symptoms_general",
+        "symptoms_gastrointestinal",
+        "symptoms_hepatobiliary",
+        "symptoms_respiratory",
+        "symptoms_breast",
+        "symptoms_urogynecological",
+        "symptoms_head_neck",
+        "symptoms_neurological",
+        "symptoms_hematologic"
+      ]
+    },
+    {
+      "id": "female",
+      "applies_when": "sex=female",
+      "question_ids": ["menarche_age", "menopause_status", "first_pregnancy_age", "breastfeeding", "pap_smear", "hormone_medication"]
+    },
+    {
+      "id": "exposure",
+      "question_ids": ["smoking_ever", "smoking_quit", "secondhand_smoke", "betel_nut", "cooking_fume", "cooking_frequency", "air_pollution", "radiation"]
+    },
+    {
+      "id": "mental",
+      "question_ids": ["stress", "sleep_problem", "low_mood"]
+    },
+    {
+      "id": "diet",
+      "question_ids": ["diet_type", "meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"]
+    },
+    {
+      "id": "history",
+      "question_ids": ["personal_cancer", "personal_cancer_types", "chronic_conditions", "family_cancer", "family_self_types"]
+    },
+    {
+      "id": "contact",
+      "question_ids": ["email"]
+    }
+  ],
+  "conditional_questions": {
+    "symptoms_breast": "sex=female",
+    "menarche_age": "sex=female",
+    "menopause_status": "sex=female",
+    "first_pregnancy_age": "sex=female",
+    "breastfeeding": "sex=female",
+    "pap_smear": "sex=female",
+    "hormone_medication": "sex=female",
+    "smoking_quit": "smoking_ever=yes",
+    "personal_cancer_types": "personal_cancer=current_or_previous",
+    "family_self_types": "family_cancer=yes"
+  }
+}

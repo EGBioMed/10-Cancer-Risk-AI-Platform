@@ -1,0 +1,58 @@
+{
+  "status": "questionnaire_collection_enabled_model_input_unchanged",
+  "questionnaire_version": "questionnaire/2026-08-05-symptom-vnext",
+  "base_model_feature_schema_version": "model-features/1.0.0",
+  "candidate_feature_schema_version": "feature-gap-candidates/2026-08-05",
+  "question_count": 54,
+  "canonical_answer_question_count": 52,
+  "symptom_group_count": 13,
+  "symptom_rule": {
+    "lookback": "past_3_months_unless_option_says_otherwise",
+    "warning_signs": "select_if_occurred_once",
+    "common_symptoms": "persistent_recurrent_or_clearly_new",
+    "none_status": "answered_absent",
+    "unknown_status": "unknown_not_zero",
+    "hidden_status": "not_applicable_not_zero"
+  },
+  "modules": {
+    "symptoms": [
+      "symptoms_general",
+      "symptoms_upper_digestive",
+      "symptoms_bowel_abdominal",
+      "symptoms_hepatobiliary",
+      "symptoms_respiratory",
+      "symptoms_breast",
+      "symptoms_urinary",
+      "symptoms_male_reproductive",
+      "symptoms_gynecological",
+      "symptoms_oral_throat",
+      "symptoms_head_neck_nasal",
+      "symptoms_neurological",
+      "symptoms_bone_hematologic",
+      "testicular_pain_pattern",
+      "sore_throat_pattern",
+      "head_neck_mass_pattern",
+      "visible_hematuria_pattern"
+    ],
+    "history_additions": [
+      "liver_disease_etiology",
+      "vnext_diagnosed_conditions"
+    ]
+  },
+  "conditional_questions": {
+    "symptoms_breast": "sex=female",
+    "symptoms_male_reproductive": "sex=male",
+    "symptoms_gynecological": "sex=female",
+    "testicular_pain_pattern": "symptom_testicular_pain=1",
+    "sore_throat_pattern": "symptom_sore_throat=1",
+    "head_neck_mass_pattern": "head_or_neck_mass_selected",
+    "visible_hematuria_pattern": "symptom_hematuria_visible=1",
+    "liver_disease_etiology": "chronic_liver_disease_selected"
+  },
+  "compatibility": {
+    "ai_api_feature_row": "unchanged_model-features/1.0.0",
+    "new_binary_symptoms": "stored_in_symptom_feature_row_and_excel_row",
+    "all_32_candidates": "stored_in_vnext_feature_row_and_excel_row",
+    "recurrence_duration": "stored_in_vnext_feature_metadata_and_excel_row"
+  }
+}

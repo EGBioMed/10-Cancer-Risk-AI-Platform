@@ -1,121 +1,272 @@
-# Data Contract
+# EG BioMed Assessment Data Contract
 
-## Submission Payload
+Status: Draft for on-premises migration
 
-The platform submits one JSON object to `/api/submit`. The backend forwards the same object to Power Automate after adding fallback fields when needed.
+Contract version: `assessment-submission/1.0.0`
 
-Required top-level fields:
+Questionnaire version: `questionnaire/2026-08-05-symptom-vnext`
 
-- `optimized_feature_columns`: ordered model/storage feature column names
-- `optimized_feature_row`: canonical feature row for storage and auditing
-- `ai_api_feature_row`: normalized row for the AI API
-- `research_feature_columns`: research-only feature column names
-- `research_feature_row`: research-only values that are excluded from the current AI API
-- `excel_row`: row for Excel retention and Office Script writes
-- `contact_row`: restricted contact workbook row containing only the coded record ID and report-delivery fields
-- `rows`: de-identified, human-readable questionnaire rows; the email question and email address are excluded
-- `email`: report recipient email, kept only at the top level for delivery
-- `submitted_at`: ISO timestamp
+Feature schema version: `model-features/1.0.0`
 
-## Row Responsibilities
+## 1. Purpose
 
-### `optimized_feature_row`
+This document defines the data boundaries shared by the browser, on-premises API,
+database, model service, report worker, and the temporary Power Automate adapter.
 
-Canonical platform feature row. It is allowed to preserve source-model encodings, including special values that mean "not applicable" when that is part of the feature design.
+The production source of truth is the original questionnaire answer set. Model
+features are derived server-side from those answers and must never be accepted as
+authoritative merely because the browser supplied them.
 
-Use for:
+The machine-readable files are:
 
-- Audit/debug
-- Internal feature compatibility checks
-- Building `excel_row`
+- `contracts/v1/assessment-submission.schema.json`
+- `contracts/v1/questionnaire-manifest.json`
+- `contracts/v1/model-feature-manifest.json`
+- `contracts/vnext/questionnaire-manifest.json`
+- `contracts/vnext/model-feature-extension-candidates.json`
 
-Do not send this row directly to the AI API unless the API schema explicitly accepts every encoded value.
+## 2. Data classes and access boundaries
 
-### `ai_api_feature_row`
+| Data class | Examples | Storage boundary | Allowed consumers |
+|---|---|---|---|
+| Contact data | Email | Restricted contact store | Delivery worker and authorized privacy administrators |
+| Health assessment data | Age, lifestyle, history, symptoms, answers | Research/assessment store, keyed by server-generated ID | Assessment API and authorized research users |
+| Derived model data | Model features, feature hash, inference result | Feature and inference store | Feature service, model service, audit users |
+| Operational metadata | Submission status, timestamps, versions, retry count | Operational store | API, worker, operations staff |
+| Audit metadata | Actor, action, record ID, outcome | Append-only audit store | Authorized security and compliance staff |
 
-AI API-safe feature row. It starts from `optimized_feature_row`, then normalizes fields that the API schema rejects.
+Rules:
 
-Current normalization:
+1. Email must not appear in health-answer, feature, inference, research-export, or
+   model-training records.
+2. Contact and assessment records are linked only by the server-generated
+   `assessment_id`.
+3. Logs must not contain Email, full answers, feature vectors, webhook signatures,
+   API keys, or report contents.
+4. Browser-generated timestamps and locale are context only. The server creates the
+   authoritative ID and receipt timestamp.
+5. Database roles for contact delivery and research access must be separate.
 
-| Field | Source value | API value | Reason |
-|---|---:|---:|---|
-| `quit_smoking` | negative, blank, or invalid | `0` | Current AI API schema requires `quit_smoking >= 0`. |
+## 3. Canonical browser-to-API contract
 
-Use this row as the Power Automate HTTP body for the AI API.
+Endpoint target: `POST /api/v1/assessments`
 
-Recommended Power Automate expression:
+The browser sends only:
 
-```text
-body('Parse_JSON')?['ai_api_feature_row']
-```
+- `contract_version`
+- `questionnaire_version`
+- `consent`
+- `locale`
+- `answers`
+- `contact.email`
+- optional non-identifying `client_context`
 
-Fallback only if `ai_api_feature_row` is missing:
+It must not send authoritative `record_id`, age, BMI, model features, risk scores,
+or model versions. Birth year, height, and weight remain original question answers;
+the server validates them and derives age and BMI.
 
-```text
-body('Parse_JSON')?['optimized_feature_row']
-```
+Each answer uses a stable `question_id` and a typed `value`. Display text,
+translated labels, and question wording are not canonical values and should not be
+used for feature mapping.
 
-### `excel_row`
+`answers` excludes `consent_acknowledgement` and `email`. Consent is represented by
+the versioned `consent` object, and Email is represented only by `contact.email`.
 
-Storage row for Excel. It may include extra reporting fields that are not model features, such as:
-
-- `submitted_at`
-- `language`
-- `report_language`
-- `recent_discomfort_text`
-- structured symptom summary fields
-- research-only fields prefixed with `research_`
-
-Use this row for Office Script / Excel retention.
-
-The report recipient email is intentionally excluded from `excel_row`. Power Automate should read the top-level `email` only in the email delivery step and should not write it to the research workbook.
-
-Recommended Power Automate Office Script parameter:
-
-```text
-string(body('Parse_JSON')?['excel_row'])
-```
-
-### `contact_row`
-
-Restricted contact row stored separately from the research workbook:
-
-- `record_id`
-- `email`
-- `submitted_at`
-- `language`
-- `report_language`
-
-Use a second Office Script action connected to a separate, access-restricted Excel workbook:
-
-```text
-string(body('Parse_JSON')?['contact_row'])
-```
-
-The shared `record_id` allows an authorized privacy administrator to locate the corresponding research record when handling a valid access, correction, or deletion request. Research users should not receive access to the contact workbook.
-
-### `research_feature_row`
-
-Research-only structured fields collected for future analysis. These fields are written to `excel_row` with a `research_` prefix and are not included in `optimized_feature_row` or `ai_api_feature_row`.
-
-Current field:
-
-| Research field | Excel column | Current model input |
-|---|---|---|
-| `processed_meat` | `research_processed_meat` | No |
-
-## Current Production Bug
-
-The production Flow previously sent `optimized_feature_row` to the AI API. A k6 test payload contained:
+Example:
 
 ```json
-{ "quit_smoking": -1 }
+{
+  "contract_version": "assessment-submission/1.0.0",
+  "questionnaire_version": "questionnaire/2026-08-05-symptom-vnext",
+  "consent": {
+    "consent_version": "consent/2026-08-05",
+    "accepted_at": "2026-08-05T03:00:00.000Z",
+    "accepted_item_ids": ["data_use", "model_limitations", "non_medical_use"]
+  },
+  "locale": "zh-Hant",
+  "answers": [
+    { "question_id": "birth_year", "status": "answered", "value": 1980 },
+    { "question_id": "sex", "status": "answered", "value": "female" },
+    { "question_id": "symptoms_general", "status": "answered", "value": ["symptom_fatigue"] }
+  ],
+  "contact": { "email": "person@example.com" },
+  "client_context": { "timezone": "Asia/Taipei" }
+}
 ```
 
-The AI API rejected it with HTTP 422 because its schema requires `quit_smoking >= 0`.
+The API validates the JSON Schema plus domain rules that JSON Schema cannot fully
+express, including duplicate question IDs, conditional questions, mutually
+exclusive `none` options, complete consent, and cross-answer contradictions.
 
-Resolution:
+## 4. Canonical API receipt
 
-- Platform and k6 payloads now include `ai_api_feature_row`.
-- k6 synthetic data now uses `quit_smoking: 0`.
-- Power Automate should send `ai_api_feature_row` to the AI API.
+After the assessment and contact rows are committed, the API returns:
+
+```json
+{
+  "assessment_id": "0191e5d8-2b0a-7e21-a40d-05ec3b0dd951",
+  "status": "received",
+  "received_at": "2026-08-05T03:00:01.225Z"
+}
+```
+
+`assessment_id` is generated by the server as UUIDv7 (preferred) or UUIDv4. The
+current browser value `WEB-${Date.now()}` is a legacy identifier and must not be
+used as the production primary key.
+
+## 5. Server-side derived records
+
+The server derives and stores four separate records after validating answers:
+
+### 5.1 Feature snapshot
+
+- `assessment_id`
+- `feature_schema_version`
+- `mapping_version`
+- ordered feature values
+- `input_hash`
+- `created_at`
+
+The current legacy model has 71 ordered fields. Their order is fixed in
+`model-feature-manifest.json`. The feature service, not the browser, owns mapping,
+unit conversion, missing-value encoding, and contradiction handling.
+
+Special values such as `-1` are legacy model encodings and are not interchangeable
+with SQL `NULL`. Their meaning must be defined per feature before changing them.
+
+### 5.2 Symptom research snapshot
+
+The vNext questionnaire contains 82 binary symptom fields across 13 body-system
+groups. Selected symptoms are encoded as `1`; explicitly unselected symptoms are
+`0`; unknown or inapplicable categories are `null` in the transitional adapter and
+must retain distinct answer statuses in the production contract.
+
+These fields are research inputs and are not part of the current 71-field model
+unless a future feature schema version explicitly promotes them.
+
+### 5.3 Research-only snapshot
+
+Current research-only feature:
+
+- `processed_meat` (binary)
+
+Research fields cannot be added to a deployed model request until a new model and
+feature schema version are approved together.
+
+### 5.4 vNext feature-gap candidates
+
+The source literature workbook currently identifies 32 additional candidate
+fields by light-orange fill in column A of `平台因子缺口分析_建議新增`. They are
+catalogued in `contracts/vnext/model-feature-extension-candidates.json`.
+
+These fields are not part of `model-features/1.0.0` or the deployed model request.
+Questionnaire collection has started in the transitional payload: symptom options
+are stored in `symptom_feature_row`, clinician-confirmed history candidates in
+`vnext_feature_row`, and recurrence/duration in `vnext_feature_metadata`. Six
+candidates overlap existing concepts and still require an explicit
+replace/split/derive decision before the model input shape can be frozen. If every
+highlighted candidate becomes one independent model column, the provisional
+candidate count would increase from 120 to 152; this is not a committed production
+feature count.
+
+### 5.5 Inference run
+
+Every model call records:
+
+- `assessment_id`
+- `feature_schema_version`
+- `mapping_version`
+- `model_version`
+- `threshold_version`
+- `input_hash`
+- response status and latency
+- structured model output
+- `created_at`
+
+Reports consume a stored inference run. They must not independently recalculate or
+reinterpret model output.
+
+## 6. Versioning rules
+
+Versions are immutable strings stored with every assessment.
+
+| Version | Changes when |
+|---|---|
+| `contract_version` | Transport shape or required semantics change |
+| `questionnaire_version` | Question IDs, options, conditions, or wording change materially |
+| `consent_version` | Consent or privacy text changes |
+| `feature_schema_version` | Feature names, order, types, or missing encodings change |
+| `mapping_version` | Answer-to-feature transformation changes without changing feature shape |
+| `model_version` | Deployed model artifact changes |
+| `threshold_version` | Risk classification thresholds change |
+| `report_template_version` | Report interpretation or layout changes |
+
+Never update historical rows in place to make them look as though they used a new
+questionnaire, mapping, or model version. Reprocessing creates a new feature
+snapshot or inference run linked to the original answers.
+
+## 7. Validation rules requiring application code
+
+At minimum, the API must enforce:
+
+- exactly one answer per `question_id`
+- no consent or Email value inside the general answer array
+- all required and applicable questions are answered
+- non-applicable questions use `not_applicable`, not fabricated values
+- multi-select `none` is mutually exclusive with positive selections
+- birth year produces age between 0 and 120 at the server receipt date
+- height is 100-250 cm, weight is 20-300 kg, and derived BMI is 10-100
+- female-only answers agree with the sex path used by the current questionnaire
+- smoking quit status is accepted only when smoking history is positive
+- cancer types are accepted only when personal/family cancer history is positive
+- Email is syntactically valid and stored only in the contact boundary
+- request size, array length, and string length limits are enforced
+
+Unknown questions or option codes are rejected for the declared questionnaire
+version. They are not silently ignored.
+
+## 8. Current PoC compatibility contract
+
+The existing `/api/submit` payload remains temporarily supported during migration:
+
+- `rows`
+- `optimized_feature_columns`
+- `optimized_feature_row`
+- `ai_api_feature_row`
+- `symptom_feature_columns`
+- `symptom_feature_row`
+- `symptom_answers`
+- `vnext_feature_columns`
+- `vnext_feature_row`
+- `vnext_feature_metadata`
+- `research_feature_columns`
+- `research_feature_row`
+- `excel_row`
+- `contact_row`
+- `data_quality`
+
+These are adapter fields, not the future browser contract. During the transition:
+
+- Power Automate model HTTP uses `ai_api_feature_row`.
+- Research Excel uses `excel_row` and must not contain Email.
+- Restricted contact Excel uses `contact_row`.
+- `optimized_feature_row` is retained for compatibility and audit comparison only.
+
+The on-premises API will initially dual-build the legacy adapter from canonical
+answers. After database/model/report parity is verified, Power Automate and Excel
+adapter fields can be retired without changing the browser contract.
+
+## 9. Known contract issues to resolve before production
+
+1. The browser currently creates model features and `WEB-${Date.now()}` IDs.
+2. Missing flags for anxiety, coffee, tea, and high-fat food currently mix
+   "not selected" with "missing" semantics; they must be confirmed against model
+   training definitions.
+3. Removed pregnancy-count and birth-count questions leave legacy features encoded
+   with `-1`; model-owner approval is required before changing this behavior.
+4. `diagnosis`, `score`, and `data_source` mix operational/storage values with model
+   features; the model API contract must confirm whether they are truly required.
+5. Human-readable Chinese labels are currently used in mapping logic. Formal option
+   codes must replace labels before server-side mapping is implemented.
+6. README and Power Automate documentation describe older payload behavior and must
+   be updated as each migration stage is completed.

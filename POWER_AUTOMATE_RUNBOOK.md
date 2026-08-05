@@ -1,5 +1,88 @@
 # Power Automate Runbook
 
+## vNext symptom questionnaire transition
+
+Questionnaire version `questionnaire/2026-08-05-symptom-vnext` adds structured
+collection for the 32 literature-derived candidate fields while keeping the
+deployed model request backward compatible.
+
+### Parse JSON
+
+Update both the HTTP trigger schema and Parse JSON schema from:
+
+`contracts/power-automate/transitional-submission.schema.json`
+
+The new payload members are:
+
+- `vnext_feature_schema_version`
+- `vnext_mapping_version`
+- `vnext_feature_columns`
+- `vnext_feature_row`
+- `vnext_feature_metadata`
+
+### Research Excel
+
+Continue passing the complete research row to the Office Script:
+
+```text
+string(body('Parse_JSON')?['excel_row'])
+```
+
+The table must contain columns for the new symptom and vNext fields before event
+testing. The existing header-driven Office Script will place values by matching
+the JSON key to the Excel header. Missing or `null` values should be written as a
+blank cell, not zero.
+
+### Current model HTTP
+
+Keep the current HTTP body as:
+
+```text
+body('Parse_JSON')?['ai_api_feature_row']
+```
+
+Do not use `excel_row`, `symptom_feature_row`, or `vnext_feature_row` as the current
+model request. They include fields that the deployed model schema does not accept.
+Switch to the vNext vector only after the model owner provides a versioned endpoint
+and a frozen ordered feature manifest. See `MODEL_VNEXT_HANDOFF.md`.
+
+## Unified Transitional Submission Schema
+
+During the migration period, the HTTP trigger and Parse JSON action must use the
+same schema:
+
+```text
+contracts/power-automate/transitional-submission.schema.json
+```
+
+The schema intentionally keeps feature row objects unexpanded. Power Automate
+passes those objects to Office Script or the model API as a whole, so expanding all
+model and symptom properties would add unnecessary dynamic fields and make the
+designer harder to maintain.
+
+Apply it in both locations:
+
+1. Open `When an HTTP request is received`.
+2. Replace `Request Body JSON Schema` with the complete schema file contents.
+3. Open `Parse JSON`.
+4. Set `Content` to the Expression:
+
+```text
+triggerBody()
+```
+
+5. Replace its `Schema` with the exact same schema file contents.
+6. Save the Flow.
+7. Submit one Chinese and one English test response.
+
+The version fields are present but temporarily optional because the current web
+payload does not send them yet. They will become required after the platform payload
+is updated and a compatibility test passes.
+
+Do not use `Generate from sample` after installing this schema. A single sample may
+infer optional or empty fields incorrectly and cause the trigger and Parse JSON
+definitions to drift again.
+
 ## QA Flow
 
 QA receiver-only Flow:

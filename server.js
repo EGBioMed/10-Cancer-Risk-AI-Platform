@@ -5,6 +5,16 @@ const path = require("path");
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
 const MAX_BODY_BYTES = 1024 * 1024;
+const SUBMISSION_VERSIONS = Object.freeze({
+  contract_version: "assessment-submission/1.0.0",
+  questionnaire_version: "questionnaire/2026-08-05-symptom-vnext",
+  consent_version: "consent/2026-08-05",
+  feature_schema_version: "model-features/1.0.0",
+  mapping_version: "answer-mapping/1.0.0",
+  vnext_feature_schema_version: "feature-gap-candidates/2026-08-05",
+  vnext_mapping_version: "answer-mapping-vnext/0.1.0",
+  report_template_version: "email-report/2026-08-05"
+});
 
 const PUBLIC_DIR = __dirname;
 const MIME_TYPES = {
@@ -73,6 +83,8 @@ function buildFallbackExcelRow(submission) {
 
   return {
     ...submission.optimized_feature_row,
+    ...(submission.symptom_feature_row && typeof submission.symptom_feature_row === "object" ? submission.symptom_feature_row : {}),
+    ...(submission.vnext_feature_row && typeof submission.vnext_feature_row === "object" ? submission.vnext_feature_row : {}),
     ...researchExcelFields,
     submitted_at: submission.submitted_at || new Date().toISOString(),
     language: submission.language || "zh",
@@ -104,6 +116,7 @@ function buildAiApiFeatureRow(submission) {
 }
 
 function normalizeSubmission(submission) {
+  Object.assign(submission, SUBMISSION_VERSIONS);
   if (!submission.excel_row || typeof submission.excel_row !== "object") {
     submission.excel_row = buildFallbackExcelRow(submission);
   }
