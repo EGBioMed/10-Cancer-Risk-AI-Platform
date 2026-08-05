@@ -1,12 +1,14 @@
 const SUBMISSION_ENDPOINT = "/api/submit";
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.0.0",
-  questionnaire_version: "questionnaire/2026-08-05-symptom-vnext",
+  questionnaire_version: "questionnaire/2026-08-05-v19.4-phase1",
   consent_version: "consent/2026-08-05",
   feature_schema_version: "model-features/1.0.0",
   mapping_version: "answer-mapping/1.0.0",
   vnext_feature_schema_version: "feature-gap-candidates/2026-08-05",
   vnext_mapping_version: "answer-mapping-vnext/0.1.0",
+  rule_input_schema_version: "high-risk-rules/19.4",
+  rule_input_mapping_version: "rule-input-mapping/19.4-phase1",
   report_template_version: "email-report/2026-08-05"
 });
 
@@ -16,7 +18,7 @@ const enShortServiceNote = "Receive a personalized summary of cancer-related hea
 const modules = [
   { id: "consent", title: "知情同意", summary: "先確認個資告知與非診斷性質。" },
   { id: "basic", title: "基本資料", summary: "收集年齡、身高體重、運動與性別等基本資訊。" },
-  { id: "symptoms", title: "近期症狀", summary: "依身體系統整理最近三個月的警示狀況，以及持續、反覆或明顯新發生的不適。" },
+  { id: "symptoms", title: "近期症狀", summary: "依身體系統整理近期症狀；一般題目回想最近三個月，v19.4 追問題目會明確標示最近六個月。" },
   { id: "female", title: "女性相關資訊", summary: "依性別條件詢問月經、生育、哺乳、子宮頸抹片與荷爾蒙用藥。" },
   { id: "exposure", title: "菸草與環境暴露", summary: "整理抽菸、二手菸、油煙、空污與輻射等暴露因子。" },
   { id: "mental", title: "心理健康", summary: "記錄近期壓力、睡眠與情緒困擾頻率。" },
@@ -37,8 +39,8 @@ const cancerOptions = ["乳癌", "攝護腺癌", "肺癌", "頭頸癌", "胰臟�
 
 const symptomNoneOption = "以上皆無";
 const symptomUnknownOption = "不確定";
-const symptomReminderZh = "請回想最近 3 個月內的身體狀況。出血、腫塊或其他警示狀況即使只發生一次也請勾選；一般不適則請勾選持續、反覆或明顯新發生的情況。";
-const symptomReminderEn = "Please think about your health during the past 3 months. Select bleeding, a lump, or another warning sign even if it occurred once. For common symptoms, select those that were persistent, recurrent, or clearly new.";
+const symptomReminderZh = "請回想最近 3 個月內的身體狀況。出血、腫塊或其他警示狀況即使只發生一次也請勾選；一般不適則請勾選持續、反覆或明顯新發生的情況。若個別選項或追問題目標示『最近 6 個月』，請以該題標示的時間範圍作答。";
+const symptomReminderEn = "Please think about your health during the past 3 months. Select bleeding, a lump, or another warning sign even if it occurred once. For common symptoms, select those that were persistent, recurrent, or clearly new. If an option or follow-up question specifies the past 6 months, answer using that stated timeframe.";
 
 const symptomGroups = [
   {
@@ -52,7 +54,8 @@ const symptomGroups = [
       ["食慾降低或食量明顯減少", "Reduced appetite or a noticeable decrease in food intake", "symptom_appetite_loss"],
       ["曾被診斷貧血，或近期抽血發現血色素偏低", "Diagnosed anemia or a recent blood test showing low hemoglobin", "symptom_anemia"],
       ["夜間盜汗（非因環境過熱或更年期）", "Night sweats not explained by a hot environment or menopause", "symptom_night_sweats"],
-      ["不明原因發燒（體溫超過 38°C，持續超過 1 週）", "Unexplained fever above 38°C lasting more than 1 week", "symptom_unexplained_fever"]
+      ["不明原因發燒（體溫超過 38°C，持續超過 1 週）", "Unexplained fever above 38°C lasting more than 1 week", "symptom_unexplained_fever"],
+      ["最近 6 個月內，身體任何部位新出現原因不明的腫塊（包含腋下、腹股溝、四肢或其他部位）", "A new unexplained lump anywhere on the body during the past 6 months, including the armpit, groin, limbs, or another area", "symptom_mass"]
     ]
   },
   {
@@ -115,7 +118,8 @@ const symptomGroups = [
       ["持續咳嗽超過 3 週（非感冒引起）", "Cough lasting more than 3 weeks and not caused by a cold", "symptom_persistent_cough"],
       ["咳血或痰中帶血", "Coughing up blood or blood-streaked sputum", "symptom_hemoptysis"],
       ["一年內反覆發生肺炎 2 次以上", "Pneumonia occurring 2 or more times within 1 year", "symptom_recurrent_pneumonia"],
-      ["持續胸痛或胸悶", "Persistent chest pain or tightness", "symptom_chest_pain"]
+      ["持續胸痛或胸悶", "Persistent chest pain or tightness", "symptom_chest_pain"],
+      ["最近 6 個月內曾出現呼吸喘、呼吸急促或比平常更容易喘", "Shortness of breath, rapid breathing, or becoming breathless more easily than usual during the past 6 months", "symptom_shortness_of_breath"]
     ]
   },
   {
@@ -292,6 +296,61 @@ const liverEtiologyOptions = [
   "不確定肝病種類"
 ];
 
+const ruleRepeatDefinitions = [
+  ["symptom_jaundice", "黃疸", "jaundice", "symptom_jaundice_repeat_count"],
+  ["symptom_mass", "原因不明的腫塊", "an unexplained lump", "symptom_mass_repeat_count", "symptom_mass_interval_days"],
+  ["symptom_sore_throat", "喉嚨痛", "sore throat", "symptom_sore_throat_repeat_count"],
+  ["symptom_shortness_of_breath", "呼吸喘或呼吸急促", "shortness of breath", "symptom_shortness_of_breath_repeat_count"],
+  ["symptom_dysphagia", "吞嚥困難、吞嚥疼痛或卡住感", "difficulty or pain when swallowing", "symptom_dysphagia_repeat_count"],
+  ["symptom_hematochezia", "鮮紅色血便", "bright red blood in the stool", "symptom_hematochezia_repeat_count"],
+  ["symptom_abdominal_pain", "腹部疼痛", "abdominal pain", "symptom_abdominal_pain_repeat_count"],
+  ["symptom_back_pain", "背痛", "back pain", "symptom_back_pain_repeat_count"],
+  ["symptom_bowel_habit_change", "排便習慣改變", "a change in bowel habits", "symptom_bowel_habit_change_repeat_count"],
+  ["symptom_pelvic_discomfort_or_increased_girth", "骨盆腔不適或腹圍增加", "pelvic discomfort or increased abdominal girth", "symptom_pelvic_discomfort_or_increased_girth_repeat_count"],
+  ["symptom_hematuria_visible", "肉眼可見血尿", "visible blood in the urine", "symptom_hematuria_visible_repeat_count"],
+  ["symptom_nocturia", "夜尿增加", "increased nighttime urination", "symptom_nocturia_repeat_count"],
+  ["symptom_urinary_frequency", "頻尿", "frequent urination", "symptom_urinary_frequency_repeat_count"],
+  ["symptom_oral_ulcer", "口腔潰瘍", "an oral ulcer", "symptom_oral_ulcer_repeat_count", "symptom_oral_ulcer_interval_days"],
+  ["symptom_oral_white_red_patch", "口腔白斑或紅斑", "a white or red patch in the mouth", "symptom_oral_white_red_patch_repeat_count", "symptom_oral_white_red_patch_interval_days"],
+  ["symptom_mouth_symptoms", "上述口腔症狀", "the oral symptoms selected above", "symptom_mouth_symptoms_repeat_count", "symptom_mouth_symptoms_interval_days"]
+];
+
+const ruleRepeatQuestions = ruleRepeatDefinitions.flatMap(([parent, labelZh, labelEn, countField, intervalField]) => {
+  const questionsForField = [{
+    id: countField,
+    module: "symptoms",
+    type: "number",
+    required: true,
+    repeatCount: true,
+    title: `最近 6 個月內，${labelZh}總共出現過幾次？`,
+    titleEn: `During the past 6 months, how many times did you experience ${labelEn}?`,
+    note: "請填寫 1 至 9；若出現 9 次以上請填 9。若無法確認次數，可選「不確定怎麼回答」。",
+    noteEn: "Enter a number from 1 to 9. Enter 9 if it occurred 9 or more times. If you cannot determine the count, select “Not sure how to answer.”",
+    field: `rule_inputs.${countField}`,
+    ruleField: countField,
+    placeholder: "1-9",
+    appliesIf: () => isRuleParentPositive(parent)
+  }];
+  if (intervalField) {
+    questionsForField.push({
+      id: intervalField,
+      module: "symptoms",
+      type: "number",
+      required: true,
+      intervalDays: true,
+      title: `最近 6 個月內，兩次${labelZh}之間最短相隔幾天？`,
+      titleEn: `During the past 6 months, what was the shortest interval in days between two episodes of ${labelEn}?`,
+      note: "僅計算兩次可分開辨識的發生情況，請輸入最短間隔天數。若無法確認，可選「不確定怎麼回答」。",
+      noteEn: "Count only episodes that could be identified separately and enter the shortest interval in days. If unsure, select “Not sure how to answer.”",
+      field: `rule_inputs.${intervalField}`,
+      ruleField: intervalField,
+      placeholder: "天數",
+      appliesIf: () => normalizeNumber(getAnswerValue(answers, `rule_inputs.${countField}`)) >= 2
+    });
+  }
+  return questionsForField;
+});
+
 Object.assign(symptomOptionTranslations, Object.fromEntries(
   vnextHistoryFeatureDefinitions.map(([label, english]) => [label, english])
 ), {
@@ -306,7 +365,15 @@ Object.assign(symptomOptionTranslations, Object.fromEntries(
   "代謝功能障礙相關脂肪性肝病（MASLD）": "Metabolic dysfunction-associated steatotic liver disease (MASLD)",
   "酒精性肝病": "Alcohol-related liver disease",
   "其他肝病": "Other liver disease",
-  "不確定肝病種類": "Not sure of the liver disease type"
+  "不確定肝病種類": "Not sure of the liver disease type",
+  "是，曾由醫師診斷": "Yes, diagnosed by a clinician",
+  "3 年內": "Within the past 3 years",
+  "3 年以上": "More than 3 years ago",
+  "從未做過": "Never",
+  "不記得": "I do not remember",
+  "做過且曾被告知偏高": "Tested and was told the result was elevated",
+  "做過且結果正常": "Tested and the result was normal",
+  "沒做過": "Never tested"
 });
 
 const questions = [
@@ -330,17 +397,22 @@ const questions = [
 
   ...symptomQuestions,
 
+  { id: "stool_loose_or_frequent", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？", titleEn: "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?", note: "此題只在您勾選排便習慣改變後出現。", noteEn: "This question appears only after you report a change in bowel habits.", field: "rule_inputs.symptom_stool_loose_or_frequent", ruleField: "symptom_stool_loose_or_frequent", options: ["是", "否", "不確定"], appliesIf: () => isRuleParentPositive("symptom_bowel_habit_change") },
+  { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" },
+  { id: "constipation", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "若只是偶爾短暫發生，可依最接近日常狀況回答。", noteEn: "If this occurred only briefly or occasionally, choose the answer closest to your usual situation.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
+
+  ...ruleRepeatQuestions,
+
   { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") },
-  { id: "sore_throat_pattern", module: "symptoms", type: "single", required: true, title: "喉嚨痛發生的情況", titleEn: "Pattern of sore throat", note: "請選擇最接近最近三個月的狀況。", noteEn: "Select the option that best reflects the past 3 months.", field: "symptoms.follow_up.sore_throat_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.oral_throat", "喉嚨痛") },
-  { id: "head_neck_mass_pattern", module: "symptoms", type: "single", required: true, title: "頭頸部腫塊持續或反覆的時間", titleEn: "Duration or recurrence of the head or neck mass", note: "若腫塊持續存在，請依第一次發現至今的時間回答。", noteEn: "If the mass persisted, answer based on the time since it was first noticed.", field: "symptoms.follow_up.head_neck_mass_pattern", options: ["少於 6 週", "持續或間隔至少 6 週後再次出現", "不確定"], appliesIf: () => hasSelected("symptoms.head_neck_nasal", "腫塊") },
-  { id: "visible_hematuria_pattern", module: "symptoms", type: "single", required: true, title: "肉眼血尿發生的情況", titleEn: "Pattern of visible blood in urine", note: "即使只有一次也屬重要資訊。", noteEn: "Even one occurrence is important information.", field: "symptoms.follow_up.visible_hematuria_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "不確定"], appliesIf: () => hasSelected("symptoms.urinary", "肉眼可見") },
 
   { id: "menarche_age", module: "female", type: "single", required: true, title: "初經（第一次月經）來潮年齡", note: "若不確定，可使用下方不確定選項。", field: "female_health.menarche_age", options: ["12 歲以前（含 12 歲）", "13 歲以後（含 13 歲）"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "menopause_status", module: "female", type: "single", required: true, title: "目前停經（更年期）狀態", note: "請選擇最接近目前狀況的選項。", field: "female_health.menopause_status", options: ["尚未停經（仍有月經）", "已停經（55 歲或以前停經）", "已停經（55 歲或以後停經）", "已切除子宮或卵巢"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "first_pregnancy_age", module: "female", type: "single", required: false, title: "第一胎懷孕年齡", note: "若未曾懷孕可選從未懷孕。", field: "female_health.first_pregnancy_age", options: ["從未懷孕", "20 歲以下", "20-30 歲", "31-35 歲", "36 歲以上"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "breastfeeding", module: "female", type: "single", required: true, title: "產後是否曾哺餵母乳？若有，哺乳時間多長？", note: "若尚未生產，此題請選不適用。", field: "female_health.breastfeeding_history", options: ["從未哺乳", "有哺乳，但少於 6 個月", "有哺乳，超過 6 個月（含 6 個月）", "尚未生產，此題不適用"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "pap_smear", module: "female", type: "single", required: true, title: "是否曾做過子宮頸抹片檢查？結果如何？", note: "此題用於子宮頸相關風險因子整理。", field: "female_health.pap_smear_history", options: ["是，歷次結果均正常", "是，曾有異常報告（如 CIN、HPV 陽性等）", "否，從未做過"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
+  { id: "pap_smear_timing", module: "female", type: "single", required: true, title: "您最近一次子宮頸抹片檢查是在什麼時候？", titleEn: "When was your most recent Pap smear?", note: "請選擇最接近的時間；若不記得可直接選不記得。", noteEn: "Choose the closest timeframe. Select “I do not remember” if you are unsure.", field: "rule_inputs.screen_pap_overdue_or_out_of_range", ruleField: "screen_pap_overdue_or_out_of_range", options: ["3 年內", "3 年以上", "從未做過", "不記得"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" && calculateAge() >= 18 },
   { id: "hormone_medication", module: "female", type: "single", required: true, title: "過去是否曾使用賀爾蒙藥物？", note: "包含避孕藥、更年期賀爾蒙補充療法 HRT 等。", field: "female_health.hormone_medication", options: ["是，使用超過 1 年", "是，使用不到 1 年", "否，從未使用"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
+  { id: "benign_gynae_disease", module: "female", type: "single", required: true, title: "醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？", titleEn: "Has a clinician ever diagnosed you with uterine fibroids, an ovarian cyst, endometriosis, or another benign gynecological condition?", note: "請依醫療人員曾告知的診斷回答。", noteEn: "Answer based on a diagnosis previously given by a healthcare professional.", field: "rule_inputs.hx_benign_gynae_disease", ruleField: "hx_benign_gynae_disease", options: ["是，曾由醫師診斷", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" },
 
   { id: "smoking_ever", module: "exposure", type: "single", required: true, title: "是否有抽菸習慣（現在或過去）？", note: "請選擇最接近您狀況的選項。", field: "exposure.smoking_ever", options: ["是", "否"] },
   { id: "smoking_quit", module: "exposure", type: "single", required: false, title: "若有抽菸習慣，是否已戒菸？", note: "承上題，若選是請補充目前狀態。", field: "exposure.smoking_quit_status", options: ["是，已戒菸", "否，仍在抽菸"], appliesIf: (answers) => getAnswerValue(answers, "exposure.smoking_ever") === "是" },
@@ -366,6 +438,8 @@ const questions = [
   { id: "chronic_conditions", module: "history", type: "multi", required: true, title: "是否有以下慢性疾病？", note: "可複選；若無相關病史可選以上皆無。", field: "medical_history.chronic_conditions", options: ["高血壓", "糖尿病／高血糖", "高血脂／高膽固醇", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "胃食道逆流", "心臟病／心律不整", "甲狀腺疾病", "氣喘／慢性肺阻塞（COPD）", "痛風／高尿酸", "關節炎（含類風濕性）", "憂鬱症／焦慮症", "中風病史", "腎臟病／洗腎", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "以上皆無", "其他慢性疾病"] },
   { id: "liver_disease_etiology", module: "history", type: "multi", required: true, title: "您曾被診斷的肝病種類為何？", titleEn: "Which liver condition were you diagnosed with?", note: "可複選；請依醫療人員告知的診斷回答。", noteEn: "Select all that apply based on diagnoses given by a healthcare professional.", field: "medical_history.liver_disease_etiology", noneOption: "不確定肝病種類", options: liverEtiologyOptions, appliesIf: () => hasSelected("medical_history.chronic_conditions", "肝病") },
   { id: "vnext_diagnosed_conditions", module: "history", type: "multi", required: true, title: "是否曾有以下經醫療人員確認的病史或事件？", titleEn: "Have you had any of the following clinician-confirmed conditions or events?", note: "可複選。骨折依最近 12 個月回答，其餘依是否曾被醫療人員診斷回答。", noteEn: "Select all that apply. For fracture, consider the past 12 months; for the others, report whether a clinician has ever diagnosed the condition.", field: "medical_history.vnext_diagnosed_conditions", noneOption: symptomNoneOption, unknownOption: symptomUnknownOption, options: [...vnextHistoryFeatureDefinitions.map(([label]) => label), symptomNoneOption, symptomUnknownOption] },
+  { id: "orchitis_epididymitis", module: "history", type: "single", required: true, title: "醫師是否曾診斷您有睪丸炎或副睪炎？", titleEn: "Has a clinician ever diagnosed you with orchitis or epididymitis?", note: "請依醫療人員曾告知的診斷回答。", noteEn: "Answer based on a diagnosis previously given by a healthcare professional.", field: "rule_inputs.dx_orchitis_epididymitis", ruleField: "dx_orchitis_epididymitis", options: ["是，曾由醫師診斷", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" },
+  { id: "psa_history", module: "history", type: "single", required: true, title: "您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？", titleEn: "Have you previously had a PSA (prostate-specific antigen) test, and were you told that the result was elevated?", note: "本題只詢問既往檢查紀錄，不要求您另外接受抽血檢查。", noteEn: "This asks only about a previous test result and does not ask you to undergo a new blood test.", field: "rule_inputs.screen_psa_elevated", ruleField: "screen_psa_elevated", options: ["做過且曾被告知偏高", "做過且結果正常", "沒做過", "不記得"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" && calculateAge() >= 50 },
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
@@ -462,7 +536,7 @@ const i18n = {
     modules: {
       consent: ["Informed Consent", "Review privacy notice and non-diagnostic nature."],
       basic: ["Basic Information", "Collect age, height, weight, exercise, and sex."],
-      symptoms: ["Recent Symptoms", "Review warning signs and persistent, recurrent, or clearly new symptoms during the past 3 months by body system."],
+      symptoms: ["Recent Symptoms", "Review symptoms by body system. General questions use the past 3 months, while v19.4 follow-ups explicitly use the past 6 months."],
       female: ["Female Health Information", "Questions on menstruation, pregnancy, breastfeeding, Pap smear, and hormone use."],
       exposure: ["Tobacco and Environmental Exposure", "Record smoking, secondhand smoke, cooking fumes, air pollution, and radiation exposure."],
       mental: ["Mental Health", "Record recent stress, sleep, and low mood frequency."],
@@ -609,6 +683,22 @@ const vnextSymptomCandidateColumns = [
 ];
 const vnextFeatureColumns = [...vnextSymptomCandidateColumns, ...vnextHistoryFeatureColumns, "hx_liver_disease_etiology"];
 const researchFeatureColumns = ["processed_meat"];
+const ruleDirectFeatureColumns = [
+  "symptom_stool_loose_or_frequent", "symptom_mastalgia", "symptom_constipation",
+  "dx_orchitis_epididymitis", "hx_benign_gynae_disease",
+  "screen_pap_overdue_or_out_of_range", "screen_psa_elevated",
+  "symptom_mass", "symptom_shortness_of_breath"
+];
+const ruleRepeatFeatureColumns = ruleRepeatDefinitions.map(([, , , countField]) => countField);
+const ruleIntervalFeatureColumns = ruleRepeatDefinitions.flatMap(([, , , , intervalField]) => intervalField ? [intervalField] : []);
+const ruleInputColumns = [...ruleDirectFeatureColumns, ...ruleRepeatFeatureColumns, ...ruleIntervalFeatureColumns];
+const frozenSubmissionVectorCounts = Object.freeze({
+  optimized_feature_columns: 71,
+  symptom_feature_columns: 84,
+  vnext_feature_columns: 32,
+  research_feature_columns: 1,
+  rule_input_columns: 29
+});
 
 const answers = {};
 let currentIndex = 0;
@@ -1330,6 +1420,8 @@ function showInlineNotice(message) {
 
 function getNumberBounds(question) {
   const currentYear = new Date().getFullYear();
+  if (question.repeatCount) return { min: 1, max: 9, step: 1 };
+  if (question.intervalDays) return { min: 1, max: 180, step: 1 };
   const bounds = {
     birth_year: { min: currentYear - 120, max: currentYear, step: 1 },
     height_cm: { min: 100, max: 250, step: 0.1 },
@@ -1517,6 +1609,39 @@ function hasSelected(field, keyword) {
   const value = getAnswerValue(answers, field);
   const list = Array.isArray(value) ? value : value ? [value] : [];
   return list.some((item) => String(item).includes(keyword));
+}
+
+function getSymptomColumnState(column) {
+  for (const group of symptomGroups) {
+    const definition = group.options.find(([, , featureColumn]) => featureColumn === column);
+    if (!definition) continue;
+    const entry = answers[group.field];
+    const selected = Array.isArray(entry?.value) ? entry.value : [];
+    if (!entry || entry.source === "uncertain" || selected.includes(symptomUnknownOption)) return null;
+    return selected.includes(definition[0]) ? 1 : 0;
+  }
+  return null;
+}
+
+function combineSymptomStates(columns) {
+  const states = columns.map(getSymptomColumnState);
+  if (states.includes(1)) return 1;
+  if (states.every((state) => state === 0)) return 0;
+  return null;
+}
+
+function getRuleParentState(parent) {
+  const derivedParents = {
+    symptom_mass: ["symptom_mass", "symptom_neck_lump", "symptom_head_neck_mass", "symptom_nasal_mass", "symptom_breast_lump", "symptom_testicular_lump"],
+    symptom_abdominal_pain: ["symptom_persistent_abdominal_pain", "symptom_epigastric_pain", "symptom_upper_abdominal_discomfort", "symptom_right_upper_abdominal_discomfort"],
+    symptom_back_pain: ["symptom_persistent_back_pain"],
+    symptom_mouth_symptoms: ["symptom_oral_ulcer", "symptom_oral_white_red_patch"]
+  };
+  return combineSymptomStates(derivedParents[parent] || [parent]);
+}
+
+function isRuleParentPositive(parent) {
+  return getRuleParentState(parent) === 1;
 }
 
 function mapExercise(value) {
@@ -1760,12 +1885,62 @@ function buildVnextFeatureRow(symptomFeatureRow) {
 }
 
 function buildVnextFeatureMetadata() {
+  const soreThroatCount = normalizeNumber(getAnswerValue(answers, "rule_inputs.symptom_sore_throat_repeat_count"));
+  const visibleHematuriaCount = normalizeNumber(getAnswerValue(answers, "rule_inputs.symptom_hematuria_visible_repeat_count"));
+  const massCount = normalizeNumber(getAnswerValue(answers, "rule_inputs.symptom_mass_repeat_count"));
+  const massInterval = normalizeNumber(getAnswerValue(answers, "rule_inputs.symptom_mass_interval_days"));
   return {
     testicular_pain_pattern: getAnswerValue(answers, "symptoms.follow_up.testicular_pain_pattern") || null,
-    sore_throat_pattern: getAnswerValue(answers, "symptoms.follow_up.sore_throat_pattern") || null,
-    head_neck_mass_pattern: getAnswerValue(answers, "symptoms.follow_up.head_neck_mass_pattern") || null,
-    visible_hematuria_pattern: getAnswerValue(answers, "symptoms.follow_up.visible_hematuria_pattern") || null
+    sore_throat_pattern: soreThroatCount === 1 ? "僅發生 1 次" : soreThroatCount >= 2 ? "反覆發生 2 次以上" : null,
+    head_neck_mass_pattern: massCount >= 2 && massInterval >= 42 ? "持續或間隔至少 6 週後再次出現" : massCount === 1 ? "少於 6 週" : null,
+    visible_hematuria_pattern: visibleHematuriaCount === 1 ? "僅發生 1 次" : visibleHematuriaCount >= 2 ? "反覆發生 2 次以上" : null
   };
+}
+
+function mapRuleBinary(field) {
+  const entry = answers[field];
+  if (!entry || entry.source === "uncertain" || ["不確定", "不記得"].includes(entry.value)) return null;
+  if (entry.value === "是" || String(entry.value).startsWith("是，")) return 1;
+  if (entry.value === "否" || String(entry.value).startsWith("否，")) return 0;
+  return null;
+}
+
+function mapRuleNumber(field) {
+  const entry = answers[field];
+  if (!entry || entry.source === "uncertain") return null;
+  return normalizeNumber(entry.value);
+}
+
+function buildRuleInputRow(symptomFeatureRow) {
+  const papTiming = getAnswerValue(answers, "rule_inputs.screen_pap_overdue_or_out_of_range");
+  const psaHistory = getAnswerValue(answers, "rule_inputs.screen_psa_elevated");
+  const row = {
+    symptom_stool_loose_or_frequent: getRuleParentState("symptom_bowel_habit_change") === 0
+      ? 9
+      : mapRuleBinary("rule_inputs.symptom_stool_loose_or_frequent"),
+    symptom_mastalgia: mapRuleBinary("rule_inputs.symptom_mastalgia"),
+    symptom_constipation: mapRuleBinary("rule_inputs.symptom_constipation"),
+    dx_orchitis_epididymitis: mapRuleBinary("rule_inputs.dx_orchitis_epididymitis"),
+    hx_benign_gynae_disease: mapRuleBinary("rule_inputs.hx_benign_gynae_disease"),
+    screen_pap_overdue_or_out_of_range: ({ "3 年內": 1, "3 年以上": 2, "從未做過": 3 }[papTiming] ?? null),
+    screen_psa_elevated: ({ "做過且曾被告知偏高": 1, "做過且結果正常": 2, "沒做過": 0 }[psaHistory] ?? null),
+    symptom_mass: getRuleParentState("symptom_mass"),
+    symptom_shortness_of_breath: symptomFeatureRow.symptom_shortness_of_breath ?? null
+  };
+
+  ruleRepeatDefinitions.forEach(([parent, , , countField, intervalField]) => {
+    const parentState = getRuleParentState(parent);
+    row[countField] = parentState === 0 ? 0 : mapRuleNumber(`rule_inputs.${countField}`);
+    if (intervalField) {
+      const count = row[countField];
+      row[intervalField] = count >= 2 ? mapRuleNumber(`rule_inputs.${intervalField}`) : null;
+    }
+  });
+
+  return ruleInputColumns.reduce((ordered, column) => {
+    ordered[column] = row[column] ?? null;
+    return ordered;
+  }, {});
 }
 
 function buildResearchFeatureRow() {
@@ -1776,7 +1951,7 @@ function buildResearchFeatureRow() {
   };
 }
 
-function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow) {
+function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow, ruleInputRow) {
   const symptomEntry = Object.values(answers).find((entry) => entry.field === "recent_health.recent_discomfort");
   const personalCancerTypeEntry = Object.values(answers).find((entry) => entry.field === "medical_history.personal_cancer_types");
   const structured = symptomEntry?.structured || {};
@@ -1792,6 +1967,7 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     ...optimizedFeatureRow,
     ...symptomFeatureRow,
     ...vnextFeatureRow,
+    ...ruleInputRow,
     ...Object.fromEntries(Object.entries(vnextFeatureMetadata).map(([key, value]) => [`research_${key}`, value])),
     ...researchExcelFields,
     submitted_at: submittedAt,
@@ -1841,6 +2017,7 @@ function storeSubmissionForIntegration() {
   const vnextFeatureRow = buildVnextFeatureRow(symptomFeatureRow);
   const vnextFeatureMetadata = buildVnextFeatureMetadata();
   const researchFeatureRow = buildResearchFeatureRow();
+  const ruleInputRow = buildRuleInputRow(symptomFeatureRow);
   const missingColumns = optimizedFeatureColumns.filter((column) => optimizedFeatureRow[column] === "" && column !== "score");
   const submission = {
     ...SUBMISSION_VERSIONS,
@@ -1860,7 +2037,9 @@ function storeSubmissionForIntegration() {
     vnext_feature_metadata: vnextFeatureMetadata,
     research_feature_columns: researchFeatureColumns,
     research_feature_row: researchFeatureRow,
-    excel_row: buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow),
+    rule_input_columns: ruleInputColumns,
+    rule_input_row: ruleInputRow,
+    excel_row: buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow, ruleInputRow),
     contact_row: buildContactRow(optimizedFeatureRow, submittedAt),
     data_quality: {
       missing_columns: missingColumns,
@@ -1875,7 +2054,47 @@ function safeJsonForHtml(value) {
   return JSON.stringify(value).replace(/</g, "\\u003c");
 }
 
+function validateSubmissionBeforeSend(submission) {
+  const vectorPairs = [
+    ["optimized_feature_columns", "optimized_feature_row"],
+    ["optimized_feature_columns", "ai_api_feature_row"],
+    ["symptom_feature_columns", "symptom_feature_row"],
+    ["vnext_feature_columns", "vnext_feature_row"],
+    ["research_feature_columns", "research_feature_row"],
+    ["rule_input_columns", "rule_input_row"]
+  ];
+  const errors = [];
+
+  Object.entries(SUBMISSION_VERSIONS).forEach(([key, value]) => {
+    if (submission[key] !== value) errors.push(`${key} version mismatch`);
+  });
+  Object.entries(frozenSubmissionVectorCounts).forEach(([columnsName, expectedCount]) => {
+    const columns = submission[columnsName];
+    if (!Array.isArray(columns) || columns.length !== expectedCount || new Set(columns).size !== expectedCount) {
+      errors.push(`${columnsName} must contain ${expectedCount} unique fields`);
+    }
+  });
+  vectorPairs.forEach(([columnsName, rowName]) => {
+    const columns = submission[columnsName] || [];
+    const row = submission[rowName];
+    const rowKeys = row && typeof row === "object" ? Object.keys(row) : [];
+    if (rowKeys.length !== columns.length || columns.some((column) => !(column in (row || {})))) {
+      errors.push(`${rowName} does not match ${columnsName}`);
+    }
+  });
+  if (submission.excel_row && "email" in submission.excel_row) {
+    errors.push("email must not appear in excel_row");
+  }
+  if (submission.contact_row?.email !== submission.email) {
+    errors.push("contact_row email mismatch");
+  }
+  if (errors.length > 0) {
+    throw new Error(`Submission contract validation failed: ${errors.join("; ")}`);
+  }
+}
+
 async function submitToPowerAutomate(submission) {
+  validateSubmissionBeforeSend(submission);
   const response = await fetch(SUBMISSION_ENDPOINT, {
     method: "POST",
     headers: {

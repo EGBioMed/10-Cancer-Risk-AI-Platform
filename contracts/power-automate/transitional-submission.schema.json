@@ -1,11 +1,15 @@
 {
+  "title": "EG BioMed frozen transitional assessment submission",
   "type": "object",
+  "additionalProperties": false,
   "properties": {
     "contract_version": {
-      "type": "string"
+      "type": "string",
+      "enum": ["assessment-submission/1.0.0"]
     },
     "questionnaire_version": {
-      "type": "string"
+      "type": "string",
+      "enum": ["questionnaire/2026-08-05-v19.4-phase1"]
     },
     "consent_version": {
       "type": "string"
@@ -21,6 +25,14 @@
     },
     "vnext_mapping_version": {
       "type": "string"
+    },
+    "rule_input_schema_version": {
+      "type": "string",
+      "enum": ["high-risk-rules/19.4"]
+    },
+    "rule_input_mapping_version": {
+      "type": "string",
+      "enum": ["rule-input-mapping/19.4-phase1"]
     },
     "report_template_version": {
       "type": "string"
@@ -39,6 +51,8 @@
     },
     "rows": {
       "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
       "items": {
         "type": "object",
         "properties": {
@@ -65,6 +79,9 @@
     },
     "optimized_feature_columns": {
       "type": "array",
+      "minItems": 71,
+      "maxItems": 71,
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
@@ -77,6 +94,9 @@
     },
     "symptom_feature_columns": {
       "type": "array",
+      "minItems": 84,
+      "maxItems": 84,
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
@@ -119,6 +139,9 @@
     },
     "vnext_feature_columns": {
       "type": "array",
+      "minItems": 32,
+      "maxItems": 32,
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
@@ -131,12 +154,30 @@
     },
     "research_feature_columns": {
       "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
       "items": {
         "type": "string"
       }
     },
     "research_feature_row": {
       "type": "object"
+    },
+    "rule_input_columns": {
+      "type": "array",
+      "minItems": 29,
+      "maxItems": 29,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "rule_input_row": {
+      "type": "object",
+      "additionalProperties": {
+        "type": ["integer", "number", "null"]
+      }
     },
     "excel_row": {
       "type": "object"
@@ -191,6 +232,16 @@
     }
   },
   "required": [
+    "contract_version",
+    "questionnaire_version",
+    "consent_version",
+    "feature_schema_version",
+    "mapping_version",
+    "vnext_feature_schema_version",
+    "vnext_mapping_version",
+    "rule_input_schema_version",
+    "rule_input_mapping_version",
+    "report_template_version",
     "submitted_at",
     "email",
     "language",
@@ -207,6 +258,8 @@
     "vnext_feature_metadata",
     "research_feature_columns",
     "research_feature_row",
+    "rule_input_columns",
+    "rule_input_row",
     "excel_row",
     "contact_row",
     "data_quality"

@@ -1,7 +1,8 @@
 {
-  "questionnaire_version": "questionnaire/2026-08-05",
-  "question_count": 44,
-  "canonical_answer_question_count": 42,
+  "status": "frozen_v19.4_phase1_question_ids",
+  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+  "question_definition_count": 78,
+  "canonical_answer_question_count": 76,
   "answer_contract": {
     "canonical_key": "question_id",
     "display_labels_are_canonical": false,
@@ -9,64 +10,68 @@
     "not_applicable_status": "not_applicable"
   },
   "modules": [
-    {
-      "id": "consent",
-      "question_ids": ["consent_acknowledgement"]
-    },
-    {
-      "id": "basic",
-      "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex"]
-    },
+    { "id": "consent", "question_ids": ["consent_acknowledgement"] },
+    { "id": "basic", "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex"] },
     {
       "id": "symptoms",
       "question_ids": [
-        "symptoms_general",
-        "symptoms_gastrointestinal",
-        "symptoms_hepatobiliary",
-        "symptoms_respiratory",
-        "symptoms_breast",
-        "symptoms_urogynecological",
-        "symptoms_head_neck",
-        "symptoms_neurological",
-        "symptoms_hematologic"
+        "symptoms_general", "symptoms_upper_digestive", "symptoms_bowel_abdominal",
+        "symptoms_hepatobiliary", "symptoms_respiratory", "symptoms_breast", "symptoms_urinary",
+        "symptoms_male_reproductive", "symptoms_female_reproductive", "symptoms_oral_head_neck",
+        "symptoms_neurological", "symptoms_musculoskeletal", "symptoms_hematologic",
+        "stool_loose_or_frequent", "mastalgia", "constipation",
+        "symptom_jaundice_repeat_count", "symptom_mass_repeat_count", "symptom_sore_throat_repeat_count",
+        "symptom_shortness_of_breath_repeat_count", "symptom_dysphagia_repeat_count",
+        "symptom_hematochezia_repeat_count", "symptom_abdominal_pain_repeat_count",
+        "symptom_back_pain_repeat_count", "symptom_bowel_habit_change_repeat_count",
+        "symptom_pelvic_discomfort_or_increased_girth_repeat_count", "symptom_hematuria_visible_repeat_count",
+        "symptom_nocturia_repeat_count", "symptom_urinary_frequency_repeat_count",
+        "symptom_oral_ulcer_repeat_count", "symptom_oral_white_red_patch_repeat_count",
+        "symptom_mouth_symptoms_repeat_count", "symptom_mass_interval_days",
+        "symptom_oral_ulcer_interval_days", "symptom_oral_white_red_patch_interval_days",
+        "symptom_mouth_symptoms_interval_days", "testicular_pain_pattern"
       ]
     },
     {
       "id": "female",
-      "applies_when": "sex=female",
-      "question_ids": ["menarche_age", "menopause_status", "first_pregnancy_age", "breastfeeding", "pap_smear", "hormone_medication"]
+      "question_ids": [
+        "menarche_age", "menopause_status", "first_pregnancy_age", "breastfeeding", "pap_smear",
+        "pap_smear_timing", "hormone_medication", "benign_gynae_disease"
+      ]
     },
     {
       "id": "exposure",
-      "question_ids": ["smoking_ever", "smoking_quit", "secondhand_smoke", "betel_nut", "cooking_fume", "cooking_frequency", "air_pollution", "radiation"]
+      "question_ids": [
+        "smoking_ever", "smoking_quit", "secondhand_smoke", "betel_nut", "cooking_fume",
+        "cooking_frequency", "air_pollution", "radiation"
+      ]
     },
-    {
-      "id": "mental",
-      "question_ids": ["stress", "sleep_problem", "low_mood"]
-    },
-    {
-      "id": "diet",
-      "question_ids": ["diet_type", "meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"]
-    },
+    { "id": "mental", "question_ids": ["stress", "sleep_problem", "low_mood"] },
+    { "id": "diet", "question_ids": ["diet_type", "meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"] },
     {
       "id": "history",
-      "question_ids": ["personal_cancer", "personal_cancer_types", "chronic_conditions", "family_cancer", "family_self_types"]
+      "question_ids": [
+        "personal_cancer", "personal_cancer_types", "chronic_conditions", "liver_disease_etiology",
+        "vnext_diagnosed_conditions", "orchitis_epididymitis", "psa_history", "family_cancer", "family_self_types"
+      ]
     },
-    {
-      "id": "contact",
-      "question_ids": ["email"]
-    }
+    { "id": "contact", "question_ids": ["email"] }
   ],
-  "conditional_questions": {
-    "symptoms_breast": "sex=female",
-    "menarche_age": "sex=female",
-    "menopause_status": "sex=female",
-    "first_pregnancy_age": "sex=female",
-    "breastfeeding": "sex=female",
-    "pap_smear": "sex=female",
-    "hormone_medication": "sex=female",
-    "smoking_quit": "smoking_ever=yes",
-    "personal_cancer_types": "personal_cancer=current_or_previous",
-    "family_self_types": "family_cancer=yes"
-  }
+  "conditional_question_rules": {
+    "sex_specific": [
+      "symptoms_breast", "symptoms_male_reproductive", "symptoms_female_reproductive", "mastalgia",
+      "menarche_age", "menopause_status", "first_pregnancy_age", "breastfeeding", "pap_smear",
+      "pap_smear_timing", "hormone_medication", "benign_gynae_disease", "orchitis_epididymitis", "psa_history"
+    ],
+    "parent_answer_specific": [
+      "stool_loose_or_frequent", "smoking_quit", "personal_cancer_types", "liver_disease_etiology",
+      "family_self_types", "testicular_pain_pattern"
+    ],
+    "repeat_counts": "show only when the corresponding parent symptom is positive",
+    "interval_days": "show only when the corresponding repeat count is at least 2"
+  },
+  "excluded_clinician_only_question_ids": [
+    "symptom_abdominal_tenderness",
+    "symptom_abnormal_rectal_exam"
+  ]
 }

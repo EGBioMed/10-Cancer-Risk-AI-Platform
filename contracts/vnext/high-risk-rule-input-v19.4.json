@@ -1,0 +1,139 @@
+{
+  "status": "phase1_questionnaire_collection_implemented_backend_mapping_pending",
+  "contract_version": "high-risk-rules/19.4",
+  "source_workbook": "v19.4_新增問卷題目設計規格.xlsx",
+  "source_received_date": "2026-08-05",
+  "lookback_days": 180,
+  "current_model_input": "ai_api_feature_row remains model-features/1.0.0",
+  "questionnaire_additions": {
+    "priority_1": [
+      {
+        "field": "symptom_stool_loose_or_frequent",
+        "type": "integer",
+        "allowed_values": [0, 1, 9],
+        "show_when": "symptom_bowel_habit_change=1",
+        "source_range": "1_新增題目!A5:K5"
+      },
+      {
+        "field": "symptom_mastalgia",
+        "type": "integer",
+        "allowed_values": [0, 1],
+        "show_when": "sex=female",
+        "source_range": "1_新增題目!A6:K6"
+      },
+      {
+        "field": "symptom_constipation",
+        "type": "integer",
+        "allowed_values": [0, 1],
+        "show_when": "always",
+        "source_range": "1_新增題目!A7:K7"
+      }
+    ],
+    "priority_2": [
+      {
+        "field": "dx_orchitis_epididymitis",
+        "type": "integer",
+        "allowed_values": [0, 1, 9],
+        "show_when": "sex=male",
+        "source_range": "1_新增題目!A8:K8"
+      },
+      {
+        "field": "hx_benign_gynae_disease",
+        "type": "integer",
+        "allowed_values": [0, 1, 9],
+        "show_when": "sex=female",
+        "source_range": "1_新增題目!A9:K9"
+      },
+      {
+        "field": "screen_pap_overdue_or_out_of_range",
+        "type": "integer",
+        "allowed_values": [1, 2, 3, 9],
+        "show_when": "sex=female AND age>=18",
+        "source_range": "1_新增題目!A10:K10"
+      },
+      {
+        "field": "screen_psa_elevated",
+        "type": "integer",
+        "allowed_values": [0, 1, 2, 9],
+        "show_when": "sex=male AND age>=50",
+        "rule_default": "disabled",
+        "source_range": "1_新增題目!A11:K11"
+      }
+    ],
+    "clinician_only_excluded_from_self_report": [
+      "symptom_abdominal_tenderness",
+      "symptom_abnormal_rectal_exam"
+    ]
+  },
+  "recurrence_fields": [
+    { "parent": "symptom_jaundice", "field": "symptom_jaundice_repeat_count", "priority": 1 },
+    { "parent": "symptom_mass", "field": "symptom_mass_repeat_count", "priority": 1, "interval_field": "symptom_mass_interval_days", "minimum_interval_days": 42 },
+    { "parent": "symptom_sore_throat", "field": "symptom_sore_throat_repeat_count", "priority": 1 },
+    { "parent": "symptom_shortness_of_breath", "field": "symptom_shortness_of_breath_repeat_count", "priority": 1 },
+    { "parent": "symptom_dysphagia", "field": "symptom_dysphagia_repeat_count", "priority": 1 },
+    { "parent": "symptom_hematochezia", "field": "symptom_hematochezia_repeat_count", "priority": 1, "low_confidence_rule": true },
+    { "parent": "symptom_abdominal_pain", "field": "symptom_abdominal_pain_repeat_count", "priority": 2 },
+    { "parent": "symptom_back_pain", "field": "symptom_back_pain_repeat_count", "priority": 2 },
+    { "parent": "symptom_bowel_habit_change", "field": "symptom_bowel_habit_change_repeat_count", "priority": 2 },
+    { "parent": "symptom_pelvic_discomfort_or_increased_girth", "field": "symptom_pelvic_discomfort_or_increased_girth_repeat_count", "priority": 2 },
+    { "parent": "symptom_hematuria_visible", "field": "symptom_hematuria_visible_repeat_count", "priority": 2 },
+    { "parent": "symptom_nocturia", "field": "symptom_nocturia_repeat_count", "priority": 2 },
+    { "parent": "symptom_urinary_frequency", "field": "symptom_urinary_frequency_repeat_count", "priority": 2 },
+    { "parent": "symptom_oral_ulcer", "field": "symptom_oral_ulcer_repeat_count", "priority": 3, "interval_field": "symptom_oral_ulcer_interval_days", "minimum_interval_days": 42 },
+    { "parent": "symptom_oral_white_red_patch", "field": "symptom_oral_white_red_patch_repeat_count", "priority": 3, "interval_field": "symptom_oral_white_red_patch_interval_days", "minimum_interval_days": 42 },
+    { "parent": "symptom_mouth_symptoms", "field": "symptom_mouth_symptoms_repeat_count", "priority": 3, "interval_field": "symptom_mouth_symptoms_interval_days", "minimum_interval_days": 42 }
+  ],
+  "recurrence_encoding": {
+    "type": "integer",
+    "minimum": 0,
+    "maximum": 9,
+    "question_display": "only when parent symptom is positive",
+    "rule_trigger_minimum_count": 2,
+    "missing_behavior": "rule must return false and remain silent"
+  },
+  "required_parent_field_additions": [
+    "symptom_mass",
+    "symptom_shortness_of_breath"
+  ],
+  "backend_aliases": [
+    { "target": "screen_fit_positive", "sources": ["symptom_abnormal_fobt"], "method": "direct" },
+    { "target": "symptom_diabetes_history", "sources": ["chronic_diabetes"], "method": "direct" },
+    { "target": "symptom_diabetes_deterioration", "sources": ["symptom_worsening_diabetes_control"], "method": "direct" },
+    { "target": "symptom_nausea_vomiting", "sources": ["symptom_nausea"], "method": "direct" },
+    { "target": "symptom_back_pain", "sources": ["symptom_persistent_back_pain"], "method": "direct" },
+    { "target": "symptom_depression_history", "sources": ["depression_freq"], "method": "derive", "expression": "depression_freq>=4" },
+    { "target": "symptom_infection", "sources": ["symptom_recurrent_infection"], "method": "direct" },
+    {
+      "target": "symptom_lower_urinary_tract",
+      "sources": ["symptom_urinary_frequency", "symptom_nocturia", "symptom_weak_urine_stream", "symptom_urinary_hesitancy", "symptom_interrupted_urine_flow"],
+      "method": "any_positive"
+    },
+    {
+      "target": "symptom_abdominal_pain",
+      "sources": ["symptom_persistent_abdominal_pain", "symptom_epigastric_pain", "symptom_upper_abdominal_discomfort", "symptom_right_upper_abdominal_discomfort"],
+      "method": "any_positive"
+    },
+    {
+      "target": "symptom_mass",
+      "sources": ["symptom_neck_lump", "symptom_head_neck_mass", "symptom_nasal_mass", "symptom_breast_lump", "symptom_testicular_lump"],
+      "method": "any_positive",
+      "coverage_note": "Does not cover axillary, groin, limb, or other body masses."
+    },
+    { "target": "symptom_urinary_tract_infection", "sources": ["symptom_recurrent_infection"], "method": "approximate", "precision_risk": "high" },
+    { "target": "screen_pap_up_to_date_and_in_range", "sources": ["pap_smear_done", "age"], "method": "partial", "precision_risk": "high" }
+  ],
+  "coverage_stages": [
+    { "stage": 0, "working_rules": 53, "total_rules": 96, "coverage": 0.5520833333 },
+    { "stage": 1, "working_rules": 69, "total_rules": 96, "coverage": 0.71875, "change": "backend aliases only" },
+    { "stage": 2, "working_rules": 73, "total_rules": 96, "coverage": 0.7604166667, "change": "three priority-1 questions" },
+    { "stage": 3, "working_rules": 90, "total_rules": 96, "coverage": 0.9375, "change": "sixteen recurrence counts plus mass and shortness-of-breath parent fields" },
+    { "stage": 4, "working_rules": 93, "total_rules": 96, "coverage": 0.96875, "change": "four priority-2 questions" }
+  ],
+  "release_constraints": [
+    "Keep these rule-engine inputs separate from the deployed model-features/1.0.0 request.",
+    "Do not ask users to self-report abdominal tenderness or abnormal rectal examination.",
+    "Keep public-screening rules disabled unless the corresponding validation-bias controls are enabled.",
+    "Use rule_include_low_confidence=false by default for small-sample or no-confidence-interval rules.",
+    "Preserve unknown as 9 or null according to the frozen adapter; do not coerce unknown to zero."
+  ]
+}

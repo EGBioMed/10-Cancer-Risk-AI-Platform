@@ -17,7 +17,7 @@
       "const": "assessment-submission/1.0.0"
     },
     "questionnaire_version": {
-      "const": "questionnaire/2026-08-05"
+      "const": "questionnaire/2026-08-05-v19.4-phase1"
     },
     "consent": {
       "type": "object",
@@ -53,7 +53,7 @@
     "answers": {
       "type": "array",
       "minItems": 1,
-      "maxItems": 42,
+      "maxItems": 76,
       "items": {
         "$ref": "#/$defs/answer"
       }

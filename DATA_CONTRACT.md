@@ -1,10 +1,10 @@
 # EG BioMed Assessment Data Contract
 
-Status: Draft for on-premises migration
+Status: Transitional frontend contract frozen; canonical on-premises contract remains the migration target
 
 Contract version: `assessment-submission/1.0.0`
 
-Questionnaire version: `questionnaire/2026-08-05-symptom-vnext`
+Questionnaire version: `questionnaire/2026-08-05-v19.4-phase1`
 
 Feature schema version: `model-features/1.0.0`
 
@@ -24,6 +24,9 @@ The machine-readable files are:
 - `contracts/v1/model-feature-manifest.json`
 - `contracts/vnext/questionnaire-manifest.json`
 - `contracts/vnext/model-feature-extension-candidates.json`
+- `contracts/vnext/high-risk-rule-input-v19.4.json`
+- `contracts/power-automate/transitional-submission.schema.json`
+- `contracts/power-automate/transitional-field-manifest.json`
 
 ## 2. Data classes and access boundaries
 
@@ -77,7 +80,7 @@ Example:
 ```json
 {
   "contract_version": "assessment-submission/1.0.0",
-  "questionnaire_version": "questionnaire/2026-08-05-symptom-vnext",
+  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
   "consent": {
     "consent_version": "consent/2026-08-05",
     "accepted_at": "2026-08-05T03:00:00.000Z",
@@ -136,13 +139,18 @@ with SQL `NULL`. Their meaning must be defined per feature before changing them.
 
 ### 5.2 Symptom research snapshot
 
-The vNext questionnaire contains 82 binary symptom fields across 13 body-system
+The vNext questionnaire contains 84 binary symptom fields across 13 body-system
 groups. Selected symptoms are encoded as `1`; explicitly unselected symptoms are
 `0`; unknown or inapplicable categories are `null` in the transitional adapter and
 must retain distinct answer statuses in the production contract.
 
 These fields are research inputs and are not part of the current 71-field model
 unless a future feature schema version explicitly promotes them.
+
+The v19.4 phase-1 questionnaire also emits a separate 29-field `rule_input_row`:
+7 direct questionnaire inputs, 2 new parent symptoms, 16 conditional repeat-count
+fields, and 4 conditional interval fields. This row is stored for rule-engine
+alignment and research export, but is not sent to the current `/predict` model.
 
 ### 5.3 Research-only snapshot
 
@@ -241,6 +249,8 @@ The existing `/api/submit` payload remains temporarily supported during migratio
 - `vnext_feature_metadata`
 - `research_feature_columns`
 - `research_feature_row`
+- `rule_input_columns`
+- `rule_input_row`
 - `excel_row`
 - `contact_row`
 - `data_quality`
@@ -256,6 +266,31 @@ The on-premises API will initially dual-build the legacy adapter from canonical
 answers. After database/model/report parity is verified, Power Automate and Excel
 adapter fields can be retired without changing the browser contract.
 
+### 8.1 Frozen transitional boundary
+
+Until the canonical `/api/v1/assessments` migration is complete, `/api/submit`
+accepts exactly the payload defined by:
+
+- `contracts/power-automate/transitional-submission.schema.json`
+- `contracts/power-automate/transitional-field-manifest.json`
+
+The server rejects unknown root properties, missing required payload members,
+version mismatches, reordered field lists, row/column shape mismatches, and Email
+leakage into `rows` or `excel_row`. The frozen ordered vector counts are:
+
+| Vector | Frozen count |
+|---|---:|
+| `optimized_feature_columns` | 71 |
+| `symptom_feature_columns` | 84 |
+| `vnext_feature_columns` | 32 |
+| `research_feature_columns` | 1 |
+| `rule_input_columns` | 29 |
+
+Any change to names, order, types, missing-value semantics, or conditional meaning
+requires a deliberate version change plus synchronized updates to the app, schema,
+field manifest, Power Automate Parse JSON action, Office Script/Excel headers, and
+contract tests. Adding a field without changing the declared version is invalid.
+
 ## 9. Known contract issues to resolve before production
 
 1. The browser currently creates model features and `WEB-${Date.now()}` IDs.
@@ -270,3 +305,15 @@ adapter fields can be retired without changing the browser contract.
    codes must replace labels before server-side mapping is implemented.
 6. README and Power Automate documentation describe older payload behavior and must
    be updated as each migration stage is completed.
+
+## 10. Contract verification
+
+Run this before every deployment:
+
+```bash
+npm test
+```
+
+The tests verify the accepted v19.4 phase-1 payload and rejection of field-order
+drift, missing vector fields, identifier leakage, and unversioned questionnaire
+changes. A production CI pipeline should make this command a required check.

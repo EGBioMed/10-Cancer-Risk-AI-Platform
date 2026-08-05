@@ -2,7 +2,7 @@
 
 ## vNext symptom questionnaire transition
 
-Questionnaire version `questionnaire/2026-08-05-symptom-vnext` adds structured
+Questionnaire version `questionnaire/2026-08-05-v19.4-phase1` adds structured
 collection for the 32 literature-derived candidate fields while keeping the
 deployed model request backward compatible.
 
@@ -19,6 +19,12 @@ The new payload members are:
 - `vnext_feature_columns`
 - `vnext_feature_row`
 - `vnext_feature_metadata`
+- `rule_input_columns`
+- `rule_input_row`
+
+The exact ordered field lists are frozen in:
+
+`contracts/power-automate/transitional-field-manifest.json`
 
 ### Research Excel
 
@@ -75,13 +81,16 @@ triggerBody()
 6. Save the Flow.
 7. Submit one Chinese and one English test response.
 
-The version fields are present but temporarily optional because the current web
-payload does not send them yet. They will become required after the platform payload
-is updated and a compatibility test passes.
+All version fields are now required. The Render intermediary rejects requests whose
+declared versions or ordered field lists do not match the frozen contract.
 
 Do not use `Generate from sample` after installing this schema. A single sample may
 infer optional or empty fields incorrectly and cause the trigger and Parse JSON
 definitions to drift again.
+
+Before replacing either Power Automate schema, run `npm test` locally. After saving
+the Flow, submit one Chinese and one English response and confirm that both Excel
+scripts, the current model HTTP action, and both report-language branches succeed.
 
 ## QA Flow
 

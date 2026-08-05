@@ -39,15 +39,32 @@ npm start
 - 每份填答會在瀏覽器端整理成表格列格式，暫存於 `window.latestSubmission`，並在完成頁生成隱藏節點 `#submissionRowsJson`；不在瀏覽器 `localStorage` 累積保存健康資料
 - 每份填答會另外生成參考 `10Cancer_AI_structure_data_v1.xlsx` 的 71 欄最佳化寬表資料，包含單位轉換、多選編碼、缺失值與矛盾提醒，存於隱藏節點 `#structuredFeaturesJson`
 - 前端送出至同站台 `/api/submit`
-- 每筆 payload 會攜帶問卷、同意書、特徵、轉換規則與報告模板版本，後端會以部署版本固定補正
+- 每筆 payload 會攜帶問卷、同意書、特徵、轉換規則與報告模板版本；後端會依凍結契約驗證，不再靜默覆寫錯誤版本
 - `server.js` 由環境變數讀取 Power Automate webhook URL，避免把簽章 URL 暴露在公開 JavaScript
 - 送出 payload 同時包含：
   - `optimized_feature_row`：固定 71 欄模型 feature，供模型 API 使用
   - `ai_api_feature_row`：目前正式模型 API 的向後相容輸入
-  - `symptom_feature_row`：82 個症狀研究欄位，未知或不適用保留為空值
+  - `symptom_feature_row`：84 個症狀研究欄位，未知或不適用保留為空值
+  - `rule_input_row`：29 個 v19.4 規則層收集欄位，不送入現行模型
   - `vnext_feature_row`：文獻缺口分析中的完整 32 個候選欄位，尚未送入現行模型
   - `excel_row`：去識別化研究 Excel 留存列，包含模型與研究欄位，但不含 Email
   - `contact_row`：獨立聯絡資料表使用，僅包含 record_id、Email、時間與報告語言
+
+## 前端資料契約
+
+目前 `/api/submit` 使用的 PoC 過渡契約已固定：
+
+- JSON Schema：`contracts/power-automate/transitional-submission.schema.json`
+- 固定欄位與順序：`contracts/power-automate/transitional-field-manifest.json`
+- 契約說明：`DATA_CONTRACT.md`
+
+部署前執行：
+
+```bash
+npm test
+```
+
+新增、刪除、重新排序或改變欄位語意時，必須同步升版並更新前端、後端、Power Automate Schema、Excel 欄位及測試，不可沿用原版本直接修改。
 
 ## 正式部署到 Render
 
