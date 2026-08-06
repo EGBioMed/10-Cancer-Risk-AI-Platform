@@ -5,14 +5,18 @@
   "description": "EG BioMed AI cancer risk interactive assessment platform.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test-contract.js test-questionnaire-ui.js test-local-repository.js",
+    "start:postgres": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-postgres-local.ps1",
+    "test": "node --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js",
     "validate:contract": "node --test test-contract.js",
     "generate:answer-codes": "node scripts/generate-answer-code-manifest.js",
-    "backup:local": "node scripts/backup-local-data.js",
-    "export:research": "node scripts/export-local-data.js --dataset research --output local-exports/research.csv",
-    "export:contacts": "node scripts/export-local-data.js --dataset contacts --output local-exports/contacts.csv"
+    "backup:local": "node scripts/backup-postgres.js",
+    "export:research": "node scripts/export-postgres-data.js --dataset research --output local-exports/research.csv",
+    "export:contacts": "node scripts/export-postgres-data.js --dataset contacts --output local-exports/contacts.csv"
   },
   "engines": {
     "node": ">=24"
+  },
+  "dependencies": {
+    "pg": "^8.16.3"
   }
 }

@@ -6,15 +6,15 @@ const {
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
-const { createLocalRepository } = require("./lib/local-repository");
+const { createPostgresRepository } = require("./lib/postgres-repository");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
-const SUBMISSION_MODE = String(
-  process.env.SUBMISSION_MODE || (POWER_AUTOMATE_WEBHOOK_URL ? "power-automate" : "local")
+const CONFIGURED_SUBMISSION_MODE = String(
+  process.env.SUBMISSION_MODE || (POWER_AUTOMATE_WEBHOOK_URL ? "power-automate" : "postgres")
 ).toLowerCase();
-const LOCAL_DATA_DIR = process.env.LOCAL_DATA_DIR || path.join(__dirname, "local-data");
-const LOCAL_DATA_ENCRYPTION_KEY = process.env.LOCAL_DATA_ENCRYPTION_KEY || "";
+const SUBMISSION_MODE = CONFIGURED_SUBMISSION_MODE === "local" ? "postgres" : CONFIGURED_SUBMISSION_MODE;
+const HOST = process.env.HOST || (SUBMISSION_MODE === "power-automate" ? "0.0.0.0" : "127.0.0.1");
 const MAX_BODY_BYTES = 1024 * 1024;
 const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
 
@@ -31,17 +31,14 @@ const MIME_TYPES = {
   ".ico": "image/x-icon"
 };
 
-let localRepository = null;
-let localRepositoryError = null;
-if (["local", "dual"].includes(SUBMISSION_MODE)) {
-  try {
-    localRepository = createLocalRepository({
-      dataDir: LOCAL_DATA_DIR,
-      encryptionKey: LOCAL_DATA_ENCRYPTION_KEY
-    });
-  } catch (error) {
-    localRepositoryError = error;
-  }
+let postgresRepository = null;
+let postgresRepositoryError = null;
+let postgresReady = Promise.resolve();
+if (["postgres", "dual"].includes(SUBMISSION_MODE)) {
+  postgresRepository = createPostgresRepository();
+  postgresReady = postgresRepository.initialize().catch((error) => {
+    postgresRepositoryError = error;
+  });
 }
 
 function sendJson(res, statusCode, payload) {
@@ -241,35 +238,36 @@ async function receiveSubmission(req, res) {
     return;
   }
 
-  let localResult = null;
-  if (["local", "dual"].includes(SUBMISSION_MODE)) {
-    if (!localRepository) {
+  let postgresResult = null;
+  if (["postgres", "dual"].includes(SUBMISSION_MODE)) {
+    await postgresReady;
+    if (!postgresRepository || postgresRepositoryError) {
       sendJson(res, 503, {
         ok: false,
-        error: "Local encrypted storage is not ready.",
-        detail: localRepositoryError?.message || "Local repository initialization failed."
+        error: "PostgreSQL storage is not ready.",
+        detail: postgresRepositoryError?.message || "PostgreSQL repository initialization failed."
       });
       return;
     }
     try {
-      localResult = localRepository.saveSubmission(submission);
+      postgresResult = await postgresRepository.saveSubmission(submission);
     } catch (error) {
       sendJson(res, 500, {
         ok: false,
-        error: "Could not persist the submission locally.",
+        error: "Could not persist the submission in PostgreSQL.",
         detail: error.message
       });
       return;
     }
   }
 
-  if (SUBMISSION_MODE === "local") {
+  if (SUBMISSION_MODE === "postgres") {
     sendJson(res, 202, {
       ok: true,
-      record_id: localResult.recordId,
-      duplicate: localResult.duplicate,
-      storage: "local_encrypted",
-      processing_status: "stored_local",
+      record_id: postgresResult.recordId,
+      duplicate: postgresResult.duplicate,
+      storage: "postgresql",
+      processing_status: "stored_postgresql",
       report_status: "pending_model_migration"
     });
     return;
@@ -307,8 +305,8 @@ async function receiveSubmission(req, res) {
 
     sendJson(res, 200, {
       ok: true,
-      record_id: localResult?.recordId,
-      storage: localResult ? "local_encrypted_and_power_automate" : "power_automate",
+      record_id: postgresResult?.recordId,
+      storage: postgresResult ? "postgresql_and_power_automate" : "power_automate",
       processing_status: "forwarded",
       report_status: "processing"
     });
@@ -357,11 +355,24 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "GET" && req.url === "/api/health") {
-    sendJson(res, localRepositoryError ? 503 : 200, {
-      ok: !localRepositoryError,
+    await postgresReady;
+    let databaseReady = false;
+    if (postgresRepository && !postgresRepositoryError) {
+      try {
+        await postgresRepository.health();
+        databaseReady = true;
+      } catch (error) {
+        postgresRepositoryError = error;
+      }
+    }
+    const requiresPostgres = ["postgres", "dual"].includes(SUBMISSION_MODE);
+    const ok = !requiresPostgres || databaseReady;
+    sendJson(res, ok ? 200 : 503, {
+      ok,
       service: "eg-biomed-cancer-risk-platform",
       submission_mode: SUBMISSION_MODE,
-      local_storage_ready: Boolean(localRepository)
+      database: requiresPostgres ? "postgresql" : undefined,
+      database_ready: requiresPostgres ? databaseReady : undefined
     });
     return;
   }
@@ -374,13 +385,13 @@ const server = http.createServer(async (req, res) => {
   sendJson(res, 405, { ok: false, error: "Method not allowed." });
 });
 
-server.listen(PORT, () => {
-  console.log(`EG BioMed assessment server listening on port ${PORT} (${SUBMISSION_MODE} mode)`);
+server.listen(PORT, HOST, () => {
+  console.log(`EG BioMed assessment server listening on ${HOST}:${PORT} (${SUBMISSION_MODE} mode)`);
 });
 
 function shutdown() {
-  server.close(() => {
-    localRepository?.close();
+  server.close(async () => {
+    await postgresRepository?.close();
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000).unref();
