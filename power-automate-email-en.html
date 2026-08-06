@@ -1,0 +1,144 @@
+<div style="margin:0;padding:0;background:#f4f8f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans',Arial,sans-serif;color:#172322;">
+  <div style="max-width:760px;margin:0 auto;padding:28px 18px;">
+    <div style="background:#ffffff;border:1px solid #d9e6e2;border-radius:18px;overflow:hidden;">
+      <div style="padding:28px 32px;background:#0f766e;color:#ffffff;">
+        <div style="font-size:14px;letter-spacing:.04em;opacity:.9;">EG BioMed</div>
+        <h1 style="margin:10px 0 6px;font-size:26px;line-height:1.35;">AI Ten-Cancer Health Risk Factor Summary Report</h1>
+        <p style="margin:0;font-size:15px;line-height:1.7;color:#e5f4f1;">This report provides personalized organization of cancer-related risk factors and health education information based on the health information you provided.</p>
+      </div>
+
+      <div style="padding:30px 32px;">
+        <p style="margin:0 0 18px;font-size:16px;line-height:1.8;">Hello,</p>
+        <p style="margin:0 0 24px;font-size:16px;line-height:1.8;color:#40514f;">Thank you for completing this interactive health risk factor questionnaire. Based on the age, lifestyle, family history, past medical history, and other health information you provided, the system used statistical and artificial intelligence methods to organize reference information on health risk factors related to ten cancers.</p>
+
+        <div style="border:1px solid #cfe0dc;border-radius:16px;padding:22px 24px;background:#f9fcfb;margin-bottom:22px;">
+          <div style="font-size:14px;color:#0f766e;font-weight:700;margin-bottom:8px;">Ten-cancer model relative risk factor summary</div>
+          <div style="font-size:28px;font-weight:800;line-height:1.3;color:#12312d;margin-bottom:14px;">@{if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.5),'Higher Relative Risk',if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.25),'Moderate Relative Risk','Low Relative Risk'))}</div>
+          <div style="height:10px;background:#dfe9e6;border-radius:999px;overflow:hidden;margin:14px 0 12px;">
+            <div style="width:@{formatNumber(mul(float(string(body('HTTP')['risk_score'])),100),'0.0')}%;height:10px;background:#0f766e;border-radius:999px;"></div>
+          </div>
+          <p style="margin:0;font-size:15px;color:#40514f;line-height:1.7;">Ten-cancer model relative risk factor index: @{formatNumber(mul(float(string(body('HTTP')['risk_score'])),100),'0.0')} / 100</p>
+          <p style="margin:8px 0 0;font-size:13px;line-height:1.7;color:#53625f;">This index reflects the relative position of your reported risk factor profile within the model research data. It is not the probability of developing cancer.</p>
+          <p style="margin:12px 0 0;padding:10px 14px;background:#eef7f5;border-radius:10px;font-size:15px;font-weight:700;color:#0f766e;">Compared with healthy individuals in the same age group, your overall relative cancer risk is @{body('HTTP')['risk_ratio_vs_healthy']} times.</p>
+        </div>
+
+        <div style="border-left:5px solid #0f766e;background:#eef7f5;border-radius:12px;padding:18px 20px;margin-bottom:26px;">
+          <div style="font-size:14px;color:#0f766e;font-weight:700;margin-bottom:6px;">What does this summary mean?</div>
+          <p style="margin:0;font-size:16px;line-height:1.8;color:#172322;">@{if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.5),'Your reported information contains a higher concentration of cancer-related risk factors compared with profiles in the model research data. Consider reviewing the cancer-specific areas of focus below and discussing your lifestyle, family history, and past medical history with a qualified healthcare professional.','Your current information does not show a notably higher overall risk factor profile compared with profiles in the model research data. Continue health practices appropriate for you and follow routine health management based on your age and medical history.')}</p>
+        </div>
+
+        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">Understanding the overall relative risk factor levels</h2>
+        <div style="display:block;margin-bottom:10px;padding:16px 18px;border:1px solid #dce8e5;border-radius:14px;background:#ffffff;">
+          <div style="font-weight:800;color:#177245;margin-bottom:5px;">Low Relative Risk</div>
+          <div style="font-size:14px;line-height:1.7;color:#53625f;">The current responses do not show a notably higher combination of cancer-related risk factors. Maintain a healthy lifestyle and follow general health management appropriate for your age, medical history, and physician's advice.</div>
+        </div>
+        <div style="display:block;margin-bottom:10px;padding:16px 18px;border:1px solid #dce8e5;border-radius:14px;background:#ffffff;">
+          <div style="font-weight:800;color:#a66b00;margin-bottom:5px;">Moderate Relative Risk</div>
+          <div style="font-size:14px;line-height:1.7;color:#53625f;">Some lifestyle, family history, or past medical history factors may deserve attention. Start with health habits you can adjust and share relevant information with a healthcare professional during future consultations.</div>
+        </div>
+        <div style="display:block;margin-bottom:26px;padding:16px 18px;border:1px solid #dce8e5;border-radius:14px;background:#ffffff;">
+          <div style="font-weight:800;color:#b42318;margin-bottom:5px;">Higher Relative Risk</div>
+          <div style="font-size:14px;line-height:1.7;color:#53625f;">The current responses contain more cancer-related risk factors that may be worth further attention. Consider discussing your health background and lifestyle with a physician, who can determine whether any standard medical examination is appropriate.</div>
+        </div>
+
+        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">Cancer-type risk factor reference</h2>
+        <div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:26px;">
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">Based on the information you provided, the following section organizes cancer-related risk factors by relative area of focus to help you identify health topics that may deserve attention.</p>
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">If the overall relative index is moderate or lower, treat this section as supplementary health education information. A higher position for one cancer type should not by itself cause excessive concern.</p>
+          <div style="white-space:pre-line;font-size:15px;line-height:1.85;color:#243331;">@{coalesce(body('HTTP')?['cancer_risks_text_en'],body('HTTP')?['cancer_risks_text'],'Cancer-specific reference information is currently unavailable.')}</div>
+        </div>
+
+        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">Health management topics to discuss with a physician</h2>
+        <div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;padding:18px 20px;margin-bottom:26px;">
+          <p style="margin:0;font-size:14px;line-height:1.8;color:#5f6f6b;">You can begin by organizing questions about your lifestyle, family history, past medical history, and current health management needs. Bring this report to a physician as a discussion reference; they can recommend suitable follow-up or examinations based on your age and complete health background.</p>
+        </div>
+
+        <div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;padding:18px 20px;margin-bottom:26px;">
+          <div style="font-size:14px;color:#0f766e;font-weight:800;margin-bottom:6px;">Model Research and Validation Summary</div>
+          <p style="margin:0 0 14px;font-size:13px;line-height:1.7;color:#53625f;">The following figures are mean validation results for the Pan-Cancer model across 100 independent stratified 80/20 splits of the test data.</p>
+
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">0.875 ± 0.032</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">ROC-AUC</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Risk ranking and discrimination performance within the research data</div>
+                </div>
+              </td>
+
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">91.2%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">Sensitivity</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Ability to reduce missed cases under the defined research setting</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">66.0%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">Specificity</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Ability to identify healthy controls</div>
+                </div>
+              </td>
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">80.3%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">Accuracy</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Overall classification performance in the test data</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">78.1%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">PPV (Positive Predictive Value)</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Proportion of predicted-positive records that were actually positive</div>
+                </div>
+              </td>
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">85.3%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">NPV (Negative Predictive Value)</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">Proportion of predicted-negative records that were actually negative</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">543 independent test records</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">Including 308 positive and 235 negative records</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">100 independent stratified validations</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">Each using an 80/20 data split to calculate mean validation performance</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">11 random forest models</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">One Pan-Cancer overall risk model and ten cancer-specific One-vs-Rest models</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+            <div style="font-size:15px;font-weight:800;color:#12312d;">37 AI health assessment items · 48 engineered features · SMOTE correction</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">Responses are converted into structured information, with class imbalance addressed for model development</div>
+          </div>
+
+          <p style="margin:12px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">These are mean validation results from internal research data at a Pan-Cancer decision threshold of 0.40. They describe the model research and development basis and do not represent an individual's probability of developing cancer or the accuracy of an individual report.</p>
+        </div>
+
+        <div style="background:#f4f7f6;border:1px solid #dce6e3;border-radius:14px;padding:18px 20px;">
+          <div style="font-size:13px;font-weight:800;color:#40514f;margin-bottom:6px;">How to use this report</div>
+          <p style="margin:0;font-size:13px;line-height:1.8;color:#5f6f6b;">This service uses statistical and artificial intelligence methods based on age, lifestyle, family history, past medical history, and other health information self-reported by the user to provide personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer and is not intended for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making. It also cannot replace a physician's evaluation or any standard medical examination.</p>
+        </div>
+
+        <p style="margin:28px 0 0;font-size:15px;line-height:1.8;color:#40514f;">Sincerely,<br />EG BioMed</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,108 @@
+{
+  "mapping_version": "answer-to-feature/1.0.0",
+  "input_answer_schema_version": "question-answer-codes/1.0.0",
+  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+  "output_feature_schema_version": "model-features/1.0.0",
+  "status": "backend_implementation_spec_frontend_legacy_adapter_remains_active",
+  "authoritative_future_producer": "backend feature mapping service",
+  "rules": {
+    "answered_unselected_multi_option": 0,
+    "answered_selected_multi_option": 1,
+    "unknown_canonical_storage": null,
+    "not_applicable_canonical_storage": null,
+    "legacy_minus_one": "Use only where explicitly stated for model-features/1.0.0.",
+    "unknown_must_not_default_to_zero": true
+  },
+  "features": [
+    { "feature": "record_id", "transform": "server_generated_record_id" },
+    { "feature": "sex", "source": "sex", "transform": "enum", "map": { "sex.option_01": 0, "sex.option_02": 1 } },
+    { "feature": "age", "source": "birth_year", "transform": "receipt_year_minus_birth_year", "valid_range": [0, 120] },
+    { "feature": "height_cm", "source": "height_cm", "transform": "number", "valid_range": [100, 250] },
+    { "feature": "weight_kg", "source": "weight_kg", "transform": "number", "valid_range": [20, 300] },
+    { "feature": "bmi", "sources": ["height_cm", "weight_kg"], "transform": "round_1_decimal(weight_kg/(height_cm/100)^2)", "valid_range": [10, 100] },
+    { "feature": "diagnosis", "transform": "constant", "value": "尚未診斷", "review": "Confirm whether this operational value belongs in model input." },
+    { "feature": "is_cancer_patient", "source": "personal_cancer", "transform": "equals", "code": "personal_cancer.option_01" },
+    { "feature": "prev_cancer", "source": "personal_cancer", "transform": "in", "codes": ["personal_cancer.option_01", "personal_cancer.option_02"] },
+    { "feature": "family_cancer_history", "source": "family_cancer", "transform": "equals", "code": "yes" },
+    { "feature": "first_degree_relative_cancer", "source": "family_cancer", "transform": "equals", "code": "yes" },
+
+    { "feature": "chronic_hypertension", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_01" },
+    { "feature": "chronic_diabetes", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_02" },
+    { "feature": "chronic_hyperlipidemia", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_03" },
+    { "feature": "chronic_liver_disease", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_04" },
+    { "feature": "chronic_gerd", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_05" },
+    { "feature": "chronic_heart_disease", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_06" },
+    { "feature": "chronic_thyroid", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_07" },
+    { "feature": "chronic_asthma_copd", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_08" },
+    { "feature": "chronic_gout", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_09" },
+    { "feature": "chronic_arthritis", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_10" },
+    { "feature": "chronic_mental", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_11" },
+    { "feature": "chronic_stroke", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_12" },
+    { "feature": "chronic_kidney", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_13" },
+    { "feature": "chronic_autoimmune", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_14" },
+    { "feature": "chronic_other_unclassified", "source": "chronic_conditions", "transform": "selected", "code": "chronic_conditions.option_16" },
+    { "feature": "chronic_disease_count", "transform": "sum", "sources": ["chronic_hypertension", "chronic_diabetes", "chronic_hyperlipidemia", "chronic_liver_disease", "chronic_gerd", "chronic_heart_disease", "chronic_thyroid", "chronic_asthma_copd", "chronic_gout", "chronic_arthritis", "chronic_mental", "chronic_stroke", "chronic_kidney", "chronic_autoimmune", "chronic_other_unclassified"] },
+
+    { "feature": "smoking", "source": "smoking_ever", "transform": "equals", "code": "yes" },
+    { "feature": "quit_smoking", "source": "smoking_quit", "transform": "equals", "code": "smoking_quit.option_01", "ai_api_override": "max(0,value)" },
+    { "feature": "secondhand_smoke", "source": "secondhand_smoke", "transform": "equals", "code": "yes" },
+    { "feature": "betel_nut", "source": "betel_nut", "transform": "equals", "code": "yes" },
+    { "feature": "radiation_exposure", "source": "radiation", "transform": "equals", "code": "yes" },
+    { "feature": "cooking_fumes", "source": "cooking_fume", "transform": "equals", "code": "yes" },
+    { "feature": "air_pollution", "source": "air_pollution", "transform": "equals", "code": "yes" },
+    { "feature": "cooking_freq_missing", "source": "cooking_frequency", "transform": "status_is_not_answered" },
+    { "feature": "cooking_freq_per_week", "source": "cooking_frequency", "transform": "enum", "map": { "cooking_frequency.option_01": 0, "cooking_frequency.option_02": 2, "cooking_frequency.option_03": 5, "cooking_frequency.option_04": 7 } },
+    { "feature": "weight_change_6m", "source": "weight_change", "transform": "equals", "code": "yes" },
+    { "feature": "exercise_per_week", "source": "exercise_time", "transform": "enum", "map": { "exercise_time.option_01": 0, "exercise_time.option_02": 1, "exercise_time.option_03": 2, "exercise_time.option_04": 3 } },
+
+    { "feature": "anxiety_freq_missing", "source": "stress", "transform": "legacy_equals", "code": "stress.option_01", "value_if_true": 1, "value_if_false": 0, "review": "Legacy semantics may represent low frequency rather than missing." },
+    { "feature": "anxiety_freq", "source": "stress", "transform": "enum", "map": { "stress.option_01": 0, "stress.option_02": 2, "stress.option_03": 4, "stress.option_04": 6 } },
+    { "feature": "insomnia_freq_missing", "source": "sleep_problem", "transform": "legacy_equals", "code": "sleep_problem.option_01", "value_if_true": 1, "value_if_false": 0, "review": "Legacy semantics may represent low frequency rather than missing." },
+    { "feature": "insomnia_freq", "source": "sleep_problem", "transform": "enum", "map": { "sleep_problem.option_01": 0, "sleep_problem.option_02": 2, "sleep_problem.option_03": 4, "sleep_problem.option_04": 6 } },
+    { "feature": "depression_freq_missing", "source": "low_mood", "transform": "legacy_equals", "code": "low_mood.option_01", "value_if_true": 1, "value_if_false": 0, "review": "Legacy semantics may represent low frequency rather than missing." },
+    { "feature": "depression_freq", "source": "low_mood", "transform": "enum", "map": { "low_mood.option_01": 0, "low_mood.option_02": 2, "low_mood.option_03": 4, "low_mood.option_04": 6 } },
+
+    { "feature": "alcohol", "source": "beverage_habits", "transform": "selected", "code": "beverage_habits.option_01" },
+    { "feature": "vegetarian", "source": "diet_type", "transform": "in", "codes": ["diet_type.option_04", "diet_type.option_05"] },
+    { "feature": "grilled_fried_food", "source": "meat_processed_foods", "transform": "selected", "code": "meat_processed_foods.option_02" },
+    { "feature": "pickled_food", "source": "meat_processed_foods", "transform": "selected", "code": "meat_processed_foods.option_03" },
+    { "feature": "red_meat", "source": "meat_processed_foods", "transform": "selected", "code": "meat_processed_foods.option_01" },
+    { "feature": "sweets_junk", "source": "sugar_fat_foods", "transform": "selected", "code": "sugar_fat_foods.option_01" },
+    { "feature": "sugary_drinks", "source": "sugar_fat_foods", "transform": "selected", "code": "sugar_fat_foods.option_02" },
+    { "feature": "vegetables_fruits", "source": "plant_dairy_habits", "transform": "selected", "code": "plant_dairy_habits.option_01" },
+    { "feature": "high_fat_food_missing", "source": "sugar_fat_foods", "transform": "legacy_not_selected", "code": "sugar_fat_foods.option_03", "review": "Preserves current frontend behavior; model owner must confirm semantics." },
+    { "feature": "high_fat_food", "source": "sugar_fat_foods", "transform": "selected", "code": "sugar_fat_foods.option_03" },
+    { "feature": "dairy_missing", "source": "plant_dairy_habits", "transform": "status_is_not_answered" },
+    { "feature": "dairy", "source": "plant_dairy_habits", "transform": "any_selected", "codes": ["plant_dairy_habits.option_03", "plant_dairy_habits.option_04"] },
+    { "feature": "coffee_habit_missing", "source": "beverage_habits", "transform": "legacy_not_selected", "code": "beverage_habits.option_02", "review": "Preserves current frontend behavior; model owner must confirm semantics." },
+    { "feature": "tea_habit_missing", "source": "beverage_habits", "transform": "legacy_not_selected", "code": "beverage_habits.option_03", "review": "Preserves current frontend behavior; model owner must confirm semantics." },
+    { "feature": "coffee_habit", "source": "beverage_habits", "transform": "selected", "code": "beverage_habits.option_02" },
+    { "feature": "tea_habit", "source": "beverage_habits", "transform": "selected", "code": "beverage_habits.option_03" },
+
+    { "feature": "menarche_early", "source": "menarche_age", "transform": "female_enum_else_minus_one", "map": { "menarche_age.option_01": 1, "menarche_age.option_02": 0 } },
+    { "feature": "menopause_ordinal", "source": "menopause_status", "transform": "female_enum_else_minus_one", "map": { "menopause_status.option_01": 0, "menopause_status.option_02": 1, "menopause_status.option_03": 2, "menopause_status.option_04": 3 } },
+    { "feature": "first_pregnancy_age_ordinal", "source": "first_pregnancy_age", "transform": "female_enum_else_minus_one", "map": { "first_pregnancy_age.option_01": 0, "first_pregnancy_age.option_02": 1, "first_pregnancy_age.option_03": 2, "first_pregnancy_age.option_04": 3, "first_pregnancy_age.option_05": 4 } },
+    { "feature": "num_pregnancies", "source": "first_pregnancy_age", "transform": "legacy_removed_question_encoding", "map": { "male_or_not_applicable": -1, "first_pregnancy_age.option_01": 0, "otherwise": -1 } },
+    { "feature": "num_births", "sources": ["first_pregnancy_age", "breastfeeding"], "transform": "legacy_removed_question_encoding", "map": { "male_or_not_applicable": -1, "never_pregnant_or_no_birth": 0, "otherwise": -1 } },
+    { "feature": "breastfed", "source": "breastfeeding", "transform": "female_enum_else_minus_one", "map": { "breastfeeding.option_01": 0, "breastfeeding.option_02": 1, "breastfeeding.option_03": 1, "breastfeeding.option_04": 0 } },
+    { "feature": "pap_smear_done", "source": "pap_smear", "transform": "female_enum_else_minus_one", "map": { "pap_smear.option_01": 1, "pap_smear.option_02": 1, "pap_smear.option_03": 0 } },
+    { "feature": "pap_smear_abnormal", "source": "pap_smear", "transform": "female_enum_else_minus_one", "map": { "pap_smear.option_01": 0, "pap_smear.option_02": 1, "pap_smear.option_03": 0 } },
+    { "feature": "hormone_drug", "source": "hormone_medication", "transform": "female_enum_else_minus_one", "map": { "hormone_medication.option_01": 1, "hormone_medication.option_02": 1, "hormone_medication.option_03": 0 } },
+    { "feature": "score", "transform": "constant", "value": "", "review": "Output placeholder; confirm removal from future model schema." },
+    { "feature": "data_source", "transform": "constant", "value": "interactive_mvp", "review": "Operational provenance; confirm removal from future model schema." }
+  ],
+  "additional_collections": {
+    "symptom_feature_row": {
+      "manifest": "transitional-field-manifest.json#symptom_feature_columns",
+      "transform": "For each symptom option code: selected=1, answered but not selected=0, unknown/not_applicable=null."
+    },
+    "vnext_feature_row": {
+      "manifest": "transitional-field-manifest.json#vnext_feature_columns",
+      "transform": "Directly derive symptom overlaps from symptom codes and clinician-confirmed history codes; preserve unknown as null."
+    },
+    "rule_input_row": {
+      "specification": "../vnext/high-risk-rule-input-v19.4.json",
+      "transform": "Apply only after parent symptom and conditional applicability validation. Do not merge into model-features/1.0.0."
+    }
+  }
+}

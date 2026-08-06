@@ -1,0 +1,2372 @@
+{
+  "schema_version": "question-answer-codes/1.0.0",
+  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+  "status_values": [
+    "answered",
+    "unknown",
+    "not_applicable"
+  ],
+  "display_labels_are_data_values": false,
+  "question_count": 78,
+  "canonical_answer_question_count": 76,
+  "code_policy": {
+    "symptom_positive_options": "use the symptom feature column name",
+    "universal_codes": [
+      "yes",
+      "no",
+      "none",
+      "unknown"
+    ],
+    "other_options": "stable question-scoped option codes frozen in this manifest",
+    "number_answers": "JSON number",
+    "unknown_answers": "status=unknown and value=null",
+    "hidden_conditional_answers": "status=not_applicable and value=null"
+  },
+  "questions": [
+    {
+      "question_id": "consent_acknowledgement",
+      "field": "consent.acknowledgement",
+      "module": "consent",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "在開始填寫前，請確認您已閱讀並同意以下事項",
+      "title_en": "Before starting, please confirm that you have read and agree to the following items",
+      "options": [
+        {
+          "code": "data_use",
+          "label_zh": "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。",
+          "label_en": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my email address to send my result report."
+        },
+        {
+          "code": "model_limitations",
+          "label_zh": "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。",
+          "label_en": "I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer."
+        },
+        {
+          "code": "non_medical_use",
+          "label_zh": "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。",
+          "label_en": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination."
+        }
+      ]
+    },
+    {
+      "question_id": "birth_year",
+      "field": "demographics.birth_year",
+      "module": "basic",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "您的出生年（西元）",
+      "title_en": "Year of birth",
+      "number_constraints": {
+        "minimum": 1906,
+        "maximum": 2026,
+        "integer": true,
+        "review": "Update the upper and lower year bounds at runtime from the receipt year."
+      }
+    },
+    {
+      "question_id": "height_cm",
+      "field": "demographics.height_cm",
+      "module": "basic",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "身高（公分）",
+      "title_en": "Height (cm)",
+      "number_constraints": {
+        "minimum": 100,
+        "maximum": 250,
+        "unit": "cm"
+      }
+    },
+    {
+      "question_id": "weight_kg",
+      "field": "demographics.weight_kg",
+      "module": "basic",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "體重（公斤）",
+      "title_en": "Weight (kg)",
+      "number_constraints": {
+        "minimum": 20,
+        "maximum": 300,
+        "unit": "kg"
+      }
+    },
+    {
+      "question_id": "weight_change",
+      "field": "demographics.weight_change_over_5_percent",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？",
+      "title_en": "In the past six months, has your weight increased or decreased significantly (more than 5%)?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "exercise_time",
+      "field": "lifestyle.weekly_exercise_time",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "每週運動時間",
+      "title_en": "Weekly exercise time",
+      "options": [
+        {
+          "code": "exercise_time.option_01",
+          "label_zh": "幾乎不運動",
+          "label_en": "Almost no exercise"
+        },
+        {
+          "code": "exercise_time.option_02",
+          "label_zh": "30-60 分鐘",
+          "label_en": "30-60 minutes"
+        },
+        {
+          "code": "exercise_time.option_03",
+          "label_zh": "1-2 小時",
+          "label_en": "1-2 hours"
+        },
+        {
+          "code": "exercise_time.option_04",
+          "label_zh": "多於 2 小時",
+          "label_en": "More than 2 hours"
+        }
+      ]
+    },
+    {
+      "question_id": "sex",
+      "field": "demographics.sex",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您的性別？",
+      "title_en": "What is your sex?",
+      "options": [
+        {
+          "code": "sex.option_01",
+          "label_zh": "男性",
+          "label_en": "Male"
+        },
+        {
+          "code": "sex.option_02",
+          "label_zh": "女性",
+          "label_en": "Female"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_general",
+      "field": "symptoms.general",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "全身性症狀",
+      "title_en": "General Symptoms",
+      "options": [
+        {
+          "code": "symptom_unexplained_weight_loss_6m",
+          "label_zh": "不明原因體重下降（過去 6 個月超過體重 5%）",
+          "label_en": "Unexplained weight loss of more than 5% in the past 6 months"
+        },
+        {
+          "code": "symptom_fatigue",
+          "label_zh": "經常疲倦或體力明顯下降（非因工作或睡眠不足）",
+          "label_en": "Frequent fatigue or a marked decline in energy not explained by work or lack of sleep"
+        },
+        {
+          "code": "symptom_appetite_loss",
+          "label_zh": "食慾降低或食量明顯減少",
+          "label_en": "Reduced appetite or a noticeable decrease in food intake"
+        },
+        {
+          "code": "symptom_anemia",
+          "label_zh": "曾被診斷貧血，或近期抽血發現血色素偏低",
+          "label_en": "Diagnosed anemia or a recent blood test showing low hemoglobin"
+        },
+        {
+          "code": "symptom_night_sweats",
+          "label_zh": "夜間盜汗（非因環境過熱或更年期）",
+          "label_en": "Night sweats not explained by a hot environment or menopause"
+        },
+        {
+          "code": "symptom_unexplained_fever",
+          "label_zh": "不明原因發燒（體溫超過 38°C，持續超過 1 週）",
+          "label_en": "Unexplained fever above 38°C lasting more than 1 week"
+        },
+        {
+          "code": "symptom_mass",
+          "label_zh": "最近 6 個月內，身體任何部位新出現原因不明的腫塊（包含腋下、腹股溝、四肢或其他部位）",
+          "label_en": "A new unexplained lump anywhere on the body during the past 6 months, including the armpit, groin, limbs, or another area"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_upper_digestive",
+      "field": "symptoms.upper_digestive",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "上消化道症狀",
+      "title_en": "Upper Digestive Symptoms",
+      "options": [
+        {
+          "code": "symptom_early_satiety",
+          "label_zh": "容易過早飽足（吃少量就飽）",
+          "label_en": "Early satiety after eating only a small amount"
+        },
+        {
+          "code": "symptom_upper_abdominal_discomfort",
+          "label_zh": "上腹部悶脹或不適",
+          "label_en": "Upper abdominal pressure or discomfort"
+        },
+        {
+          "code": "symptom_epigastric_pain",
+          "label_zh": "上腹部疼痛",
+          "label_en": "Pain localized to the upper abdomen"
+        },
+        {
+          "code": "symptom_dyspepsia",
+          "label_zh": "消化不良（餐後脹、噯氣或胃部不舒服）",
+          "label_en": "Indigestion, such as post-meal fullness, belching, or stomach discomfort"
+        },
+        {
+          "code": "symptom_nausea",
+          "label_zh": "噁心感（非懷孕或暈車引起）",
+          "label_en": "Nausea not caused by pregnancy or motion sickness"
+        },
+        {
+          "code": "symptom_reflux",
+          "label_zh": "胃酸逆流到喉嚨或口中",
+          "label_en": "Stomach acid coming back into the throat or mouth"
+        },
+        {
+          "code": "symptom_heartburn",
+          "label_zh": "胸口或上腹有灼熱感（火燒心）",
+          "label_en": "A burning sensation in the chest or upper abdomen (heartburn)"
+        },
+        {
+          "code": "symptom_dysphagia",
+          "label_zh": "吞嚥困難、吞嚥疼痛或食物卡住感",
+          "label_en": "Difficulty or pain when swallowing, or a feeling that food is stuck"
+        },
+        {
+          "code": "symptom_hematemesis",
+          "label_zh": "吐血或嘔吐物呈咖啡渣樣",
+          "label_en": "Vomiting blood or coffee-ground-like material"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_bowel_abdominal",
+      "field": "symptoms.bowel_abdominal",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "腸道與下腹部症狀",
+      "title_en": "Bowel and Lower Abdominal Symptoms",
+      "options": [
+        {
+          "code": "symptom_bloating",
+          "label_zh": "經常腹脹",
+          "label_en": "Frequent abdominal bloating"
+        },
+        {
+          "code": "symptom_persistent_abdominal_pain",
+          "label_zh": "持續腹痛",
+          "label_en": "Persistent abdominal pain"
+        },
+        {
+          "code": "symptom_bowel_habit_change",
+          "label_zh": "排便習慣改變（腹瀉與便秘交替，或糞便持續變細）",
+          "label_en": "Change in bowel habits, alternating diarrhea and constipation, or persistently narrow stools"
+        },
+        {
+          "code": "symptom_hematochezia",
+          "label_zh": "血便（鮮紅色血液）",
+          "label_en": "Bright red blood in the stool"
+        },
+        {
+          "code": "symptom_melena",
+          "label_zh": "黑便（柏油狀、黑色糞便）",
+          "label_en": "Black, tarry stools"
+        },
+        {
+          "code": "symptom_tenesmus",
+          "label_zh": "頻繁想排便但感覺排不乾淨（裡急後重）",
+          "label_en": "Frequent urge to have a bowel movement with incomplete emptying"
+        },
+        {
+          "code": "symptom_abnormal_fobt",
+          "label_zh": "糞便潛血檢查曾發現異常",
+          "label_en": "Previous abnormal fecal occult blood test"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_hepatobiliary",
+      "field": "symptoms.hepatobiliary",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "肝膽胰症狀",
+      "title_en": "Liver, Biliary, and Pancreatic Symptoms",
+      "options": [
+        {
+          "code": "symptom_jaundice",
+          "label_zh": "黃疸（皮膚或眼白變黃）",
+          "label_en": "Jaundice, with yellowing of the skin or whites of the eyes"
+        },
+        {
+          "code": "symptom_pruritus",
+          "label_zh": "皮膚搔癢（非皮膚疾病引起）",
+          "label_en": "Itchy skin not explained by a skin condition"
+        },
+        {
+          "code": "symptom_dark_urine",
+          "label_zh": "尿液顏色明顯變深（如濃茶色）",
+          "label_en": "Noticeably dark urine, such as tea-colored urine"
+        },
+        {
+          "code": "symptom_pale_stool",
+          "label_zh": "糞便顏色變淺或呈灰白色",
+          "label_en": "Pale or grayish stools"
+        },
+        {
+          "code": "symptom_right_upper_abdominal_discomfort",
+          "label_zh": "右上腹不適或悶痛",
+          "label_en": "Discomfort or dull pain in the right upper abdomen"
+        },
+        {
+          "code": "symptom_recent_diabetes_diagnosis",
+          "label_zh": "過去 2 年內才被診斷糖尿病",
+          "label_en": "Diabetes newly diagnosed within the past 2 years"
+        },
+        {
+          "code": "symptom_worsening_diabetes_control",
+          "label_zh": "已有糖尿病，但血糖控制突然變差",
+          "label_en": "Sudden worsening of blood glucose control in existing diabetes"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_respiratory",
+      "field": "symptoms.respiratory",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "呼吸系統症狀",
+      "title_en": "Respiratory Symptoms",
+      "options": [
+        {
+          "code": "symptom_persistent_cough",
+          "label_zh": "持續咳嗽超過 3 週（非感冒引起）",
+          "label_en": "Cough lasting more than 3 weeks and not caused by a cold"
+        },
+        {
+          "code": "symptom_hemoptysis",
+          "label_zh": "咳血或痰中帶血",
+          "label_en": "Coughing up blood or blood-streaked sputum"
+        },
+        {
+          "code": "symptom_recurrent_pneumonia",
+          "label_zh": "一年內反覆發生肺炎 2 次以上",
+          "label_en": "Pneumonia occurring 2 or more times within 1 year"
+        },
+        {
+          "code": "symptom_chest_pain",
+          "label_zh": "持續胸痛或胸悶",
+          "label_en": "Persistent chest pain or tightness"
+        },
+        {
+          "code": "symptom_shortness_of_breath",
+          "label_zh": "最近 6 個月內曾出現呼吸喘、呼吸急促或比平常更容易喘",
+          "label_en": "Shortness of breath, rapid breathing, or becoming breathless more easily than usual during the past 6 months"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_breast",
+      "field": "symptoms.breast",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "乳房症狀",
+      "title_en": "Breast Symptoms",
+      "options": [
+        {
+          "code": "symptom_breast_lump",
+          "label_zh": "乳房腫塊或局部硬塊",
+          "label_en": "A breast lump or localized hard area"
+        },
+        {
+          "code": "symptom_nipple_retraction",
+          "label_zh": "新發生的乳頭凹陷（非天生）",
+          "label_en": "New nipple retraction that was not present from birth"
+        },
+        {
+          "code": "symptom_nipple_discharge",
+          "label_zh": "乳頭異常分泌物（尤其是血性分泌物）",
+          "label_en": "Abnormal nipple discharge, especially bloody discharge"
+        },
+        {
+          "code": "symptom_breast_skin_change",
+          "label_zh": "乳房皮膚橘皮樣變化或局部凹陷",
+          "label_en": "Orange-peel-like breast skin changes or localized dimpling"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_urinary",
+      "field": "symptoms.urinary",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "泌尿系統症狀",
+      "title_en": "Urinary Symptoms",
+      "options": [
+        {
+          "code": "symptom_urinary_frequency",
+          "label_zh": "頻尿（白天排尿超過 8 次）",
+          "label_en": "Frequent urination, more than 8 times during the day"
+        },
+        {
+          "code": "symptom_nocturia",
+          "label_zh": "夜尿增加（晚上起床排尿超過 2 次）",
+          "label_en": "Increased nighttime urination, more than 2 times per night"
+        },
+        {
+          "code": "symptom_weak_urine_stream",
+          "label_zh": "尿流變細或排尿無力",
+          "label_en": "Weak or narrowed urine stream"
+        },
+        {
+          "code": "symptom_urinary_hesitancy",
+          "label_zh": "排尿困難（需用力才能排出）",
+          "label_en": "Difficulty urinating or needing to strain"
+        },
+        {
+          "code": "symptom_interrupted_urine_flow",
+          "label_zh": "排尿中斷（排尿時尿流突然停止）",
+          "label_en": "Interrupted urine flow"
+        },
+        {
+          "code": "symptom_hematuria_visible",
+          "label_zh": "肉眼可見尿液呈紅色、粉紅色或帶血",
+          "label_en": "Visible red, pink, or blood-stained urine"
+        },
+        {
+          "code": "symptom_hematuria",
+          "label_zh": "尿液外觀看不出血，但尿液檢查曾發現潛血",
+          "label_en": "Blood found on a urine test without visible blood"
+        },
+        {
+          "code": "symptom_dysuria",
+          "label_zh": "排尿疼痛或有灼熱感",
+          "label_en": "Pain or burning when urinating"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_male_reproductive",
+      "field": "symptoms.male_reproductive",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "男性生殖系統症狀",
+      "title_en": "Male Reproductive Symptoms",
+      "options": [
+        {
+          "code": "symptom_testicular_lump",
+          "label_zh": "睪丸摸到腫塊或硬塊",
+          "label_en": "A lump or hard area felt in a testicle"
+        },
+        {
+          "code": "symptom_testicular_swelling",
+          "label_zh": "單側或雙側睪丸明顯腫大",
+          "label_en": "Noticeable swelling of one or both testicles"
+        },
+        {
+          "code": "symptom_scrotal_swelling",
+          "label_zh": "陰囊明顯腫大",
+          "label_en": "Noticeable swelling of the scrotum"
+        },
+        {
+          "code": "symptom_testicular_pain",
+          "label_zh": "睪丸疼痛或沉重感",
+          "label_en": "Testicular pain or a feeling of heaviness"
+        },
+        {
+          "code": "symptom_groin_pain",
+          "label_zh": "腹股溝持續或反覆疼痛",
+          "label_en": "Persistent or recurrent groin pain"
+        },
+        {
+          "code": "symptom_urinary_retention",
+          "label_zh": "曾突然完全無法排尿，需要就醫處理",
+          "label_en": "A sudden complete inability to urinate that required medical care"
+        },
+        {
+          "code": "symptom_impotence",
+          "label_zh": "新發生或明顯惡化的勃起功能障礙",
+          "label_en": "New or clearly worsened erectile dysfunction"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_gynecological",
+      "field": "symptoms.gynecological",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "婦科相關症狀",
+      "title_en": "Gynecological Symptoms",
+      "options": [
+        {
+          "code": "symptom_postcoital_bleeding",
+          "label_zh": "性交後出血",
+          "label_en": "Bleeding after sexual intercourse"
+        },
+        {
+          "code": "symptom_intermenstrual_bleeding",
+          "label_zh": "兩次月經之間出血",
+          "label_en": "Bleeding between menstrual periods"
+        },
+        {
+          "code": "symptom_abnormal_vaginal_bleeding",
+          "label_zh": "其他月經以外的異常陰道出血",
+          "label_en": "Other abnormal vaginal bleeding outside menstruation"
+        },
+        {
+          "code": "symptom_postmenopausal_bleeding",
+          "label_zh": "停經後陰道出血",
+          "label_en": "Vaginal bleeding after menopause"
+        },
+        {
+          "code": "symptom_heavy_irregular_menstruation",
+          "label_zh": "月經異常增多或不規則出血",
+          "label_en": "Unusually heavy menstruation or irregular bleeding"
+        },
+        {
+          "code": "symptom_abnormal_vaginal_discharge",
+          "label_zh": "持續或反覆的異常陰道分泌物",
+          "label_en": "Persistent or recurrent abnormal vaginal discharge"
+        },
+        {
+          "code": "symptom_pelvic_pain",
+          "label_zh": "持續或反覆的骨盆腔疼痛",
+          "label_en": "Persistent or recurrent pelvic pain"
+        },
+        {
+          "code": "symptom_pelvic_discomfort_or_increased_girth",
+          "label_zh": "骨盆腔不適或腹圍明顯增加",
+          "label_en": "Pelvic discomfort or a noticeable increase in abdominal girth"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_oral_throat",
+      "field": "symptoms.oral_throat",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "口腔與喉嚨症狀",
+      "title_en": "Oral and Throat Symptoms",
+      "options": [
+        {
+          "code": "symptom_oral_ulcer",
+          "label_zh": "口腔潰瘍超過 2 週未癒合",
+          "label_en": "An oral ulcer that has not healed after more than 2 weeks"
+        },
+        {
+          "code": "symptom_hoarseness",
+          "label_zh": "持續聲音沙啞超過 3 週（非感冒引起）",
+          "label_en": "Hoarseness lasting more than 3 weeks and not caused by a cold"
+        },
+        {
+          "code": "symptom_oral_white_red_patch",
+          "label_zh": "口腔白斑或紅斑",
+          "label_en": "A white or red patch in the mouth"
+        },
+        {
+          "code": "symptom_sore_throat",
+          "label_zh": "持續或反覆喉嚨痛（非一般感冒）",
+          "label_en": "Persistent or recurrent sore throat not explained by a common cold"
+        },
+        {
+          "code": "symptom_otalgia",
+          "label_zh": "持續或反覆耳痛，且耳部檢查沒有明確原因",
+          "label_en": "Persistent or recurrent ear pain without a clear ear-related cause"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_head_neck_nasal",
+      "field": "symptoms.head_neck_nasal",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "頭頸與鼻部症狀",
+      "title_en": "Head, Neck, and Nasal Symptoms",
+      "options": [
+        {
+          "code": "symptom_neck_lump",
+          "label_zh": "頸部摸得到腫塊或硬塊",
+          "label_en": "A palpable lump or hard mass in the neck"
+        },
+        {
+          "code": "symptom_head_neck_mass",
+          "label_zh": "頭部、臉部或頸部出現新的腫塊",
+          "label_en": "A new mass in the head, face, or neck"
+        },
+        {
+          "code": "symptom_nasal_mass",
+          "label_zh": "鼻腔內或鼻部出現腫塊",
+          "label_en": "A mass in or around the nose"
+        },
+        {
+          "code": "symptom_nasal_discharge",
+          "label_zh": "持續、反覆或單側鼻塞／鼻漏",
+          "label_en": "Persistent, recurrent, or one-sided nasal blockage or discharge"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_neurological",
+      "field": "symptoms.neurological",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "神經系統症狀",
+      "title_en": "Neurological Symptoms",
+      "options": [
+        {
+          "code": "symptom_new_headache",
+          "label_zh": "新發生的持續頭痛（非過去的偏頭痛模式）",
+          "label_en": "A new persistent headache that differs from a previous migraine pattern"
+        },
+        {
+          "code": "symptom_seizure",
+          "label_zh": "新發生的癲癇或抽搐",
+          "label_en": "A new seizure or convulsion"
+        },
+        {
+          "code": "symptom_visual_change",
+          "label_zh": "視力模糊或視野缺損（非近視或老花）",
+          "label_en": "Blurred vision or visual field loss not explained by myopia or presbyopia"
+        },
+        {
+          "code": "symptom_limb_weakness_numbness",
+          "label_zh": "肢體無力或麻木",
+          "label_en": "Weakness or numbness in an arm or leg"
+        },
+        {
+          "code": "symptom_personality_memory_change",
+          "label_zh": "人格改變或記憶力明顯衰退",
+          "label_en": "Personality change or a marked decline in memory"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptoms_bone_hematologic",
+      "field": "symptoms.bone_hematologic",
+      "module": "symptoms",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "骨骼、血液與淋巴症狀",
+      "title_en": "Bone, Blood, and Lymphatic Symptoms",
+      "options": [
+        {
+          "code": "symptom_persistent_back_pain",
+          "label_zh": "持續背痛（非外傷或肌肉引起）",
+          "label_en": "Persistent back pain not explained by injury or muscle strain"
+        },
+        {
+          "code": "symptom_rib_pain",
+          "label_zh": "持續或反覆的肋骨疼痛",
+          "label_en": "Persistent or recurrent rib pain"
+        },
+        {
+          "code": "symptom_bone_pain_other",
+          "label_zh": "其他部位持續或反覆的骨骼疼痛",
+          "label_en": "Persistent or recurrent bone pain elsewhere"
+        },
+        {
+          "code": "symptom_joint_pain",
+          "label_zh": "持續或反覆的關節疼痛，且原因不明",
+          "label_en": "Persistent or recurrent unexplained joint pain"
+        },
+        {
+          "code": "symptom_nosebleeds",
+          "label_zh": "反覆或原因不明的鼻出血",
+          "label_en": "Recurrent or unexplained nosebleeds"
+        },
+        {
+          "code": "symptom_recurrent_infection",
+          "label_zh": "一年內反覆感染 3 次以上，或感染久久不癒",
+          "label_en": "Repeated infections 3 or more times within 1 year, or an infection that does not resolve"
+        },
+        {
+          "code": "symptom_easy_bruising_bleeding",
+          "label_zh": "容易瘀青或異常出血（小傷口出血久不止）",
+          "label_en": "Easy bruising or unusual bleeding, including prolonged bleeding from a small wound"
+        },
+        {
+          "code": "symptom_lymphadenopathy",
+          "label_zh": "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）",
+          "label_en": "Enlarged lymph nodes or lumps in the neck, armpit, or groin"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "stool_loose_or_frequent",
+      "field": "rule_inputs.symptom_stool_loose_or_frequent",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？",
+      "title_en": "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "mastalgia",
+      "field": "rule_inputs.symptom_mastalgia",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？",
+      "title_en": "During the past 6 months, have you had breast pain or tenderness?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "constipation",
+      "field": "rule_inputs.symptom_constipation",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？",
+      "title_en": "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_jaundice_repeat_count",
+      "field": "rule_inputs.symptom_jaundice_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，黃疸總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience jaundice?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_mass_repeat_count",
+      "field": "rule_inputs.symptom_mass_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，原因不明的腫塊總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience an unexplained lump?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_mass_interval_days",
+      "field": "rule_inputs.symptom_mass_interval_days",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？",
+      "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of an unexplained lump?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 180,
+        "integer": true,
+        "unit": "days"
+      }
+    },
+    {
+      "question_id": "symptom_sore_throat_repeat_count",
+      "field": "rule_inputs.symptom_sore_throat_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，喉嚨痛總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience sore throat?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_shortness_of_breath_repeat_count",
+      "field": "rule_inputs.symptom_shortness_of_breath_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience shortness of breath?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_dysphagia_repeat_count",
+      "field": "rule_inputs.symptom_dysphagia_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，吞嚥困難、吞嚥疼痛或卡住感總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience difficulty or pain when swallowing?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_hematochezia_repeat_count",
+      "field": "rule_inputs.symptom_hematochezia_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，鮮紅色血便總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience bright red blood in the stool?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_abdominal_pain_repeat_count",
+      "field": "rule_inputs.symptom_abdominal_pain_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，腹部疼痛總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience abdominal pain?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_back_pain_repeat_count",
+      "field": "rule_inputs.symptom_back_pain_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，背痛總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience back pain?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_bowel_habit_change_repeat_count",
+      "field": "rule_inputs.symptom_bowel_habit_change_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，排便習慣改變總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience a change in bowel habits?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_pelvic_discomfort_or_increased_girth_repeat_count",
+      "field": "rule_inputs.symptom_pelvic_discomfort_or_increased_girth_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience pelvic discomfort or increased abdominal girth?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_hematuria_visible_repeat_count",
+      "field": "rule_inputs.symptom_hematuria_visible_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，肉眼可見血尿總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience visible blood in the urine?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_nocturia_repeat_count",
+      "field": "rule_inputs.symptom_nocturia_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，夜尿增加總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience increased nighttime urination?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_urinary_frequency_repeat_count",
+      "field": "rule_inputs.symptom_urinary_frequency_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，頻尿總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience frequent urination?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_oral_ulcer_repeat_count",
+      "field": "rule_inputs.symptom_oral_ulcer_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，口腔潰瘍總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience an oral ulcer?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_oral_ulcer_interval_days",
+      "field": "rule_inputs.symptom_oral_ulcer_interval_days",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？",
+      "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of an oral ulcer?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 180,
+        "integer": true,
+        "unit": "days"
+      }
+    },
+    {
+      "question_id": "symptom_oral_white_red_patch_repeat_count",
+      "field": "rule_inputs.symptom_oral_white_red_patch_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，口腔白斑或紅斑總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience a white or red patch in the mouth?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_oral_white_red_patch_interval_days",
+      "field": "rule_inputs.symptom_oral_white_red_patch_interval_days",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，兩次口腔白斑或紅斑之間最短相隔幾天？",
+      "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of a white or red patch in the mouth?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 180,
+        "integer": true,
+        "unit": "days"
+      }
+    },
+    {
+      "question_id": "symptom_mouth_symptoms_repeat_count",
+      "field": "rule_inputs.symptom_mouth_symptoms_repeat_count",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，上述口腔症狀總共出現過幾次？",
+      "title_en": "During the past 6 months, how many times did you experience the oral symptoms selected above?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 9,
+        "integer": true
+      }
+    },
+    {
+      "question_id": "symptom_mouth_symptoms_interval_days",
+      "field": "rule_inputs.symptom_mouth_symptoms_interval_days",
+      "module": "symptoms",
+      "answer_type": "number",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？",
+      "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of the oral symptoms selected above?",
+      "number_constraints": {
+        "minimum": 1,
+        "maximum": 180,
+        "integer": true,
+        "unit": "days"
+      }
+    },
+    {
+      "question_id": "testicular_pain_pattern",
+      "field": "symptoms.follow_up.testicular_pain_pattern",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "睪丸疼痛發生的情況",
+      "title_en": "Pattern of testicular pain",
+      "options": [
+        {
+          "code": "testicular_pain_pattern.option_01",
+          "label_zh": "僅發生 1 次",
+          "label_en": "Occurred once"
+        },
+        {
+          "code": "testicular_pain_pattern.option_02",
+          "label_zh": "反覆發生 2 次以上",
+          "label_en": "Occurred 2 or more times"
+        },
+        {
+          "code": "testicular_pain_pattern.option_03",
+          "label_zh": "持續存在",
+          "label_en": "Persisted continuously"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "menarche_age",
+      "field": "female_health.menarche_age",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "初經（第一次月經）來潮年齡",
+      "title_en": "Age at first menstruation",
+      "options": [
+        {
+          "code": "menarche_age.option_01",
+          "label_zh": "12 歲以前（含 12 歲）",
+          "label_en": "Age 12 or younger"
+        },
+        {
+          "code": "menarche_age.option_02",
+          "label_zh": "13 歲以後（含 13 歲）",
+          "label_en": "Age 13 or older"
+        }
+      ]
+    },
+    {
+      "question_id": "menopause_status",
+      "field": "female_health.menopause_status",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "目前停經（更年期）狀態",
+      "title_en": "Current menopause status",
+      "options": [
+        {
+          "code": "menopause_status.option_01",
+          "label_zh": "尚未停經（仍有月經）",
+          "label_en": "Not menopausal (still menstruating)"
+        },
+        {
+          "code": "menopause_status.option_02",
+          "label_zh": "已停經（55 歲或以前停經）",
+          "label_en": "Menopause at age 55 or earlier"
+        },
+        {
+          "code": "menopause_status.option_03",
+          "label_zh": "已停經（55 歲或以後停經）",
+          "label_en": "Menopause after age 55"
+        },
+        {
+          "code": "menopause_status.option_04",
+          "label_zh": "已切除子宮或卵巢",
+          "label_en": "Uterus or ovaries removed"
+        }
+      ]
+    },
+    {
+      "question_id": "first_pregnancy_age",
+      "field": "female_health.first_pregnancy_age",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": false,
+      "title_zh": "第一胎懷孕年齡",
+      "title_en": "Age at first pregnancy",
+      "options": [
+        {
+          "code": "first_pregnancy_age.option_01",
+          "label_zh": "從未懷孕",
+          "label_en": "Never pregnant"
+        },
+        {
+          "code": "first_pregnancy_age.option_02",
+          "label_zh": "20 歲以下",
+          "label_en": "Age 20 or younger"
+        },
+        {
+          "code": "first_pregnancy_age.option_03",
+          "label_zh": "20-30 歲",
+          "label_en": "Age 20-30"
+        },
+        {
+          "code": "first_pregnancy_age.option_04",
+          "label_zh": "31-35 歲",
+          "label_en": "Age 31-35"
+        },
+        {
+          "code": "first_pregnancy_age.option_05",
+          "label_zh": "36 歲以上",
+          "label_en": "Age 36 or older"
+        }
+      ]
+    },
+    {
+      "question_id": "breastfeeding",
+      "field": "female_health.breastfeeding_history",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "產後是否曾哺餵母乳？若有，哺乳時間多長？",
+      "title_en": "Have you breastfed after childbirth? If yes, for how long?",
+      "options": [
+        {
+          "code": "breastfeeding.option_01",
+          "label_zh": "從未哺乳",
+          "label_en": "Never breastfed"
+        },
+        {
+          "code": "breastfeeding.option_02",
+          "label_zh": "有哺乳，但少於 6 個月",
+          "label_en": "Breastfed, less than 6 months"
+        },
+        {
+          "code": "breastfeeding.option_03",
+          "label_zh": "有哺乳，超過 6 個月（含 6 個月）",
+          "label_en": "Breastfed, 6 months or longer"
+        },
+        {
+          "code": "breastfeeding.option_04",
+          "label_zh": "尚未生產，此題不適用",
+          "label_en": "Not applicable, have not given birth"
+        }
+      ]
+    },
+    {
+      "question_id": "pap_smear",
+      "field": "female_health.pap_smear_history",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "是否曾做過子宮頸抹片檢查？結果如何？",
+      "title_en": "Have you ever had a Pap smear? What was the result?",
+      "options": [
+        {
+          "code": "pap_smear.option_01",
+          "label_zh": "是，歷次結果均正常",
+          "label_en": "Yes, all previous results were normal"
+        },
+        {
+          "code": "pap_smear.option_02",
+          "label_zh": "是，曾有異常報告（如 CIN、HPV 陽性等）",
+          "label_en": "Yes, had an abnormal report (such as CIN or HPV positive)"
+        },
+        {
+          "code": "pap_smear.option_03",
+          "label_zh": "否，從未做過",
+          "label_en": "No, never had one"
+        }
+      ]
+    },
+    {
+      "question_id": "pap_smear_timing",
+      "field": "rule_inputs.screen_pap_overdue_or_out_of_range",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您最近一次子宮頸抹片檢查是在什麼時候？",
+      "title_en": "When was your most recent Pap smear?",
+      "options": [
+        {
+          "code": "pap_smear_timing.option_01",
+          "label_zh": "3 年內",
+          "label_en": "Within the past 3 years"
+        },
+        {
+          "code": "pap_smear_timing.option_02",
+          "label_zh": "3 年以上",
+          "label_en": "More than 3 years ago"
+        },
+        {
+          "code": "pap_smear_timing.option_03",
+          "label_zh": "從未做過",
+          "label_en": "Never"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不記得",
+          "label_en": "I do not remember"
+        }
+      ]
+    },
+    {
+      "question_id": "hormone_medication",
+      "field": "female_health.hormone_medication",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "過去是否曾使用賀爾蒙藥物？",
+      "title_en": "Have you ever used hormone medication?",
+      "options": [
+        {
+          "code": "hormone_medication.option_01",
+          "label_zh": "是，使用超過 1 年",
+          "label_en": "Yes, used for more than 1 year"
+        },
+        {
+          "code": "hormone_medication.option_02",
+          "label_zh": "是，使用不到 1 年",
+          "label_en": "Yes, used for less than 1 year"
+        },
+        {
+          "code": "hormone_medication.option_03",
+          "label_zh": "否，從未使用",
+          "label_en": "No, never used"
+        }
+      ]
+    },
+    {
+      "question_id": "benign_gynae_disease",
+      "field": "rule_inputs.hx_benign_gynae_disease",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？",
+      "title_en": "Has a clinician ever diagnosed you with uterine fibroids, an ovarian cyst, endometriosis, or another benign gynecological condition?",
+      "options": [
+        {
+          "code": "benign_gynae_disease.option_01",
+          "label_zh": "是，曾由醫師診斷",
+          "label_en": "Yes, diagnosed by a clinician"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "smoking_ever",
+      "field": "exposure.smoking_ever",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "是否有抽菸習慣（現在或過去）？",
+      "title_en": "Have you ever had a smoking habit (currently or in the past)?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "smoking_quit",
+      "field": "exposure.smoking_quit_status",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": false,
+      "title_zh": "若有抽菸習慣，是否已戒菸？",
+      "title_en": "If you have smoked, have you quit?",
+      "options": [
+        {
+          "code": "smoking_quit.option_01",
+          "label_zh": "是，已戒菸",
+          "label_en": "Yes, quit smoking"
+        },
+        {
+          "code": "smoking_quit.option_02",
+          "label_zh": "否，仍在抽菸",
+          "label_en": "No, still smoking"
+        }
+      ]
+    },
+    {
+      "question_id": "secondhand_smoke",
+      "field": "exposure.secondhand_smoke",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "是否長期處在二手菸的生活或工作環境？",
+      "title_en": "Have you been in a long-term secondhand smoke environment at home or work?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "betel_nut",
+      "field": "exposure.betel_nut_ever",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "是否有嚼檳榔習慣（現在或過去）？",
+      "title_en": "Have you ever had a betel nut chewing habit (currently or in the past)?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "cooking_fume",
+      "field": "exposure.cooking_fume",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "工作或生活環境是否經常接觸油煙？",
+      "title_en": "Are you often exposed to cooking fumes at work or in daily life?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "cooking_frequency",
+      "field": "exposure.weekly_cooking_frequency",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": false,
+      "title_zh": "每週平均烹調次數",
+      "title_en": "Average weekly cooking frequency",
+      "options": [
+        {
+          "code": "cooking_frequency.option_01",
+          "label_zh": "少於一次",
+          "label_en": "Less than once"
+        },
+        {
+          "code": "cooking_frequency.option_02",
+          "label_zh": "每週 1-3 次",
+          "label_en": "1-3 times per week"
+        },
+        {
+          "code": "cooking_frequency.option_03",
+          "label_zh": "每週 4-6 次",
+          "label_en": "4-6 times per week"
+        },
+        {
+          "code": "cooking_frequency.option_04",
+          "label_zh": "每週 6 次以上",
+          "label_en": "6 or more times per week"
+        }
+      ]
+    },
+    {
+      "question_id": "air_pollution",
+      "field": "exposure.air_pollution",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "工作或生活是否長期暴露在空氣污染環境？",
+      "title_en": "Are you chronically exposed to air pollution at work or in daily life?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "radiation",
+      "field": "exposure.radiation_exposure",
+      "module": "exposure",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "工作或生活是否常接觸輻射？",
+      "title_en": "Are you often exposed to radiation at work or in daily life?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        }
+      ]
+    },
+    {
+      "question_id": "stress",
+      "field": "mental_health.weekly_stress_frequency",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "過去一個月，每週感到緊張或焦慮的頻率",
+      "title_en": "In the past month, how often did you feel tense or anxious each week?",
+      "options": [
+        {
+          "code": "stress.option_01",
+          "label_zh": "不到 1 天",
+          "label_en": "Less than 1 day"
+        },
+        {
+          "code": "stress.option_02",
+          "label_zh": "2-3 天",
+          "label_en": "2-3 days"
+        },
+        {
+          "code": "stress.option_03",
+          "label_zh": "4-5 天",
+          "label_en": "4-5 days"
+        },
+        {
+          "code": "stress.option_04",
+          "label_zh": "幾乎每天",
+          "label_en": "Almost every day"
+        }
+      ]
+    },
+    {
+      "question_id": "sleep_problem",
+      "field": "mental_health.weekly_sleep_problem_frequency",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "過去一個月，每週睡不好或失眠的頻率",
+      "title_en": "In the past month, how often did you sleep poorly or have insomnia each week?",
+      "options": [
+        {
+          "code": "sleep_problem.option_01",
+          "label_zh": "不到 1 天",
+          "label_en": "Less than 1 day"
+        },
+        {
+          "code": "sleep_problem.option_02",
+          "label_zh": "2-3 天",
+          "label_en": "2-3 days"
+        },
+        {
+          "code": "sleep_problem.option_03",
+          "label_zh": "4-5 天",
+          "label_en": "4-5 days"
+        },
+        {
+          "code": "sleep_problem.option_04",
+          "label_zh": "幾乎每天",
+          "label_en": "Almost every day"
+        }
+      ]
+    },
+    {
+      "question_id": "low_mood",
+      "field": "mental_health.weekly_low_mood_frequency",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "過去一個月，每週情緒低落或憂鬱的頻率",
+      "title_en": "In the past month, how often did you feel low or depressed each week?",
+      "options": [
+        {
+          "code": "low_mood.option_01",
+          "label_zh": "不到 1 天",
+          "label_en": "Less than 1 day"
+        },
+        {
+          "code": "low_mood.option_02",
+          "label_zh": "2-3 天",
+          "label_en": "2-3 days"
+        },
+        {
+          "code": "low_mood.option_03",
+          "label_zh": "4-5 天",
+          "label_en": "4-5 days"
+        },
+        {
+          "code": "low_mood.option_04",
+          "label_zh": "幾乎每天",
+          "label_en": "Almost every day"
+        }
+      ]
+    },
+    {
+      "question_id": "diet_type",
+      "field": "diet.current_diet_type",
+      "module": "diet",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "以下哪一項最接近您平常的飲食方式？",
+      "title_en": "Which option best describes your usual dietary pattern?",
+      "options": [
+        {
+          "code": "diet_type.option_01",
+          "label_zh": "一般飲食（平常會吃肉類或海鮮）",
+          "label_en": "General diet (usually includes meat or seafood)"
+        },
+        {
+          "code": "diet_type.option_02",
+          "label_zh": "蔬食為主（主要吃植物性食物，但仍會吃肉類或海鮮）",
+          "label_en": "Mostly plant-based (still includes meat or seafood)"
+        },
+        {
+          "code": "diet_type.option_03",
+          "label_zh": "魚素（不吃肉類，但會吃魚類或海鮮）",
+          "label_en": "Pescatarian (no meat, but includes fish or seafood)"
+        },
+        {
+          "code": "diet_type.option_04",
+          "label_zh": "蛋奶素（不吃肉類及海鮮，但會吃蛋或乳製品）",
+          "label_en": "Ovo-lacto vegetarian (no meat or seafood, but includes eggs or dairy)"
+        },
+        {
+          "code": "diet_type.option_05",
+          "label_zh": "全素（不吃肉類、海鮮、蛋及乳製品）",
+          "label_en": "Vegan (no meat, seafood, eggs, or dairy)"
+        }
+      ]
+    },
+    {
+      "question_id": "meat_processed_foods",
+      "field": "diet.meat_processed_foods",
+      "module": "diet",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "肉類、加工及高溫烹調食物",
+      "title_en": "Meat, processed foods, and high-temperature cooking",
+      "options": [
+        {
+          "code": "meat_processed_foods.option_01",
+          "label_zh": "紅肉（牛、羊、豬等；平均每週至少 3 次）",
+          "label_en": "Red meat (beef, lamb, pork, etc.; at least 3 times per week on average)"
+        },
+        {
+          "code": "meat_processed_foods.option_02",
+          "label_zh": "燒烤或油炸食品（平均每週至少 3 次）",
+          "label_en": "Grilled or fried foods (at least 3 times per week on average)"
+        },
+        {
+          "code": "meat_processed_foods.option_03",
+          "label_zh": "醃漬或鹽漬食品（例如泡菜、鹹魚；平均每週至少 3 次）",
+          "label_en": "Pickled or salted foods (such as kimchi or salted fish; at least 3 times per week on average)"
+        },
+        {
+          "code": "meat_processed_foods.option_04",
+          "label_zh": "加工肉品（例如香腸、火腿、培根；平均每週至少 3 次）",
+          "label_en": "Processed meat (such as sausage, ham, or bacon; at least 3 times per week on average)"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆未達每週 3 次",
+          "label_en": "None of the above reached 3 times per week"
+        }
+      ]
+    },
+    {
+      "question_id": "sugar_fat_foods",
+      "field": "diet.sugar_fat_foods",
+      "module": "diet",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "高糖與高脂食物",
+      "title_en": "High-sugar and high-fat foods",
+      "options": [
+        {
+          "code": "sugar_fat_foods.option_01",
+          "label_zh": "甜食或高糖零食（平均每週至少 3 次）",
+          "label_en": "Sweets or high-sugar snacks (at least 3 times per week on average)"
+        },
+        {
+          "code": "sugar_fat_foods.option_02",
+          "label_zh": "含糖飲料（平均每週至少 3 次）",
+          "label_en": "Sugary drinks (at least 3 times per week on average)"
+        },
+        {
+          "code": "sugar_fat_foods.option_03",
+          "label_zh": "高脂肪食物（例如速食、肥肉；平均每週至少 3 次）",
+          "label_en": "High-fat foods (such as fast food or fatty meat; at least 3 times per week on average)"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆未達每週 3 次",
+          "label_en": "None of the above reached 3 times per week"
+        }
+      ]
+    },
+    {
+      "question_id": "plant_dairy_habits",
+      "field": "diet.plant_dairy_habits",
+      "module": "diet",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "蔬果、豆類與乳製品",
+      "title_en": "Fruit, vegetables, soy, and dairy",
+      "options": [
+        {
+          "code": "plant_dairy_habits.option_01",
+          "label_zh": "每天攝取蔬菜或水果",
+          "label_en": "Eat vegetables or fruit every day"
+        },
+        {
+          "code": "plant_dairy_habits.option_02",
+          "label_zh": "豆類或豆製品每週至少 3 次",
+          "label_en": "Soybeans or soy products at least 3 times per week"
+        },
+        {
+          "code": "plant_dairy_habits.option_03",
+          "label_zh": "每天飲用至少一杯 240 ml 牛奶",
+          "label_en": "At least one 240 ml cup of milk every day"
+        },
+        {
+          "code": "plant_dairy_habits.option_04",
+          "label_zh": "其他乳製品每週至少 3 次（例如優格、起司）",
+          "label_en": "Other dairy products at least 3 times per week (such as yogurt or cheese)"
+        },
+        {
+          "code": "plant_dairy_habits.option_05",
+          "label_zh": "益生菌食品或補充品每週至少 3 次（例如標示含活菌的優格、發酵乳或乳酸菌飲品，以及益生菌粉包、膠囊）",
+          "label_en": "Probiotic foods or supplements at least 3 times per week (such as yogurt labeled with live cultures, fermented milk or probiotic drinks, and probiotic powder sachets or capsules)"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        }
+      ]
+    },
+    {
+      "question_id": "beverage_habits",
+      "field": "diet.beverage_habits",
+      "module": "diet",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "飲品習慣",
+      "title_en": "Beverage habits",
+      "options": [
+        {
+          "code": "beverage_habits.option_01",
+          "label_zh": "飲酒（每週至少一次）",
+          "label_en": "Alcohol (at least once per week)"
+        },
+        {
+          "code": "beverage_habits.option_02",
+          "label_zh": "咖啡（每週至少 3 次）",
+          "label_en": "Coffee (at least 3 times per week)"
+        },
+        {
+          "code": "beverage_habits.option_03",
+          "label_zh": "茶（每週至少 3 次）",
+          "label_en": "Tea (at least 3 times per week)"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        }
+      ]
+    },
+    {
+      "question_id": "personal_cancer",
+      "field": "medical_history.personal_cancer_history",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您目前是否正在罹患癌症，或過去曾被診斷為癌症？",
+      "title_en": "Are you currently living with cancer, or have you ever been diagnosed with cancer in the past?",
+      "options": [
+        {
+          "code": "personal_cancer.option_01",
+          "label_zh": "是，目前正在治療或追蹤中",
+          "label_en": "Yes, currently under treatment or follow-up"
+        },
+        {
+          "code": "personal_cancer.option_02",
+          "label_zh": "是，過去曾被診斷，目前已完成治療或追蹤",
+          "label_en": "Yes, diagnosed in the past; treatment or follow-up has been completed"
+        },
+        {
+          "code": "personal_cancer.option_03",
+          "label_zh": "否，未曾被診斷為癌症",
+          "label_en": "No, never diagnosed with cancer"
+        }
+      ]
+    },
+    {
+      "question_id": "personal_cancer_types",
+      "field": "medical_history.personal_cancer_types",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "目前或過去曾被診斷的癌別為何？",
+      "title_en": "What type of cancer are you currently living with, or have you been diagnosed with in the past?",
+      "options": [
+        {
+          "code": "personal_cancer_types.option_01",
+          "label_zh": "乳癌",
+          "label_en": "Breast cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_02",
+          "label_zh": "攝護腺癌",
+          "label_en": "Prostate cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_03",
+          "label_zh": "肺癌",
+          "label_en": "Lung cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_04",
+          "label_zh": "頭頸癌",
+          "label_en": "Head and neck cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_05",
+          "label_zh": "胰臟癌",
+          "label_en": "Pancreatic cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_06",
+          "label_zh": "肝癌",
+          "label_en": "Liver cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_07",
+          "label_zh": "大腸直腸癌",
+          "label_en": "Colorectal cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_08",
+          "label_zh": "胃癌",
+          "label_en": "Stomach cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_09",
+          "label_zh": "子宮內膜癌",
+          "label_en": "Endometrial cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_10",
+          "label_zh": "膀胱癌",
+          "label_en": "Bladder cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_11",
+          "label_zh": "腎癌",
+          "label_en": "Kidney cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_12",
+          "label_zh": "其他癌種",
+          "label_en": "Other cancer type"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_conditions",
+      "field": "medical_history.chronic_conditions",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "是否有以下慢性疾病？",
+      "title_en": "Do you have any of the following chronic diseases?",
+      "options": [
+        {
+          "code": "chronic_conditions.option_01",
+          "label_zh": "高血壓",
+          "label_en": "Hypertension"
+        },
+        {
+          "code": "chronic_conditions.option_02",
+          "label_zh": "糖尿病／高血糖",
+          "label_en": "Diabetes / high blood glucose"
+        },
+        {
+          "code": "chronic_conditions.option_03",
+          "label_zh": "高血脂／高膽固醇",
+          "label_en": "Hyperlipidemia / high cholesterol"
+        },
+        {
+          "code": "chronic_conditions.option_04",
+          "label_zh": "肝病（B 型肝炎／C 型肝炎／肝硬化）",
+          "label_en": "Liver disease (HBV / HCV / cirrhosis)"
+        },
+        {
+          "code": "chronic_conditions.option_05",
+          "label_zh": "胃食道逆流",
+          "label_en": "Gastroesophageal reflux disease"
+        },
+        {
+          "code": "chronic_conditions.option_06",
+          "label_zh": "心臟病／心律不整",
+          "label_en": "Heart disease / arrhythmia"
+        },
+        {
+          "code": "chronic_conditions.option_07",
+          "label_zh": "甲狀腺疾病",
+          "label_en": "Thyroid disease"
+        },
+        {
+          "code": "chronic_conditions.option_08",
+          "label_zh": "氣喘／慢性肺阻塞（COPD）",
+          "label_en": "Asthma / COPD"
+        },
+        {
+          "code": "chronic_conditions.option_09",
+          "label_zh": "痛風／高尿酸",
+          "label_en": "Gout / high uric acid"
+        },
+        {
+          "code": "chronic_conditions.option_10",
+          "label_zh": "關節炎（含類風濕性）",
+          "label_en": "Arthritis (including rheumatoid arthritis)"
+        },
+        {
+          "code": "chronic_conditions.option_11",
+          "label_zh": "憂鬱症／焦慮症",
+          "label_en": "Depression / anxiety"
+        },
+        {
+          "code": "chronic_conditions.option_12",
+          "label_zh": "中風病史",
+          "label_en": "History of stroke"
+        },
+        {
+          "code": "chronic_conditions.option_13",
+          "label_zh": "腎臟病／洗腎",
+          "label_en": "Kidney disease / dialysis"
+        },
+        {
+          "code": "chronic_conditions.option_14",
+          "label_zh": "自體免疫疾病（乾燥症、紅斑性狼瘡等）",
+          "label_en": "Autoimmune disease"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "chronic_conditions.option_16",
+          "label_zh": "其他慢性疾病",
+          "label_en": "Other chronic disease"
+        }
+      ]
+    },
+    {
+      "question_id": "liver_disease_etiology",
+      "field": "medical_history.liver_disease_etiology",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "您曾被診斷的肝病種類為何？",
+      "title_en": "Which liver condition were you diagnosed with?",
+      "options": [
+        {
+          "code": "liver_disease_etiology.option_01",
+          "label_zh": "B 型肝炎",
+          "label_en": "Hepatitis B"
+        },
+        {
+          "code": "liver_disease_etiology.option_02",
+          "label_zh": "C 型肝炎",
+          "label_en": "Hepatitis C"
+        },
+        {
+          "code": "liver_disease_etiology.option_03",
+          "label_zh": "肝硬化",
+          "label_en": "Cirrhosis"
+        },
+        {
+          "code": "liver_disease_etiology.option_04",
+          "label_zh": "代謝功能障礙相關脂肪性肝病（MASLD）",
+          "label_en": "Metabolic dysfunction-associated steatotic liver disease (MASLD)"
+        },
+        {
+          "code": "liver_disease_etiology.option_05",
+          "label_zh": "酒精性肝病",
+          "label_en": "Alcohol-related liver disease"
+        },
+        {
+          "code": "liver_disease_etiology.option_06",
+          "label_zh": "其他肝病",
+          "label_en": "Other liver disease"
+        },
+        {
+          "code": "none",
+          "label_zh": "不確定肝病種類",
+          "label_en": "Not sure of the liver disease type"
+        }
+      ]
+    },
+    {
+      "question_id": "vnext_diagnosed_conditions",
+      "field": "medical_history.vnext_diagnosed_conditions",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "是否曾有以下經醫療人員確認的病史或事件？",
+      "title_en": "Have you had any of the following clinician-confirmed conditions or events?",
+      "options": [
+        {
+          "code": "vnext_diagnosed_conditions.option_01",
+          "label_zh": "過去 12 個月內曾發生骨折",
+          "label_en": "A fracture during the past 12 months"
+        },
+        {
+          "code": "vnext_diagnosed_conditions.option_02",
+          "label_zh": "曾由醫師診斷深層靜脈栓塞或肺栓塞（DVT／PE）",
+          "label_en": "A clinician-diagnosed deep vein thrombosis or pulmonary embolism (DVT/PE)"
+        },
+        {
+          "code": "vnext_diagnosed_conditions.option_03",
+          "label_zh": "曾由牙醫或醫師診斷口腔黏膜下纖維化",
+          "label_en": "Oral submucous fibrosis diagnosed by a dentist or physician"
+        },
+        {
+          "code": "vnext_diagnosed_conditions.option_04",
+          "label_zh": "曾由醫師診斷慢性胰臟炎",
+          "label_en": "Chronic pancreatitis diagnosed by a clinician"
+        },
+        {
+          "code": "none",
+          "label_zh": "以上皆無",
+          "label_en": "None of the above"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "orchitis_epididymitis",
+      "field": "rule_inputs.dx_orchitis_epididymitis",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "醫師是否曾診斷您有睪丸炎或副睪炎？",
+      "title_en": "Has a clinician ever diagnosed you with orchitis or epididymitis?",
+      "options": [
+        {
+          "code": "orchitis_epididymitis.option_01",
+          "label_zh": "是，曾由醫師診斷",
+          "label_en": "Yes, diagnosed by a clinician"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "psa_history",
+      "field": "rule_inputs.screen_psa_elevated",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？",
+      "title_en": "Have you previously had a PSA (prostate-specific antigen) test, and were you told that the result was elevated?",
+      "options": [
+        {
+          "code": "psa_history.option_01",
+          "label_zh": "做過且曾被告知偏高",
+          "label_en": "Tested and was told the result was elevated"
+        },
+        {
+          "code": "psa_history.option_02",
+          "label_zh": "做過且結果正常",
+          "label_en": "Tested and the result was normal"
+        },
+        {
+          "code": "psa_history.option_03",
+          "label_zh": "沒做過",
+          "label_en": "Never tested"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不記得",
+          "label_en": "I do not remember"
+        }
+      ]
+    },
+    {
+      "question_id": "family_cancer",
+      "field": "family_history.has_cancer_history",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "家族成員（一等親內）是否有癌症史？",
+      "title_en": "Has any first-degree family member had cancer?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不清楚",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "family_self_types",
+      "field": "family_history.cancer_types_self_side",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": false,
+      "title_zh": "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？",
+      "title_en": "If yes, what type of cancer did your first-degree family member have?",
+      "options": [
+        {
+          "code": "family_self_types.option_01",
+          "label_zh": "乳癌",
+          "label_en": "Breast cancer"
+        },
+        {
+          "code": "family_self_types.option_02",
+          "label_zh": "攝護腺癌",
+          "label_en": "Prostate cancer"
+        },
+        {
+          "code": "family_self_types.option_03",
+          "label_zh": "肺癌",
+          "label_en": "Lung cancer"
+        },
+        {
+          "code": "family_self_types.option_04",
+          "label_zh": "頭頸癌",
+          "label_en": "Head and neck cancer"
+        },
+        {
+          "code": "family_self_types.option_05",
+          "label_zh": "胰臟癌",
+          "label_en": "Pancreatic cancer"
+        },
+        {
+          "code": "family_self_types.option_06",
+          "label_zh": "肝癌",
+          "label_en": "Liver cancer"
+        },
+        {
+          "code": "family_self_types.option_07",
+          "label_zh": "大腸直腸癌",
+          "label_en": "Colorectal cancer"
+        },
+        {
+          "code": "family_self_types.option_08",
+          "label_zh": "胃癌",
+          "label_en": "Stomach cancer"
+        },
+        {
+          "code": "family_self_types.option_09",
+          "label_zh": "子宮內膜癌",
+          "label_en": "Endometrial cancer"
+        },
+        {
+          "code": "family_self_types.option_10",
+          "label_zh": "膀胱癌",
+          "label_en": "Bladder cancer"
+        },
+        {
+          "code": "family_self_types.option_11",
+          "label_zh": "腎癌",
+          "label_en": "Kidney cancer"
+        },
+        {
+          "code": "family_self_types.option_12",
+          "label_zh": "其他癌種",
+          "label_en": "Other cancer type"
+        }
+      ]
+    },
+    {
+      "question_id": "email",
+      "field": "contact.email",
+      "module": "contact",
+      "answer_type": "string",
+      "required_when_applicable": true,
+      "title_zh": "請填寫您的 Email",
+      "title_en": "Please enter your email"
+    }
+  ]
+}

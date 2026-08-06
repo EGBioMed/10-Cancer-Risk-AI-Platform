@@ -2,8 +2,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const { execFileSync } = require("node:child_process");
 const {
   EXPECTED_VERSIONS,
+  answerCodeManifest,
   fieldManifest,
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
@@ -36,6 +38,18 @@ function buildValidSubmission() {
     email: "contract-test@example.com",
     language: "zh",
     report_language: "zh-Hant",
+    consent_record: {
+      consent_version: EXPECTED_VERSIONS.consent_version,
+      accepted_at: submittedAt,
+      accepted_item_ids: ["data_use", "model_limitations", "non_medical_use"]
+    },
+    answer_code_rows: answerCodeManifest.questions
+      .filter((question) => !["consent_acknowledgement", "email"].includes(question.question_id))
+      .map((question) => ({
+        question_id: question.question_id,
+        status: "unknown",
+        value: null
+      })),
     rows: [{
       submitted_at: submittedAt,
       question_id: "birth_year",
@@ -93,6 +107,38 @@ function extractStringArray(source, variableName) {
   assert(start >= 0 && end > start, `Could not locate ${variableName} in app.js`);
   return [...source.slice(start, end).matchAll(/"([a-z][a-z0-9_]*)"/g)].map((match) => match[1]);
 }
+
+test("generated answer-code manifest is synchronized with app.js", () => {
+  const manifestPath = path.join(__dirname, "contracts", "v1", "answer-code-manifest.json");
+  const before = fs.readFileSync(manifestPath, "utf8");
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "generate-answer-code-manifest.js")], {
+    cwd: __dirname,
+    stdio: "pipe"
+  });
+  const after = fs.readFileSync(manifestPath, "utf8");
+  assert.equal(after, before, "Run the generator, review the changed codes, and bump the questionnaire/code schema version.");
+});
+
+test("backend mapping covers the frozen 71 features and references valid answer codes", () => {
+  const mapping = require("./contracts/v1/answer-to-feature-mapping.json");
+  assert.equal(mapping.mapping_version, EXPECTED_VERSIONS.mapping_version);
+  assert.deepEqual(mapping.features.map((entry) => entry.feature), fieldManifest.optimized_feature_columns);
+
+  const questionDefinitions = new Map(answerCodeManifest.questions.map((question) => [question.question_id, question]));
+  for (const entry of mapping.features) {
+    if (!entry.source || !questionDefinitions.has(entry.source)) continue;
+    const definition = questionDefinitions.get(entry.source);
+    const allowedCodes = new Set((definition.options || []).map((option) => option.code));
+    const referencedCodes = [
+      ...(entry.code ? [entry.code] : []),
+      ...(entry.codes || []),
+      ...(["enum", "female_enum_else_minus_one"].includes(entry.transform) ? Object.keys(entry.map || {}) : [])
+    ];
+    for (const code of referencedCodes) {
+      assert(allowedCodes.has(code), `${entry.feature} references invalid code ${code} from ${entry.source}`);
+    }
+  }
+});
 
 test("frontend vector definitions match the frozen field manifest", () => {
   const source = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
@@ -165,4 +211,30 @@ test("rejects an unversioned questionnaire change", () => {
   submission.questionnaire_version = "questionnaire/changed-without-contract-update";
   const errors = validateTransitionalSubmission(submission);
   assert(errors.some((error) => error.path === "$.questionnaire_version" && error.code === "version_mismatch"));
+});
+
+test("rejects a translated label in place of an option code", () => {
+  const submission = buildValidSubmission();
+  const sexIndex = submission.answer_code_rows.findIndex((row) => row.question_id === "sex");
+  submission.answer_code_rows[sexIndex] = {
+    question_id: "sex",
+    status: "answered",
+    value: "女性"
+  };
+  const errors = validateTransitionalSubmission(submission);
+  assert(errors.some((error) => error.path === `$.answer_code_rows[${sexIndex}].value`
+    && error.code === "invalid_option_code"));
+});
+
+test("accepts a stable coded answer independently of display language", () => {
+  const submission = buildValidSubmission();
+  const sexDefinition = answerCodeManifest.questions.find((question) => question.question_id === "sex");
+  const femaleCode = sexDefinition.options.find((option) => option.label_zh === "女性").code;
+  const sexIndex = submission.answer_code_rows.findIndex((row) => row.question_id === "sex");
+  submission.answer_code_rows[sexIndex] = {
+    question_id: "sex",
+    status: "answered",
+    value: femaleCode
+  };
+  assert.deepEqual(validateTransitionalSubmission(submission), []);
 });

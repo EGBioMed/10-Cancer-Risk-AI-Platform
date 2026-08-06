@@ -1,10 +1,14 @@
 const SUBMISSION_ENDPOINT = "/api/submit";
+if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !== "function") {
+  throw new Error("Answer-code module failed to load before app.js.");
+}
 const SUBMISSION_VERSIONS = Object.freeze({
-  contract_version: "assessment-submission/1.0.0",
+  contract_version: "assessment-submission/1.1.0",
   questionnaire_version: "questionnaire/2026-08-05-v19.4-phase1",
   consent_version: "consent/2026-08-05",
+  answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
-  mapping_version: "answer-mapping/1.0.0",
+  mapping_version: "answer-to-feature/1.0.0",
   vnext_feature_schema_version: "feature-gap-candidates/2026-08-05",
   vnext_mapping_version: "answer-mapping-vnext/0.1.0",
   rule_input_schema_version: "high-risk-rules/19.4",
@@ -1479,6 +1483,7 @@ function saveAnswer(value, source, structured = null) {
     source,
     confirmed: true
   };
+  if (question.id === "consent_acknowledgement") entry.accepted_at = new Date().toISOString();
   if (structured) entry.structured = structured;
   answers[question.field] = entry;
   currentIndex += 1;
@@ -1831,6 +1836,58 @@ function buildSubmissionRows() {
   ]);
 }
 
+function getStableOptionCode(question, option) {
+  return EGAnswerCodes.getOptionCode(question, option);
+}
+
+function buildConsentRecord(submittedAt) {
+  const entry = answers["consent.acknowledgement"];
+  const selected = Array.isArray(entry?.value) ? entry.value : [];
+  const acceptedItemIds = ["data_use", "model_limitations", "non_medical_use"];
+  return {
+    consent_version: SUBMISSION_VERSIONS.consent_version,
+    accepted_at: entry?.accepted_at || submittedAt,
+    accepted_item_ids: acceptedItemIds.filter((code) => selected.some(
+      (option) => getStableOptionCode(questions[0], option) === code
+    ))
+  };
+}
+
+function buildAnswerCodeRows() {
+  return questions
+    .filter((question) => !["consent_acknowledgement", "email"].includes(question.id))
+    .map((question) => {
+      const applicable = !question.appliesIf || question.appliesIf(answers);
+      if (!applicable) return { question_id: question.id, status: "not_applicable", value: null };
+
+      const entry = answers[question.field];
+      if (!entry || entry.source === "uncertain") {
+        return { question_id: question.id, status: "unknown", value: null };
+      }
+      if (question.type === "number") {
+        return { question_id: question.id, status: "answered", value: normalizeNumber(entry.value) };
+      }
+      if (question.type === "multi") {
+        const selected = Array.isArray(entry.value) ? entry.value : [];
+        if (selected.some((option) => getStableOptionCode(question, option) === "unknown")) {
+          return { question_id: question.id, status: "unknown", value: null };
+        }
+        return {
+          question_id: question.id,
+          status: "answered",
+          value: selected.map((option) => getStableOptionCode(question, option)).filter(Boolean)
+        };
+      }
+      if (question.type === "single") {
+        const code = getStableOptionCode(question, entry.value);
+        return code === "unknown"
+          ? { question_id: question.id, status: "unknown", value: null }
+          : { question_id: question.id, status: "answered", value: code };
+      }
+      return { question_id: question.id, status: "answered", value: String(entry.value ?? "") };
+    });
+}
+
 function buildSymptomFeatureRow() {
   const row = symptomGroups.reduce((featureRow, group) => {
     const answerEntry = answers[group.field];
@@ -2010,6 +2067,8 @@ function buildContactRow(optimizedFeatureRow, submittedAt) {
 function storeSubmissionForIntegration() {
   const submittedAt = new Date().toISOString();
   const rows = buildSubmissionRows();
+  const consentRecord = buildConsentRecord(submittedAt);
+  const answerCodeRows = buildAnswerCodeRows();
   const optimizedFeatureRow = buildOptimizedFeatureRow();
   const aiApiFeatureRow = buildAiApiFeatureRow(optimizedFeatureRow);
   const symptomFeatureRow = buildSymptomFeatureRow();
@@ -2025,6 +2084,8 @@ function storeSubmissionForIntegration() {
     email: getAnswerValue(answers, "contact.email") || "",
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
+    consent_record: consentRecord,
+    answer_code_rows: answerCodeRows,
     rows,
     optimized_feature_columns: optimizedFeatureColumns,
     optimized_feature_row: optimizedFeatureRow,
@@ -2068,6 +2129,15 @@ function validateSubmissionBeforeSend(submission) {
   Object.entries(SUBMISSION_VERSIONS).forEach(([key, value]) => {
     if (submission[key] !== value) errors.push(`${key} version mismatch`);
   });
+  if (!Array.isArray(submission.answer_code_rows)
+      || submission.answer_code_rows.length !== 76
+      || new Set(submission.answer_code_rows.map((row) => row.question_id)).size !== 76) {
+    errors.push("answer_code_rows must contain 76 unique question IDs");
+  }
+  if (!submission.consent_record
+      || submission.consent_record.accepted_item_ids?.length !== 3) {
+    errors.push("consent_record must contain all three consent items");
+  }
   Object.entries(frozenSubmissionVectorCounts).forEach(([columnsName, expectedCount]) => {
     const columns = submission[columnsName];
     if (!Array.isArray(columns) || columns.length !== expectedCount || new Set(columns).size !== expectedCount) {

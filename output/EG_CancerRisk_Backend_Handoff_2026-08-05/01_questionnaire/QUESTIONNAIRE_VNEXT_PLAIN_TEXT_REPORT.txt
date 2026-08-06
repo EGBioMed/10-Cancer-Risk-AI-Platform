@@ -1,0 +1,716 @@
+EG BioMed AI 十大癌症健康風險因子評估平台
+新版題目設計、Features 統整與後端配合說明
+
+文件日期：2026-08-05
+問卷版本：questionnaire/2026-08-05-symptom-vnext
+現行模型欄位版本：model-features/1.0.0
+新增候選欄位版本：feature-gap-candidates/2026-08-05
+新增轉換版本：answer-mapping-vnext/0.1.0
+
+============================================================
+一、文件目的
+============================================================
+
+本文件整理新版使用者問卷的題目架構、欄位分層、症狀 features、
+32 個文獻候選 features，以及前端、Power Automate、Excel 與後端模型
+之間應如何配合。
+
+本次更新採取「先蒐集、後切換模型」策略：
+
+1. 新版問卷先開始蒐集症狀與候選欄位。
+2. 新資料先寫入研究 Excel，供資料品質檢查及新版模型訓練。
+3. 現行模型 HTTP 仍只接收既有 ai_api_feature_row。
+4. 新模型完成欄位凍結、驗證與版本發布後，才切換到新版推論契約。
+
+此策略可避免前端先加入新欄位後，直接造成現行模型 API 欄位錯位、
+型別錯誤、422 回應或模型輸入語意與訓練資料不一致。
+
+============================================================
+二、新版問卷整體架構
+============================================================
+
+目前程式共有 54 個題目定義，其中包含知情同意與 Email。
+實際受試者看到的題數會依性別、個人病史、家族史與症狀選項動態改變，
+不會要求每位使用者回答全部 54 題。
+
+模組與題目數如下：
+
+1. 知情同意：1 題
+2. 基本資料：6 題
+3. 近期症狀：13 個主題組，加上最多 4 個條件式追問
+4. 女性相關資訊：6 題，僅女性路徑顯示
+5. 菸草與環境暴露：8 題
+6. 心理健康：3 題
+7. 飲食習慣：5 題
+8. 個人病史與家族史：7 題，其中部分為條件式題目
+9. 聯絡資料：1 題
+
+主要條件式跳題：
+
+1. 乳房與婦科症狀只在女性路徑顯示。
+2. 男性生殖系統症狀只在男性路徑顯示。
+3. 女性月經、生育、哺乳、抹片及荷爾蒙題只在女性路徑顯示。
+4. 只有曾抽菸者會看到戒菸狀態。
+5. 只有曾被診斷癌症者會看到癌別複選題。
+6. 只有一等親有癌症史者會看到家族癌別複選題。
+7. 只有選取肝病者會看到肝病病因細分。
+8. 只有選取特定症狀者會看到頻率或持續時間追問。
+
+============================================================
+三、症狀題目的設計原則
+============================================================
+
+新版症狀題目不再對所有症狀套用相同的「持續兩週」條件，而是依症狀
+性質分為三類。
+
+第一類：單次發生也應記錄的警示狀況
+
+例如吐血、咳血、血便、黑便、肉眼血尿、性交後出血、經間出血、
+停經後出血、新出現腫塊、睪丸或陰囊腫大及尿滯留。
+
+這些狀況在最近三個月內即使只發生一次，也應勾選。原因是若要求症狀
+持續兩週，會錯誤排除一次性但重要的警示訊號。
+
+第二類：持續、反覆或明顯新發生的一般不適
+
+例如腹痛、消化不良、胃酸逆流、火燒心、耳痛、鼻塞、關節疼痛及
+骨骼疼痛。
+
+這些症狀較常見且非特異，因此要求使用者選取「持續、反覆或明顯新發」
+的情況，以降低偶發小不適造成的雜訊。
+
+第三類：必須由醫療人員確認的診斷或事件
+
+例如深層靜脈栓塞／肺栓塞、慢性胰臟炎、口腔黏膜下纖維化及肝病病因。
+
+這些項目移到病史區，不要求使用者自行判斷疾病。骨折目前暫定詢問
+過去 12 個月，最終回溯期間仍須由模型負責人與臨床審查確認。
+
+共同作答規則：
+
+1. 明確選取症狀：feature = 1。
+2. 明確選取「以上皆無」：該題組 features = 0。
+3. 選取「不確定」：該題組 features = null／空白，不可寫成 0。
+4. 因性別或條件跳題而未顯示：狀態為 not_applicable，不可寫成 0。
+5. 「以上皆無」與「不確定」皆與其他選項互斥。
+
+這樣設計的原因是「沒有症狀」、「不知道」與「題目不適用」在模型與
+研究上是三種不同資料狀態，若全部編碼為 0，會產生系統性標註錯誤。
+
+============================================================
+四、13 個症狀題組與 82 個症狀欄位
+============================================================
+
+4.1 全身性症狀
+
+symptom_unexplained_weight_loss_6m：不明原因體重下降
+symptom_fatigue：經常疲倦或體力明顯下降
+symptom_appetite_loss：食慾降低或食量明顯減少
+symptom_anemia：曾被診斷貧血或近期血色素偏低
+symptom_night_sweats：非環境或更年期造成的夜間盜汗
+symptom_unexplained_fever：不明原因發燒
+
+4.2 上消化道症狀
+
+symptom_early_satiety：容易過早飽足
+symptom_upper_abdominal_discomfort：上腹部悶脹或不適
+symptom_epigastric_pain：上腹部疼痛
+symptom_dyspepsia：消化不良
+symptom_nausea：非懷孕或暈車引起的噁心
+symptom_reflux：胃酸逆流到喉嚨或口中
+symptom_heartburn：胸口或上腹灼熱感
+symptom_dysphagia：吞嚥困難、吞嚥疼痛或卡住感
+symptom_hematemesis：吐血或咖啡渣樣嘔吐物
+
+4.3 腸道與下腹部症狀
+
+symptom_bloating：經常腹脹
+symptom_persistent_abdominal_pain：持續腹痛
+symptom_bowel_habit_change：排便習慣改變或糞便持續變細
+symptom_hematochezia：鮮紅色血便
+symptom_melena：黑便
+symptom_tenesmus：排便不乾淨或裡急後重
+symptom_abnormal_fobt：糞便潛血檢查異常
+
+4.4 肝膽胰症狀
+
+symptom_jaundice：黃疸
+symptom_pruritus：非皮膚疾病造成的搔癢
+symptom_dark_urine：尿液顏色明顯變深
+symptom_pale_stool：糞便顏色變淺或灰白
+symptom_right_upper_abdominal_discomfort：右上腹不適或悶痛
+symptom_recent_diabetes_diagnosis：過去兩年內新診斷糖尿病
+symptom_worsening_diabetes_control：既有糖尿病控制突然惡化
+
+4.5 呼吸系統症狀
+
+symptom_persistent_cough：持續咳嗽超過三週
+symptom_hemoptysis：咳血或痰中帶血
+symptom_recurrent_pneumonia：一年內反覆肺炎兩次以上
+symptom_chest_pain：持續胸痛或胸悶
+
+4.6 乳房症狀
+
+symptom_breast_lump：乳房腫塊或局部硬塊
+symptom_nipple_retraction：新發生的乳頭凹陷
+symptom_nipple_discharge：乳頭異常分泌物
+symptom_breast_skin_change：乳房皮膚橘皮樣變化或局部凹陷
+
+4.7 泌尿系統症狀
+
+symptom_urinary_frequency：頻尿
+symptom_nocturia：夜尿增加
+symptom_weak_urine_stream：尿流變細或排尿無力
+symptom_urinary_hesitancy：排尿困難或需用力
+symptom_interrupted_urine_flow：排尿中斷
+symptom_hematuria_visible：肉眼可見血尿
+symptom_hematuria：外觀看不出血但尿液檢查發現潛血
+symptom_dysuria：排尿疼痛或灼熱
+
+相容規則：當 symptom_hematuria_visible = 1 時，舊版 umbrella 欄位
+symptom_hematuria 也會衍生為 1，以維持舊資料相容性。
+
+4.8 男性生殖系統症狀
+
+symptom_testicular_lump：睪丸腫塊或硬塊
+symptom_testicular_swelling：睪丸明顯腫大
+symptom_scrotal_swelling：陰囊明顯腫大
+symptom_testicular_pain：睪丸疼痛或沉重感
+symptom_groin_pain：腹股溝持續或反覆疼痛
+symptom_urinary_retention：突然完全無法排尿並需就醫
+symptom_impotence：新發或明顯惡化的勃起功能障礙
+
+4.9 婦科相關症狀
+
+symptom_postcoital_bleeding：性交後出血
+symptom_intermenstrual_bleeding：兩次月經之間出血
+symptom_abnormal_vaginal_bleeding：其他月經以外異常出血
+symptom_postmenopausal_bleeding：停經後陰道出血
+symptom_heavy_irregular_menstruation：月經異常增多或不規則出血
+symptom_abnormal_vaginal_discharge：異常陰道分泌物
+symptom_pelvic_pain：骨盆腔疼痛
+symptom_pelvic_discomfort_or_increased_girth：骨盆不適或腹圍增加
+
+4.10 口腔與喉嚨症狀
+
+symptom_oral_ulcer：超過兩週未癒合的口腔潰瘍
+symptom_hoarseness：持續聲音沙啞超過三週
+symptom_oral_white_red_patch：口腔白斑或紅斑
+symptom_sore_throat：持續或反覆喉嚨痛
+symptom_otalgia：原因不明的持續或反覆耳痛
+
+4.11 頭頸與鼻部症狀
+
+symptom_neck_lump：頸部腫塊或硬塊
+symptom_head_neck_mass：頭部、臉部或頸部新腫塊
+symptom_nasal_mass：鼻腔內或鼻部腫塊
+symptom_nasal_discharge：持續、反覆或單側鼻塞／鼻漏
+
+4.12 神經系統症狀
+
+symptom_new_headache：新發生的持續頭痛
+symptom_seizure：新發生的癲癇或抽搐
+symptom_visual_change：視力模糊或視野缺損
+symptom_limb_weakness_numbness：肢體無力或麻木
+symptom_personality_memory_change：人格改變或記憶力明顯衰退
+
+4.13 骨骼、血液與淋巴症狀
+
+symptom_persistent_back_pain：非外傷或肌肉造成的持續背痛
+symptom_rib_pain：持續或反覆肋骨疼痛
+symptom_bone_pain_other：其他部位骨骼疼痛
+symptom_joint_pain：原因不明的持續或反覆關節疼痛
+symptom_nosebleeds：反覆或原因不明鼻出血
+symptom_recurrent_infection：反覆感染或感染久不癒
+symptom_easy_bruising_bleeding：容易瘀青或異常出血
+symptom_lymphadenopathy：淋巴結腫大
+
+============================================================
+五、症狀頻率與持續時間研究欄位
+============================================================
+
+以下追問不直接改變主要二元症狀欄位，而是保存在研究 metadata：
+
+research_testicular_pain_pattern：睪丸疼痛為一次、反覆或持續
+research_sore_throat_pattern：喉嚨痛為一次、反覆或持續
+research_head_neck_mass_pattern：頭頸腫塊少於六週或間隔六週以上仍存在／再發
+research_visible_hematuria_pattern：肉眼血尿為一次或反覆兩次以上
+
+保留獨立 metadata 的原因：
+
+1. 文獻顯示部分症狀第一次與再次就診可能有不同訊號強度。
+2. 目前尚未確認新版模型是否把頻率當成獨立輸入。
+3. 若直接把頻率混入原本的 0/1 欄位，會破壞既有資料語意。
+
+============================================================
+六、32 個 vNext 候選 Features
+============================================================
+
+32 個候選欄位會依固定順序輸出於 vnext_feature_row。
+
+症狀型候選欄位 27 個：
+
+1. symptom_testicular_lump
+2. symptom_testicular_swelling
+3. symptom_scrotal_swelling
+4. symptom_testicular_pain
+5. symptom_groin_pain
+6. symptom_postcoital_bleeding
+7. symptom_intermenstrual_bleeding
+8. symptom_abnormal_vaginal_discharge
+9. symptom_pelvic_pain
+10. symptom_epigastric_pain
+11. symptom_dyspepsia
+12. symptom_reflux
+13. symptom_heartburn
+14. symptom_hematemesis
+15. symptom_rib_pain
+16. symptom_bone_pain_other
+17. symptom_joint_pain
+18. symptom_nosebleeds
+19. symptom_urinary_retention
+20. symptom_impotence
+21. symptom_sore_throat
+22. symptom_otalgia
+23. symptom_nasal_mass
+24. symptom_nasal_discharge
+25. symptom_head_neck_mass
+26. symptom_hematuria_visible
+27. symptom_dysuria
+
+病史／事件型候選欄位 5 個：
+
+28. symptom_fracture：過去 12 個月骨折，目前回溯期間為暫定
+29. symptom_vte：經醫師診斷的 DVT 或肺栓塞
+30. symptom_oral_submucous_fibrosis：經牙醫或醫師診斷的口腔黏膜下纖維化
+31. hx_chronic_pancreatitis：經醫師診斷的慢性胰臟炎
+32. hx_liver_disease_etiology：肝病病因細分
+
+hx_liver_disease_etiology 目前可保存：
+
+B 型肝炎
+C 型肝炎
+肝硬化
+代謝功能障礙相關脂肪性肝病（MASLD）
+酒精性肝病
+其他肝病
+不確定肝病種類
+
+目前 Excel 先以文字保存多個病因。模型端必須決定最終採單一 categorical、
+multi-hot，或另外拆成多個 0/1 欄位。
+
+============================================================
+七、現行 ai_api_feature_row 的 71 欄契約
+============================================================
+
+現行 Power Automate 模型 HTTP 仍使用 ai_api_feature_row，版本為
+model-features/1.0.0。固定順序如下：
+
+record_id
+sex
+age
+height_cm
+weight_kg
+bmi
+diagnosis
+is_cancer_patient
+prev_cancer
+family_cancer_history
+first_degree_relative_cancer
+chronic_hypertension
+chronic_diabetes
+chronic_hyperlipidemia
+chronic_liver_disease
+chronic_gerd
+chronic_heart_disease
+chronic_thyroid
+chronic_asthma_copd
+chronic_gout
+chronic_arthritis
+chronic_mental
+chronic_stroke
+chronic_kidney
+chronic_autoimmune
+chronic_other_unclassified
+chronic_disease_count
+smoking
+quit_smoking
+secondhand_smoke
+betel_nut
+radiation_exposure
+cooking_fumes
+air_pollution
+cooking_freq_missing
+cooking_freq_per_week
+weight_change_6m
+exercise_per_week
+anxiety_freq_missing
+anxiety_freq
+insomnia_freq_missing
+insomnia_freq
+depression_freq_missing
+depression_freq
+alcohol
+vegetarian
+grilled_fried_food
+pickled_food
+red_meat
+sweets_junk
+sugary_drinks
+vegetables_fruits
+high_fat_food_missing
+high_fat_food
+dairy_missing
+dairy
+coffee_habit_missing
+tea_habit_missing
+coffee_habit
+tea_habit
+menarche_early
+menopause_ordinal
+first_pregnancy_age_ordinal
+num_pregnancies
+num_births
+breastfed
+pap_smear_done
+pap_smear_abnormal
+hormone_drug
+score
+data_source
+
+注意：這 71 欄是目前前端／Power Automate 傳輸契約，不代表 71 欄全部都是
+實際模型 predictors。record_id、diagnosis、score、data_source 等欄位可能屬於
+識別、標籤、輸出占位或資料來源欄位，必須由模型負責人明確確認。
+
+============================================================
+八、120 個模型特徵與 71 欄 API 契約的差異
+============================================================
+
+目前使用者介面顯示「120 模型特徵」，這是模型團隊提供的模型建置描述。
+但目前程式實際送往現行 API 的 ai_api_feature_row 只有固定 71 欄。
+
+此外，前一版問卷另有 55 個症狀研究欄位，以及 processed_meat 研究欄位。
+新版症狀研究欄位增加到 82 個，並另輸出 32 個候選欄位向量；32 個候選
+欄位大多同時存在於 82 個症狀／病史欄位中，因此不可把各層數量直接相加
+當成最終模型 features 數。
+
+後端模型團隊必須提供正式 manifest，釐清：
+
+1. 所稱 120 個 features 的完整名稱。
+2. 120 個 features 的固定順序。
+3. 120 個 features 是否包含症狀欄位。
+4. 是否包含 missing flags、label、score、record_id 或 data_source。
+5. 加入 32 個候選欄位後，是取代、拆分、衍生或新增。
+6. 新版最終 feature count 是否為 152，不能僅以 120 + 32 推定。
+
+在這份 manifest 完成前，平台不可宣稱新版模型已正式使用全部新增 features。
+
+============================================================
+九、其他研究與聯絡資料欄位
+============================================================
+
+研究欄位：
+
+processed_meat：加工肉品經常攝取，研究欄位，尚未納入現行模型 API。
+
+聯絡資料 contact_row：
+
+record_id
+email
+submitted_at
+language
+report_language
+
+Email 必須與健康資料及模型 features 分開保存。Email 不可成為模型輸入，
+不可寫入研究 Excel，也不可出現在訓練資料匯出檔。
+
+============================================================
+十、目前前端送出資料的物件分層
+============================================================
+
+ai_api_feature_row：
+現行 71 欄模型 HTTP 輸入。新模型尚未發布前不可改成其他物件。
+
+optimized_feature_row：
+現行 71 欄舊版結構化資料，保留作為相容與稽核比較。
+
+symptom_feature_row：
+82 個症狀研究欄位。1 代表選取、0 代表明確無、null 代表未知或不適用。
+
+symptom_answers：
+保存題組、中文名稱、英文名稱、回答狀態及使用者選取的症狀。
+
+vnext_feature_row：
+固定 32 欄候選向量，供新版模型訓練、比對及後續契約凍結。
+
+vnext_feature_metadata：
+保存症狀頻率及持續時間追問，不送入現行模型。
+
+research_feature_row：
+保存 processed_meat 等尚未納入正式模型的研究欄位。
+
+excel_row：
+研究 Excel 的完整去識別化寬表資料，不包含 Email。
+
+contact_row：
+受限權限聯絡資料表使用，只保存 record_id、Email、時間及語言。
+
+data_quality：
+保存缺失欄位及前後矛盾警告。
+
+============================================================
+十一、Power Automate 與 Excel 應如何配合
+============================================================
+
+1. 「收到 HTTP 要求時」與「剖析 JSON」應使用新版 transitional schema。
+2. 研究 Excel 的執行指令碼參數維持：
+
+string(body('剖析_JSON')?['excel_row'])
+
+3. 聯絡 Excel 的執行指令碼維持：
+
+string(body('剖析_JSON')?['contact_row'])
+
+4. 現行模型 HTTP body 必須維持：
+
+body('剖析_JSON')?['ai_api_feature_row']
+
+5. 研究 Excel 已新增 36 個欄位，包含 32 個候選 features 與 4 個研究追問。
+6. Excel Office Script 應依表頭名稱配對 JSON key，不應依欄位位置硬編碼。
+7. JSON null／undefined 應寫入空白，不可寫成 0。
+8. Power Automate 不應自行猜測缺失值或重新計算 features。
+9. 模型 HTTP 成功後才進入報告寄送；失敗時應記錄狀態並停止寄信。
+
+============================================================
+十二、後端模型必須完成的工作
+============================================================
+
+12.1 凍結新版模型輸入 manifest
+
+模型負責人必須提供一份機器可讀 manifest，至少包含：
+
+feature_schema_version
+ordered_feature_names
+data_type
+allowed_values
+minimum／maximum
+unknown encoding
+not_applicable encoding
+default policy
+unit
+lookback period
+positive-answer definition
+
+12.2 確認時間窗與陽性規則
+
+目前平台作業規則為：最近三個月、警示事件發生一次即選取、一般症狀需
+持續／反覆／新發。這是問卷作業定義，不代表每篇文獻都使用相同時間窗。
+模型端必須確認訓練資料中每個欄位的原始定義是否一致。
+
+特別需要確認：
+
+骨折的回溯期間
+VTE 的回溯期間
+勃起功能障礙的回溯期間
+新發糖尿病的回溯期間
+頭頸腫塊的持續／重複定義
+肉眼血尿的單次／反覆定義
+喉嚨痛第一次與第二次就診的處理方式
+
+12.3 決定重疊欄位的 replace／split／derive 規則
+
+symptom_pelvic_pain 與 symptom_pelvic_discomfort_or_increased_girth
+symptom_epigastric_pain、symptom_upper_abdominal_discomfort 與腹痛
+symptom_reflux 與 chronic_gerd
+symptom_head_neck_mass、symptom_neck_lump 與 symptom_lymphadenopathy
+symptom_hematuria_visible 與 symptom_hematuria
+hx_liver_disease_etiology 與 chronic_liver_disease
+
+12.4 建立新版推論端點
+
+建議建立 POST /predict/v2，不直接覆蓋現行 /predict。
+
+請求應至少包含：
+
+assessment_id
+questionnaire_version
+feature_schema_version
+mapping_version
+features
+
+後端必須拒絕：
+
+未知版本
+欄位缺失
+額外欄位
+欄位順序或名稱不符
+型別錯誤
+超出範圍
+非法缺失值
+
+不可靜默忽略、重新排序、補 0 或自行轉型。
+
+12.5 回應應版本化
+
+建議回應至少包含：
+
+model_version
+feature_schema_version
+mapping_version
+threshold_version
+risk_score
+risk_level
+cancer_risks
+warnings
+
+12.6 伺服器端重新產生 features
+
+正式產品不可永久信任瀏覽器產生的 features。後端應保存原始 question_id
+及 option code，再由伺服器端依 mapping_version 重建 features、進行單位
+轉換、缺失值處理與矛盾檢查。
+
+瀏覽器目前產生的 excel_row 與 feature rows 僅作 PoC 過渡用途。
+
+============================================================
+十三、後端測試案例要求
+============================================================
+
+至少建立以下固定 fixture：
+
+1. 男性、全部無症狀。
+2. 女性、全部無症狀。
+3. 男性生殖症狀陽性。
+4. 女性乳房及婦科症狀陽性。
+5. 肉眼血尿一次及反覆兩次以上。
+6. 喉嚨痛一次、反覆及持續。
+7. 頭頸腫塊少於六週及六週以上。
+8. 所有症狀題選擇不確定。
+9. 因性別跳題而不適用。
+10. 肝病多病因選取。
+11. 有症狀但 Email 無效。
+12. 年齡、身高、體重及 BMI 邊界值。
+13. 舊版 71 欄模型請求回歸測試。
+14. 新版缺欄、多欄、錯誤型別及錯誤版本測試。
+
+每次推論應記錄：
+
+assessment_id
+input hash
+feature schema version
+mapping version
+model version
+threshold version
+推論時間
+HTTP status
+錯誤原因
+
+============================================================
+十四、建議發布順序
+============================================================
+
+第一階段：新版問卷蒐集
+
+前端開始蒐集 82 個症狀欄位與 32 個候選欄位。
+資料寫入 Excel，但現行模型仍使用 ai_api_feature_row。
+
+第二階段：資料品質與臨床審查
+
+檢查 missing rate、選項分布、性別跳題、重疊欄位、矛盾答案及使用者理解度。
+由臨床審查確認題目文字、時間窗及警示條件。
+
+第三階段：模型契約凍結
+
+模型團隊提供正式 feature manifest、preprocessing artifact、model artifact、
+thresholds 及 /predict/v2 API schema。
+
+第四階段：Shadow mode
+
+同一筆資料同時執行舊模型與新模型，但報告仍使用舊模型。比較推論失敗率、
+缺失率、feature 分布與風險輸出差異。
+
+第五階段：正式切換
+
+問卷版本、mapping 版本、feature schema、模型版本、threshold 版本及報告
+模板必須一起發布。保留舊端點作為回復方案。
+
+============================================================
+十五、尚待確認的重要決策
+============================================================
+
+1. 120 個模型 features 的正式完整 manifest。
+2. 新版模型最終 feature count。
+3. 32 個候選欄位哪些取代舊欄、哪些新增、哪些衍生。
+4. 肝病病因的 categorical 或 multi-hot 編碼。
+5. 頻率／持續時間 metadata 是否進入模型。
+6. 男女性別路徑是否足以代表器官適用性。
+7. unknown 與 not_applicable 的模型編碼。
+8. 舊版 -1 特殊值是否保留。
+9. diagnosis、score、data_source 是否為模型必要輸入。
+10. 症狀欄位是否只供新版訓練，或也會影響目前寄出的報告。
+
+============================================================
+十六、結論
+============================================================
+
+新版問卷已將文獻中的 32 個缺口候選欄位整合進 13 個症狀題組與病史題，
+避免增加 32 個獨立頁面，同時保留單次警示事件、一般持續症狀、醫師診斷
+及頻率追問之間的語意差異。
+
+目前正確的產品狀態是「新版候選資料開始蒐集，但尚未切換新版模型」。
+現行模型 HTTP 應繼續使用 71 欄 ai_api_feature_row；研究 Excel 保存完整
+症狀與候選欄位。後端模型團隊完成欄位 manifest、時間窗、缺失值、版本與
+測試契約後，才能安全切換到 /predict/v2。
+
+此方式可兼顧問卷效率、資料品質、模型可重現性、舊版相容性及後續地端
+資料庫與正式產品遷移。
+======================================================================
+後端 v19.4 規則層規格補充（2026-08-05）
+======================================================================
+
+後端提供的「v19.4_新增問卷題目設計規格.xlsx」屬於高風險規則層輸入規格，
+不是現行 71 欄模型輸入的替代品，也不等同先前整理的 32 個 vNext 模型候選欄位。
+
+一、新增自述欄位
+
+優先序 1：
+1. symptom_stool_loose_or_frequent：有排便習慣改變時，區分是否為稀便或次數增加。
+2. symptom_mastalgia：女性乳房疼痛或脹痛，用於避免對腫塊併疼痛者系統性高估。
+3. symptom_constipation：便秘，與廣義排便習慣改變分開。
+
+優先序 2：
+1. dx_orchitis_epididymitis：男性曾由醫師診斷睪丸炎或副睪炎。
+2. hx_benign_gynae_disease：女性曾由醫師診斷婦科良性疾病。
+3. screen_pap_overdue_or_out_of_range：最近一次子宮頸抹片檢查時間。
+4. screen_psa_elevated：男性 50 歲以上既往 PSA 結果；規則預設停用。
+
+腹部壓痛與肛門指診異常屬醫師理學檢查，不應放入一般使用者自填問卷。
+
+二、復發次數欄位
+
+後端定義 16 個最近 180 天內的 repeat_count 欄位，範圍為 0 至 9。只有母症狀
+為陽性才顯示追問，至少 2 次才進入復發型規則。缺少次數時規則應保持不觸發，
+不得把單次症狀視為復發。
+
+部分腫塊及口腔症狀另需記錄兩次事件的最短間隔天數，至少 42 天才視為兩次
+獨立事件。
+
+三、不增加問卷即可完成的後端工作
+
+後端可先實作 12 項 FIELD_ALIAS 或衍生規則，包括糞便潛血、糖尿病史、糖尿病
+惡化、噁心、背痛、憂鬱史、感染、下泌尿道症狀、腹痛、廣義腫塊、泌尿道感染
+近似值及抹片在期狀態。依後端規格，完成此層可使可運作規則由 53/96 提升為
+69/96，且不增加使用者題目。
+
+四、前後端整合原則
+
+1. 現行 ai_api_feature_row 與 /predict 請維持 model-features/1.0.0，不直接加入
+   v19.4 欄位。
+2. v19.4 應建立獨立 rule_input_row 與 high-risk-rules/19.4 版本。
+3. 後端需先提供規則端點、請求與回應 JSON Schema、缺失值定義及信心開關。
+4. 前端新增題目先存研究資料與規則輸入，不得在新版模型尚未共同發布前影響
+   使用者報告。
+5. 現有症狀總說明以最近三個月為主；v19.4 新增題與次數題指定最近六個月，
+   必須在個別題目中清楚標明，不可暗中改變全部舊症狀的時間定義。
+
+機器可讀規格：contracts/vnext/high-risk-rule-input-v19.4.json
+完整差異報告：V19_4_BACKEND_ALIGNMENT_REPORT.md

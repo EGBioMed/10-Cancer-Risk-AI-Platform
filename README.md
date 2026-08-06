@@ -43,6 +43,8 @@ npm start
 - `server.js` 由環境變數讀取 Power Automate webhook URL，避免把簽章 URL 暴露在公開 JavaScript
 - 送出 payload 同時包含：
   - `optimized_feature_row`：固定 71 欄模型 feature，供模型 API 使用
+  - `answer_code_rows`：76 個固定 question ID 的語言中立答案，包含 answered、unknown 與 not_applicable 狀態
+  - `consent_record`：版本化同意項目與同意時間
   - `ai_api_feature_row`：目前正式模型 API 的向後相容輸入
   - `symptom_feature_row`：84 個症狀研究欄位，未知或不適用保留為空值
   - `rule_input_row`：29 個 v19.4 規則層收集欄位，不送入現行模型
@@ -56,11 +58,20 @@ npm start
 
 - JSON Schema：`contracts/power-automate/transitional-submission.schema.json`
 - 固定欄位與順序：`contracts/power-automate/transitional-field-manifest.json`
+- 固定答案代碼：`contracts/v1/answer-code-manifest.json`
+- 後端 71 欄 mapping：`contracts/v1/answer-to-feature-mapping.json`
 - 契約說明：`DATA_CONTRACT.md`
 
 部署前執行：
 
 ```bash
+npm test
+```
+
+若題庫選項有經核准的變更，先更新問卷與版本，再執行：
+
+```bash
+npm run generate:answer-codes
 npm test
 ```
 

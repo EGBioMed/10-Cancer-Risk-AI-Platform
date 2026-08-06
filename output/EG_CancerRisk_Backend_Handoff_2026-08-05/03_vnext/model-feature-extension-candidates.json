@@ -1,0 +1,108 @@
+{
+  "status": "questionnaire_collection_enabled_not_deployed_to_model",
+  "candidate_set_version": "feature-gap-candidates/2026-08-05",
+  "base_feature_schema_version": "model-features/1.0.0",
+  "source": {
+    "workbook": "跨癌別症狀危險比彙整總表_v19.3_A_早期偵測.xlsx",
+    "sheet": "平台因子缺口分析_建議新增",
+    "selection_rule": "Column A feature-code cells with light-orange fill",
+    "source_ranges": [
+      "A11:B15",
+      "A21:B24",
+      "A29:B33",
+      "A36:B40",
+      "A59:B60",
+      "A65:B70",
+      "A74:B76",
+      "A86:B87"
+    ]
+  },
+  "candidate_count": 32,
+  "direct_new_candidate_count": 26,
+  "semantic_review_candidate_count": 6,
+  "collection_contract": {
+    "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+    "binary_symptom_location": "symptom_feature_row",
+    "complete_candidate_vector_location": "vnext_feature_row",
+    "recurrence_duration_location": "vnext_feature_metadata",
+    "deployed_model_input": "ai_api_feature_row remains model-features/1.0.0"
+  },
+  "direct_new_candidates": [
+    { "name": "symptom_testicular_lump", "label_zh": "睪丸腫塊", "source_row": 11 },
+    { "name": "symptom_testicular_swelling", "label_zh": "睪丸腫大", "source_row": 12 },
+    { "name": "symptom_scrotal_swelling", "label_zh": "陰囊腫大", "source_row": 13 },
+    { "name": "symptom_testicular_pain", "label_zh": "睪丸疼痛", "source_row": 14 },
+    { "name": "symptom_groin_pain", "label_zh": "腹股溝疼痛", "source_row": 15 },
+    { "name": "symptom_postcoital_bleeding", "label_zh": "性交後出血", "source_row": 21 },
+    { "name": "symptom_intermenstrual_bleeding", "label_zh": "經間出血", "source_row": 22 },
+    { "name": "symptom_abnormal_vaginal_discharge", "label_zh": "異常陰道分泌物", "source_row": 23 },
+    { "name": "symptom_dyspepsia", "label_zh": "消化不良", "source_row": 30 },
+    { "name": "symptom_heartburn", "label_zh": "火燒心", "source_row": 32 },
+    { "name": "symptom_hematemesis", "label_zh": "吐血", "source_row": 33 },
+    { "name": "symptom_fracture", "label_zh": "骨折（含病理性骨折）", "source_row": 36 },
+    { "name": "symptom_rib_pain", "label_zh": "肋骨疼痛", "source_row": 37 },
+    { "name": "symptom_bone_pain_other", "label_zh": "其他部位骨骼疼痛", "source_row": 38 },
+    { "name": "symptom_joint_pain", "label_zh": "關節疼痛", "source_row": 39 },
+    { "name": "symptom_nosebleeds", "label_zh": "鼻出血", "source_row": 40 },
+    { "name": "symptom_urinary_retention", "label_zh": "尿滯留", "source_row": 59 },
+    { "name": "symptom_impotence", "label_zh": "陽萎／勃起功能障礙", "source_row": 60 },
+    { "name": "symptom_oral_submucous_fibrosis", "label_zh": "口腔黏膜下纖維化", "source_row": 65 },
+    { "name": "symptom_sore_throat", "label_zh": "喉嚨痛", "source_row": 66 },
+    { "name": "symptom_otalgia", "label_zh": "耳痛", "source_row": 67 },
+    { "name": "symptom_nasal_mass", "label_zh": "鼻部腫塊", "source_row": 68 },
+    { "name": "symptom_nasal_discharge", "label_zh": "鼻漏／鼻塞", "source_row": 69 },
+    { "name": "symptom_dysuria", "label_zh": "排尿疼痛／灼熱", "source_row": 75 },
+    { "name": "symptom_vte", "label_zh": "靜脈血栓栓塞（DVT／PE）", "source_row": 76 },
+    { "name": "hx_chronic_pancreatitis", "label_zh": "慢性胰臟炎病史", "source_row": 86 }
+  ],
+  "semantic_review_candidates": [
+    {
+      "name": "symptom_pelvic_pain",
+      "label_zh": "骨盆疼痛（與腹脹分列）",
+      "source_row": 24,
+      "related_existing": ["symptom_pelvic_discomfort_or_increased_girth"],
+      "decision_needed": "Confirm whether this replaces the combined field or is added as a separate symptom."
+    },
+    {
+      "name": "symptom_epigastric_pain",
+      "label_zh": "上腹痛（局限於上腹部）",
+      "source_row": 29,
+      "related_existing": ["symptom_upper_abdominal_discomfort", "symptom_persistent_abdominal_pain"],
+      "decision_needed": "Define anatomical boundary and persistence rule to avoid overlapping positive labels."
+    },
+    {
+      "name": "symptom_reflux",
+      "label_zh": "胃酸逆流",
+      "source_row": 31,
+      "related_existing": ["chronic_gerd"],
+      "decision_needed": "Keep current symptom and prior GERD diagnosis as separate time-scoped variables."
+    },
+    {
+      "name": "symptom_head_neck_mass",
+      "label_zh": "頭頸部腫塊（與淋巴結腫大分列）",
+      "source_row": 70,
+      "related_existing": ["symptom_neck_lump", "symptom_lymphadenopathy"],
+      "decision_needed": "Clinically define head/neck mass, neck lump, and lymphadenopathy as mutually exclusive or co-occurring fields."
+    },
+    {
+      "name": "symptom_hematuria_visible",
+      "label_zh": "肉眼血尿（與顯微血尿分列）",
+      "source_row": 74,
+      "related_existing": ["symptom_hematuria"],
+      "decision_needed": "Replace the generic field with visible/microscopic subtypes or preserve a derived generic field."
+    },
+    {
+      "name": "hx_liver_disease_etiology",
+      "label_zh": "肝病病因細分（HBV／HCV／肝硬化／MASLD／酒精性肝病）",
+      "source_row": 87,
+      "related_existing": ["chronic_liver_disease"],
+      "decision_needed": "Specify categorical versus multi-hot encoding and whether chronic_liver_disease becomes a derived umbrella field."
+    }
+  ],
+  "deployment_constraints": [
+    "Do not append these fields to the current Power Automate HTTP body.",
+    "Model owner must freeze exact names, order, data types, allowed values, and missing-value encoding.",
+    "Questionnaire wording and answer-to-feature mapping require clinical review before release.",
+    "A new feature_schema_version and model_version must be released together."
+  ]
+}
