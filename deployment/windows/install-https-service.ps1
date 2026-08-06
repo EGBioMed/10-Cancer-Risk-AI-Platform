@@ -19,6 +19,7 @@ $caddyExecutable = Join-Path $caddyRoot "caddy.exe"
 $caddyConfig = Join-Path $caddyRoot "Caddyfile"
 $serviceSource = Join-Path $PSScriptRoot "$serviceName.xml"
 $caddySource = Join-Path $PSScriptRoot "Caddyfile"
+$firewallSource = Join-Path $PSScriptRoot "configure-firewall.ps1"
 
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = New-Object Security.Principal.WindowsPrincipal($identity)
@@ -26,7 +27,7 @@ if (!$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
   throw "Run this installer from an elevated PowerShell session."
 }
 
-foreach ($required in @($CaddyPath, $WinSWPath, $serviceSource, $caddySource)) {
+foreach ($required in @($CaddyPath, $WinSWPath, $serviceSource, $caddySource, $firewallSource)) {
   if (!(Test-Path -LiteralPath $required)) {
     throw "Required file not found: $required"
   }
@@ -72,22 +73,10 @@ $service = Get-Service -Name $serviceName
 $service.WaitForStatus("Running", [TimeSpan]::FromSeconds(30))
 Set-Service -Name $serviceName -StartupType Automatic
 
-$existingRule = Get-NetFirewallRule -DisplayName $firewallRuleName -ErrorAction SilentlyContinue
-if ($existingRule) {
-  $existingRule | Remove-NetFirewallRule
-}
-New-NetFirewallRule `
-  -DisplayName $firewallRuleName `
-  -Direction Inbound `
-  -Action Allow `
-  -Enabled True `
-  -Profile Any `
-  -Protocol TCP `
+& $firewallSource `
   -LocalAddress "192.168.12.22" `
-  -LocalPort 443 `
   -RemoteAddress "192.168.12.0/24" `
-  -Program $caddyExecutable `
-  -EdgeTraversalPolicy Block | Out-Null
+  -CaddyPath $caddyExecutable | Out-Null
 
 $rootCertificate = Join-Path $caddyRoot "data\caddy\pki\authorities\local\root.crt"
 for ($attempt = 0; $attempt -lt 30 -and !(Test-Path -LiteralPath $rootCertificate); $attempt++) {

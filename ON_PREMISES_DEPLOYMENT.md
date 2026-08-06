@@ -109,7 +109,9 @@ certutil -addstore -f Root ".\EG-BioMed-LAN-Root-CA.crt"
 Close and reopen the browser after importing the certificate. Do not distribute
 anything from Caddy's private `data\caddy\pki` directory; only distribute the
 exported `.crt` file above. The firewall rule `EG BioMed Cancer Risk HTTPS (LAN
-only)` permits TCP 443 only from `192.168.12.0/24` to `192.168.12.22`.
+only)` permits TCP 443 only from `192.168.12.0/24` to `192.168.12.22`. The
+defense-in-depth rule `EG BioMed Block PostgreSQL 5432` blocks inbound TCP 5432
+even if an obsolete PostgreSQL allow rule is accidentally retained.
 
 HTTPS service operations also require an elevated PowerShell window:
 

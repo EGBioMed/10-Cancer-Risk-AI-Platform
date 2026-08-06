@@ -430,14 +430,16 @@ powershell -NoProfile -ExecutionPolicy Bypass `
 1. 驗證 Caddy／WinSW SHA-256。
 2. 安裝 `EGBioMedCancerRiskHttps` 自動服務並依賴 Node 服務。
 3. 建立只允許指定 LAN CIDR 連入 TCP 443 的 Windows Firewall 規則。
-4. 產生內部 CA、匯出公開根憑證並加入伺服器信任庫。
-5. 將 CA 私鑰 ACL 限制為 LocalSystem 與 Administrators。
+4. 建立優先阻擋 TCP 5432 的規則，並停用明確允許 PostgreSQL 入站的規則。
+5. 產生內部 CA、匯出公開根憑證並加入伺服器信任庫。
+6. 將 CA 私鑰 ACL 限制為 LocalSystem 與 Administrators。
 
 驗證：
 
 ```powershell
 Get-Service postgresql-x64-18,EGBioMedCancerRisk,EGBioMedCancerRiskHttps
 Get-NetFirewallRule -DisplayName "EG BioMed Cancer Risk HTTPS (LAN only)"
+Get-NetFirewallRule -DisplayName "EG BioMed Block PostgreSQL 5432"
 Get-FileHash "C:\ProgramData\EGBioMed\CancerRisk\certificates\EG-BioMed-LAN-Root-CA.crt" -Algorithm SHA256
 ```
 
@@ -451,6 +453,15 @@ Get-NetFirewallRule -DisplayName "EG BioMed Cancer Risk HTTPS (LAN only)" |
 Get-NetFirewallRule -DisplayName "EG BioMed Cancer Risk HTTPS (LAN only)" |
   Get-NetFirewallAddressFilter |
   Format-List LocalAddress,RemoteAddress
+```
+
+防火牆設定也可以獨立、重複執行：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File ".\deployment\windows\configure-firewall.ps1" `
+  -LocalAddress "192.168.12.22" `
+  -RemoteAddress "192.168.12.0/24"
 ```
 
 從另一台同區網電腦依情境 A 安裝根憑證，再測試 HTTPS。不要只在伺服器自己測試。
@@ -634,6 +645,7 @@ Get-NetTCPConnection -State Listen |
 - [ ] `npm test` 全部通過。
 - [ ] `git diff --check` 通過。
 - [ ] PostgreSQL、Node、Caddy 三個服務都是 Running／Automatic。
+- [ ] 防火牆只允許指定 LAN 到 Caddy 443，且 `EG BioMed Block PostgreSQL 5432` 已啟用。
 - [ ] `http://127.0.0.1:3000/api/health` 正常。
 - [ ] 已信任 CA 的另一台區網電腦可開啟 HTTPS 與 `/api/health`。
 - [ ] 測試送出後，在 PostgreSQL 看得到 research、contact 與 operations 對應紀錄。
