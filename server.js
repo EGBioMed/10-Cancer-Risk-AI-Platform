@@ -6,9 +6,15 @@ const {
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
+const { createLocalRepository } = require("./lib/local-repository");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
+const SUBMISSION_MODE = String(
+  process.env.SUBMISSION_MODE || (POWER_AUTOMATE_WEBHOOK_URL ? "power-automate" : "local")
+).toLowerCase();
+const LOCAL_DATA_DIR = process.env.LOCAL_DATA_DIR || path.join(__dirname, "local-data");
+const LOCAL_DATA_ENCRYPTION_KEY = process.env.LOCAL_DATA_ENCRYPTION_KEY || "";
 const MAX_BODY_BYTES = 1024 * 1024;
 const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
 
@@ -24,6 +30,19 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon"
 };
+
+let localRepository = null;
+let localRepositoryError = null;
+if (["local", "dual"].includes(SUBMISSION_MODE)) {
+  try {
+    localRepository = createLocalRepository({
+      dataDir: LOCAL_DATA_DIR,
+      encryptionKey: LOCAL_DATA_ENCRYPTION_KEY
+    });
+  } catch (error) {
+    localRepositoryError = error;
+  }
+}
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -165,15 +184,11 @@ function getValidSubmissionEmail(submission) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
-async function forwardSubmission(req, res) {
-  if (!POWER_AUTOMATE_WEBHOOK_URL) {
-    sendJson(res, 503, {
-      ok: false,
-      error: "POWER_AUTOMATE_WEBHOOK_URL is not configured."
-    });
+async function receiveSubmission(req, res) {
+  if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
     return;
   }
-
   let submission;
   try {
     const rawBody = await readRequestBody(req);
@@ -226,6 +241,49 @@ async function forwardSubmission(req, res) {
     return;
   }
 
+  let localResult = null;
+  if (["local", "dual"].includes(SUBMISSION_MODE)) {
+    if (!localRepository) {
+      sendJson(res, 503, {
+        ok: false,
+        error: "Local encrypted storage is not ready.",
+        detail: localRepositoryError?.message || "Local repository initialization failed."
+      });
+      return;
+    }
+    try {
+      localResult = localRepository.saveSubmission(submission);
+    } catch (error) {
+      sendJson(res, 500, {
+        ok: false,
+        error: "Could not persist the submission locally.",
+        detail: error.message
+      });
+      return;
+    }
+  }
+
+  if (SUBMISSION_MODE === "local") {
+    sendJson(res, 202, {
+      ok: true,
+      record_id: localResult.recordId,
+      duplicate: localResult.duplicate,
+      storage: "local_encrypted",
+      processing_status: "stored_local",
+      report_status: "pending_model_migration"
+    });
+    return;
+  }
+
+  if (!["power-automate", "dual"].includes(SUBMISSION_MODE)) {
+    sendJson(res, 503, { ok: false, error: "Unsupported SUBMISSION_MODE configuration." });
+    return;
+  }
+  if (!POWER_AUTOMATE_WEBHOOK_URL) {
+    sendJson(res, 503, { ok: false, error: "POWER_AUTOMATE_WEBHOOK_URL is not configured." });
+    return;
+  }
+
   try {
     const powerAutomatePayload = buildPowerAutomatePayload(submission);
     const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
@@ -247,7 +305,13 @@ async function forwardSubmission(req, res) {
       return;
     }
 
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, {
+      ok: true,
+      record_id: localResult?.recordId,
+      storage: localResult ? "local_encrypted_and_power_automate" : "power_automate",
+      processing_status: "forwarded",
+      report_status: "processing"
+    });
   } catch (error) {
     sendJson(res, 502, {
       ok: false,
@@ -288,7 +352,17 @@ const server = http.createServer(async (req, res) => {
   applySecurityHeaders(res);
 
   if (req.method === "POST" && req.url === "/api/submit") {
-    await forwardSubmission(req, res);
+    await receiveSubmission(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/health") {
+    sendJson(res, localRepositoryError ? 503 : 200, {
+      ok: !localRepositoryError,
+      service: "eg-biomed-cancer-risk-platform",
+      submission_mode: SUBMISSION_MODE,
+      local_storage_ready: Boolean(localRepository)
+    });
     return;
   }
 
@@ -301,5 +375,16 @@ const server = http.createServer(async (req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`EG BioMed assessment server listening on port ${PORT}`);
+  console.log(`EG BioMed assessment server listening on port ${PORT} (${SUBMISSION_MODE} mode)`);
 });
+
+function shutdown() {
+  server.close(() => {
+    localRepository?.close();
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

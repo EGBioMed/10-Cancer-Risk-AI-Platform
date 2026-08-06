@@ -66,3 +66,10 @@ test("submission validation count follows the canonical questionnaire definition
   assert(!canonicalAnswerQuestions.some((question) => question.id === "race"));
   assert(!manifest.questions.some((question) => question.question_id === "race"));
 });
+
+test("local-only acceptance does not falsely claim that a report was emailed", () => {
+  assert(source.includes('submitResult.report_status === "pending_model_migration"'));
+  assert(source.includes("地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。"));
+  assert(source.includes("The local AI model and email service have not finished migration"));
+  assert(!source.includes("本次健康探索已完成，您的結果已寄送至"));
+});
