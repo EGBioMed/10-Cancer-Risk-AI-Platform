@@ -88,6 +88,9 @@ const symptomGroups = [
     field: "symptoms.bowel_abdominal",
     note: "血便或黑便即使只發生一次也請勾選；其他不適請勾選持續、反覆或明顯新發生的情況。",
     noteEn: "Select bloody or black stools even if they occurred once. For other symptoms, select those that were persistent, recurrent, or clearly new.",
+    extraOptions: [
+      ["便秘（排便困難或排便次數減少）", "Constipation (difficulty passing stool or fewer bowel movements)"]
+    ],
     options: [
       ["經常腹脹", "Frequent abdominal bloating", "symptom_bloating"],
       ["持續腹痛", "Persistent abdominal pain", "symptom_persistent_abdominal_pain"],
@@ -256,6 +259,9 @@ const symptomOptionTranslations = symptomGroups.reduce((translations, group) => 
   group.options.forEach(([label, english]) => {
     translations[label] = english;
   });
+  (group.extraOptions || []).forEach(([label, english]) => {
+    translations[label] = english;
+  });
   return translations;
 }, {});
 
@@ -269,7 +275,7 @@ const symptomQuestions = symptomGroups.map((group) => ({
   note: group.note || "請勾選符合的症狀；若都沒有請選「以上皆無」，無法判斷請選「不確定」。",
   noteEn: group.noteEn || "Select every symptom that applies. Select “None of the above” if none apply, or “Not sure” if you cannot determine the answer.",
   field: group.field,
-  options: [...group.options.map(([label]) => label), symptomNoneOption, symptomUnknownOption],
+  options: [...group.options.map(([label]) => label), ...(group.extraOptions || []).map(([label]) => label), symptomNoneOption, symptomUnknownOption],
   symptomDefinitions: group.options,
   femaleOnly: group.femaleOnly === true,
   maleOnly: group.maleOnly === true,
@@ -398,12 +404,13 @@ const questions = [
   { id: "weight_change", module: "basic", type: "single", required: true, title: "近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？", note: "若不確定，請選不確定。", field: "demographics.weight_change_over_5_percent", options: ["是", "否", "不確定"] },
   { id: "exercise_time", module: "basic", type: "single", required: true, title: "每週運動時間", note: "請選擇最接近您一般狀況的選項。", field: "lifestyle.weekly_exercise_time", options: ["幾乎不運動", "30-60 分鐘", "1-2 小時", "多於 2 小時"] },
   { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
+  { id: "race", module: "basic", type: "single", required: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
 
   ...symptomQuestions,
 
   { id: "stool_loose_or_frequent", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？", titleEn: "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?", note: "此題只在您勾選排便習慣改變後出現。", noteEn: "This question appears only after you report a change in bowel habits.", field: "rule_inputs.symptom_stool_loose_or_frequent", ruleField: "symptom_stool_loose_or_frequent", options: ["是", "否", "不確定"], appliesIf: () => isRuleParentPositive("symptom_bowel_habit_change") },
   { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" },
-  { id: "constipation", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "若只是偶爾短暫發生，可依最接近日常狀況回答。", noteEn: "If this occurred only briefly or occasionally, choose the answer closest to your usual situation.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
+  { id: "constipation", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
 
   ...ruleRepeatQuestions,
 
@@ -427,15 +434,17 @@ const questions = [
   { id: "air_pollution", module: "exposure", type: "single", required: true, title: "工作或生活是否長期暴露在空氣污染環境？", note: "例如工廠、交通繁忙區域。", field: "exposure.air_pollution", options: ["是", "否"] },
   { id: "radiation", module: "exposure", type: "single", required: true, title: "工作或生活是否常接觸輻射？", note: "例如放射科人員。", field: "exposure.radiation_exposure", options: ["是", "否"] },
 
-  { id: "stress", module: "mental", type: "single", required: true, title: "過去一個月，每週感到緊張或焦慮的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_stress_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
-  { id: "sleep_problem", module: "mental", type: "single", required: true, title: "過去一個月，每週睡不好或失眠的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_sleep_problem_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
-  { id: "low_mood", module: "mental", type: "single", required: true, title: "過去一個月，每週情緒低落或憂鬱的頻率", note: "此題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.weekly_low_mood_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
+  { id: "mental_frequency_matrix", module: "mental", type: "matrix", required: true, isComposite: true, title: "過去一個月的情緒與睡眠頻率", titleEn: "Emotional wellbeing and sleep frequency in the past month", note: "請為每一列選擇每週最接近的頻率；本題僅作為健康風險因子整理，不是心理診斷。", noteEn: "Select the closest weekly frequency for every row. This is used only to organize health risk factors and is not a mental health diagnosis.", rowQuestionIds: ["stress", "sleep_problem", "low_mood"] },
+  { id: "stress", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "感到緊張或焦慮", matrixLabelEn: "Feeling tense or anxious", title: "過去一個月，每週感到緊張或焦慮的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_stress_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
+  { id: "sleep_problem", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "睡不好或失眠", matrixLabelEn: "Poor sleep or insomnia", title: "過去一個月，每週睡不好或失眠的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_sleep_problem_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
+  { id: "low_mood", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "情緒低落或憂鬱", matrixLabelEn: "Feeling low or depressed", title: "過去一個月，每週情緒低落或憂鬱的頻率", note: "此題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.weekly_low_mood_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
 
   { id: "diet_type", module: "diet", type: "single", required: true, title: "以下哪一項最接近您平常的飲食方式？", note: "請依長期飲食型態選擇一項。若主要吃蔬食但仍會吃肉類或海鮮，請選「蔬食為主」。", field: "diet.current_diet_type", options: ["一般飲食（平常會吃肉類或海鮮）", "蔬食為主（主要吃植物性食物，但仍會吃肉類或海鮮）", "魚素（不吃肉類，但會吃魚類或海鮮）", "蛋奶素（不吃肉類及海鮮，但會吃蛋或乳製品）", "全素（不吃肉類、海鮮、蛋及乳製品）"] },
-  { id: "meat_processed_foods", module: "diet", type: "multi", required: true, title: "肉類、加工及高溫烹調食物", note: "請依過去三個月的一般飲食狀況作答。本題「經常食用」定義為平均每週至少 3 次，每次食用即計 1 次；可複選。", field: "diet.meat_processed_foods", noneOption: "以上皆未達每週 3 次", options: ["紅肉（牛、羊、豬等；平均每週至少 3 次）", "燒烤或油炸食品（平均每週至少 3 次）", "醃漬或鹽漬食品（例如泡菜、鹹魚；平均每週至少 3 次）", "加工肉品（例如香腸、火腿、培根；平均每週至少 3 次）", "以上皆未達每週 3 次"] },
-  { id: "sugar_fat_foods", module: "diet", type: "multi", required: true, title: "高糖與高脂食物", note: "請依過去三個月的一般飲食狀況作答。本題「經常攝取」定義為平均每週至少 3 次，每次攝取即計 1 次；可複選。", field: "diet.sugar_fat_foods", noneOption: "以上皆未達每週 3 次", options: ["甜食或高糖零食（平均每週至少 3 次）", "含糖飲料（平均每週至少 3 次）", "高脂肪食物（例如速食、肥肉；平均每週至少 3 次）", "以上皆未達每週 3 次"] },
-  { id: "plant_dairy_habits", module: "diet", type: "multi", required: true, title: "蔬果、豆類與乳製品", note: "請依過去三個月的一般飲食狀況，勾選符合所列頻率的項目；可複選。", field: "diet.plant_dairy_habits", noneOption: "以上皆無", options: ["每天攝取蔬菜或水果", "豆類或豆製品每週至少 3 次", "每天飲用至少一杯 240 ml 牛奶", "其他乳製品每週至少 3 次（例如優格、起司）", "益生菌食品或補充品每週至少 3 次（例如標示含活菌的優格、發酵乳或乳酸菌飲品，以及益生菌粉包、膠囊）", "以上皆無"] },
-  { id: "beverage_habits", module: "diet", type: "multi", required: true, title: "飲品習慣", note: "請勾選符合日常狀況的項目。可複選。", field: "diet.beverage_habits", noneOption: "以上皆無", options: ["飲酒（每週至少一次）", "咖啡（每週至少 3 次）", "茶（每週至少 3 次）", "以上皆無"] },
+  { id: "diet_frequency_matrix", module: "diet", type: "diet-matrix", required: true, isComposite: true, title: "過去三個月的飲食頻率", titleEn: "Diet frequency during the past three months", note: "各項目預設為未達標示頻率；請將符合日常狀況的項目改選為「達到頻率」，再儲存並繼續。", noteEn: "Items default to below the stated frequency. Change the items that match your usual habits to “Meets frequency,” then save and continue.", rowQuestionIds: ["meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"] },
+  { id: "meat_processed_foods", module: "diet", type: "multi", required: true, displayInComposite: true, title: "肉類、加工及高溫烹調食物", note: "請依過去三個月的一般飲食狀況作答。", field: "diet.meat_processed_foods", noneOption: "以上皆未達每週 3 次", options: ["紅肉（牛、羊、豬等；平均每週至少 3 次）", "燒烤或油炸食品（平均每週至少 3 次）", "醃漬或鹽漬食品（例如泡菜、鹹魚；平均每週至少 3 次）", "加工肉品（例如香腸、火腿、培根；平均每週至少 3 次）", "以上皆未達每週 3 次"] },
+  { id: "sugar_fat_foods", module: "diet", type: "multi", required: true, displayInComposite: true, title: "高糖與高脂食物", note: "請依過去三個月的一般飲食狀況作答。", field: "diet.sugar_fat_foods", noneOption: "以上皆未達每週 3 次", options: ["甜食或高糖零食（平均每週至少 3 次）", "含糖飲料（平均每週至少 3 次）", "高脂肪食物（例如速食、肥肉；平均每週至少 3 次）", "以上皆未達每週 3 次"] },
+  { id: "plant_dairy_habits", module: "diet", type: "multi", required: true, displayInComposite: true, title: "蔬果、豆類與乳製品", note: "請依過去三個月的一般飲食狀況作答。", field: "diet.plant_dairy_habits", noneOption: "以上皆無", options: ["每天攝取蔬菜或水果", "豆類或豆製品每週至少 3 次", "每天飲用至少一杯 240 ml 牛奶", "其他乳製品每週至少 3 次（例如優格、起司）", "益生菌食品或補充品每週至少 3 次（例如標示含活菌的優格、發酵乳或乳酸菌飲品，以及益生菌粉包、膠囊）", "以上皆無"] },
+  { id: "beverage_habits", module: "diet", type: "multi", required: true, displayInComposite: true, title: "飲品習慣", note: "請依過去三個月的一般飲食狀況作答。", field: "diet.beverage_habits", noneOption: "以上皆無", options: ["飲酒（每週至少一次）", "咖啡（每週至少 3 次）", "茶（每週至少 3 次）", "以上皆無"] },
 
   { id: "personal_cancer", module: "history", type: "single", required: true, title: "您目前是否正在罹患癌症，或過去曾被診斷為癌症？", note: "請依照目前或過去是否曾被醫療人員診斷為癌症回答。", field: "medical_history.personal_cancer_history", options: ["是，目前正在治療或追蹤中", "是，過去曾被診斷，目前已完成治療或追蹤", "否，未曾被診斷為癌症"] },
   { id: "personal_cancer_types", module: "history", type: "multi", required: true, title: "目前或過去曾被診斷的癌別為何？", note: "可複選；若不確定癌別，請選其他癌種。", field: "medical_history.personal_cancer_types", options: cancerOptions, appliesIf: (answers) => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history")) },
@@ -539,7 +548,7 @@ const i18n = {
     },
     modules: {
       consent: ["Informed Consent", "Review privacy notice and non-diagnostic nature."],
-      basic: ["Basic Information", "Collect age, height, weight, exercise, and sex."],
+      basic: ["Basic Information", "Collect age, height, weight, exercise, sex, and race."],
       symptoms: ["Recent Symptoms", "Review symptoms by body system. General questions use the past 3 months, while v19.4 follow-ups explicitly use the past 6 months."],
       female: ["Female Health Information", "Questions on menstruation, pregnancy, breastfeeding, Pap smear, and hormone use."],
       exposure: ["Tobacco and Environmental Exposure", "Record smoking, secondhand smoke, cooking fumes, air pollution, and radiation exposure."],
@@ -596,6 +605,7 @@ const i18n = {
       weight_change: ["In the past six months, has your weight increased or decreased significantly (more than 5%)?", "If you are unsure, please select not sure."],
       exercise_time: ["Weekly exercise time", "Please select the option closest to your usual situation."],
       sex: ["What is your sex?", "Applicable questions will be shown based on your selection."],
+      race: ["Which racial group do you identify with?", "Select the option that best describes you. You may choose not to answer."],
       menarche_age: ["Age at first menstruation", "If unsure, you may use the not sure option."],
       menopause_status: ["Current menopause status", "Please select the option closest to your current situation."],
       first_pregnancy_age: ["Age at first pregnancy", "If you have never been pregnant, select never pregnant."],
@@ -613,11 +623,13 @@ const i18n = {
       stress: ["In the past month, how often did you feel tense or anxious each week?", "Please answer based on your general situation in the past month."],
       sleep_problem: ["In the past month, how often did you sleep poorly or have insomnia each week?", "Please answer based on your general situation in the past month."],
       low_mood: ["In the past month, how often did you feel low or depressed each week?", "This is only for health risk factor organization and is not a mental health diagnosis."],
+      mental_frequency_matrix: ["Emotional wellbeing and sleep frequency in the past month", "Select the closest weekly frequency for every row. This is used only to organize health risk factors and is not a mental health diagnosis."],
       diet_type: ["Which option best describes your usual dietary pattern?", "Choose one long-term pattern. If you mainly eat plant-based foods but still consume meat or seafood, select Mostly plant-based."],
       meat_processed_foods: ["Meat, processed foods, and high-temperature cooking", "Answer based on your usual diet during the past 3 months. In this question, “frequent consumption” means an average of at least 3 times per week; each eating occasion counts as one time. You may select multiple."],
       sugar_fat_foods: ["High-sugar and high-fat foods", "Answer based on your usual diet during the past 3 months. In this question, “frequent consumption” means an average of at least 3 times per week; each eating occasion counts as one time. You may select multiple."],
       plant_dairy_habits: ["Fruit, vegetables, soy, and dairy", "Based on your usual diet during the past 3 months, select every item that meets the stated frequency. You may select multiple."],
       beverage_habits: ["Beverage habits", "Select every item that matches your usual habits. You may select multiple."],
+      diet_frequency_matrix: ["Diet frequency during the past three months", "Items default to below the stated frequency. Change the items that match your usual habits to “Meets frequency,” then save and continue."],
       personal_cancer: ["Are you currently living with cancer, or have you ever been diagnosed with cancer in the past?", "Please answer based on whether a healthcare professional has diagnosed you with cancer, either currently or in the past."],
       personal_cancer_types: ["What type of cancer are you currently living with, or have you been diagnosed with in the past?", "You may select multiple. If you are unsure of the exact type, please select other cancer type."],
       chronic_conditions: ["Do you have any of the following chronic diseases?", "You may select multiple. If none apply, select none of the above."],
@@ -631,6 +643,7 @@ const i18n = {
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
       "男性": "Male", "女性": "Female",
+      "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
       "幾乎不運動": "Almost no exercise", "30-60 分鐘": "30-60 minutes", "1-2 小時": "1-2 hours", "多於 2 小時": "More than 2 hours",
       "12 歲以前（含 12 歲）": "Age 12 or younger", "13 歲以後（含 13 歲）": "Age 13 or older",
       "尚未停經（仍有月經）": "Not menopausal (still menstruating)", "已停經（55 歲或以前停經）": "Menopause at age 55 or earlier", "已停經（55 歲或以後停經）": "Menopause after age 55", "已切除子宮或卵巢": "Uterus or ovaries removed",
@@ -858,7 +871,7 @@ function escapeHtml(value) {
 }
 
 function getActiveQuestions() {
-  return questions.filter((question) => !question.appliesIf || question.appliesIf(answers));
+  return questions.filter((question) => !question.displayInComposite && (!question.appliesIf || question.appliesIf(answers)));
 }
 
 function getCurrentQuestion() {
@@ -1345,6 +1358,16 @@ function renderQuickInput(question) {
     return;
   }
 
+  if (question.type === "matrix") {
+    renderFrequencyMatrix(question);
+    return;
+  }
+
+  if (question.type === "diet-matrix") {
+    renderDietMatrix(question);
+    return;
+  }
+
   if (question.type === "multi") {
     const isConsentQuestion = question.id === "consent_acknowledgement";
     const isSymptomQuestion = question.isSymptomGroup === true;
@@ -1417,6 +1440,98 @@ function renderQuickInput(question) {
   });
 }
 
+function getCompositeRows(question) {
+  return question.rowQuestionIds.map((id) => questions.find((item) => item.id === id)).filter(Boolean);
+}
+
+function makeAnswerEntry(question, value, source) {
+  return {
+    question_id: question.id,
+    label: question.title,
+    display_label: getQuestionCopy(question).title,
+    value,
+    source,
+    confirmed: true
+  };
+}
+
+function finishCompositeQuestion(question) {
+  currentIndex += 1;
+  const nextQuestion = getCurrentQuestion();
+  moduleFeedback = getModuleFeedback(question.module, nextQuestion?.module || "confirm");
+  renderQuestion();
+}
+
+function renderFrequencyMatrix(question) {
+  const rows = getCompositeRows(question);
+  const options = rows[0]?.options || [];
+  quickOptions.innerHTML = `
+    <div class="frequency-matrix" role="group" aria-label="${escapeHtml(getQuestionCopy(question).title)}">
+      <div class="frequency-matrix__header" aria-hidden="true">
+        <span></span>
+        ${options.map((option) => `<span>${escapeHtml(tx(option))}</span>`).join("")}
+      </div>
+      ${rows.map((row) => `
+        <div class="frequency-matrix__row" data-matrix-row="${row.id}" role="radiogroup" aria-labelledby="matrix-label-${row.id}">
+          <span class="matrix-row-label" id="matrix-label-${row.id}">${escapeHtml(currentLang === "en" ? row.matrixLabelEn : row.matrixLabel)}</span>
+          ${row.options.map((option) => {
+            const checked = getAnswerValue(answers, row.field) === option;
+            return `<label class="matrix-choice"><input type="radio" name="matrix-${row.id}" value="${escapeHtml(option)}"${checked ? " checked" : ""}><span>${escapeHtml(tx(option))}</span></label>`;
+          }).join("")}
+        </div>
+      `).join("")}
+    </div>
+    <button class="secondary-action matrix-save" id="saveMatrixBtn" type="button">${ui("saveContinue")}</button>
+  `;
+  document.querySelector("#saveMatrixBtn").addEventListener("click", () => {
+    const selections = rows.map((row) => quickOptions.querySelector(`input[name="matrix-${row.id}"]:checked`)?.value);
+    if (selections.some((value) => !value)) {
+      showInlineNotice(currentLang === "en" ? "Please answer every row before continuing." : "請完成每一列後再繼續。");
+      return;
+    }
+    rows.forEach((row, index) => { answers[row.field] = makeAnswerEntry(row, selections[index], "matrix_choice"); });
+    finishCompositeQuestion(question);
+  });
+}
+
+function renderDietMatrix(question) {
+  const groups = getCompositeRows(question);
+  quickOptions.innerHTML = `
+    <div class="diet-frequency-matrix" role="group" aria-label="${escapeHtml(getQuestionCopy(question).title)}">
+      <div class="diet-frequency-matrix__header" aria-hidden="true"><span>${currentLang === "en" ? "Item" : "飲食項目"}</span><span>${currentLang === "en" ? "Meets frequency" : "達到頻率"}</span><span>${currentLang === "en" ? "Below frequency" : "未達頻率"}</span></div>
+      ${groups.map((group) => {
+        const selected = getAnswerValue(answers, group.field);
+        const selectedItems = Array.isArray(selected) ? selected : [];
+        return `<section class="diet-frequency-group" aria-labelledby="diet-group-${group.id}">
+          <h3 id="diet-group-${group.id}">${escapeHtml(getQuestionCopy(group).title)}</h3>
+          ${group.options.filter((option) => option !== group.noneOption).map((option, optionIndex) => {
+            const isMet = selectedItems.includes(option);
+            return `<div class="diet-frequency-row" role="radiogroup" aria-labelledby="diet-label-${group.id}-${optionIndex}">
+              <span class="matrix-row-label" id="diet-label-${group.id}-${optionIndex}">${escapeHtml(tx(option))}</span>
+              <label class="matrix-choice"><input type="radio" name="diet-${group.id}-${optionIndex}" value="met"${isMet ? " checked" : ""}><span>${currentLang === "en" ? "Meets" : "達到"}</span></label>
+              <label class="matrix-choice"><input type="radio" name="diet-${group.id}-${optionIndex}" value="below"${!isMet ? " checked" : ""}><span>${currentLang === "en" ? "Below" : "未達"}</span></label>
+            </div>`;
+          }).join("")}
+        </section>`;
+      }).join("")}
+    </div>
+    <button class="secondary-action matrix-save" id="saveDietMatrixBtn" type="button">${ui("saveContinue")}</button>
+  `;
+  document.querySelector("#saveDietMatrixBtn").addEventListener("click", () => {
+    const incomplete = groups.some((group) => group.options.filter((option) => option !== group.noneOption).some((_, optionIndex) => !quickOptions.querySelector(`input[name="diet-${group.id}-${optionIndex}"]:checked`)));
+    if (incomplete) {
+      showInlineNotice(currentLang === "en" ? "Please answer every row before continuing." : "請完成每一列後再繼續。");
+      return;
+    }
+    groups.forEach((group) => {
+      const itemOptions = group.options.filter((option) => option !== group.noneOption);
+      const selected = itemOptions.filter((_, optionIndex) => quickOptions.querySelector(`input[name="diet-${group.id}-${optionIndex}"]:checked`)?.value === "met");
+      answers[group.field] = makeAnswerEntry(group, selected.length ? selected : [group.noneOption], "diet_matrix_choice");
+    });
+    finishCompositeQuestion(question);
+  });
+}
+
 function showInlineNotice(message) {
   parseCard.innerHTML = `<p class="helper-text">${message}</p>`;
   parseCard.hidden = false;
@@ -1486,6 +1601,14 @@ function saveAnswer(value, source, structured = null) {
   if (question.id === "consent_acknowledgement") entry.accepted_at = new Date().toISOString();
   if (structured) entry.structured = structured;
   answers[question.field] = entry;
+  if (question.id === "symptoms_bowel_abdominal") {
+    const constipationQuestion = questions.find((item) => item.id === "constipation");
+    const selected = Array.isArray(value) ? value : [];
+    const constipationValue = source === "uncertain" || selected.includes(symptomUnknownOption)
+      ? "不確定"
+      : selected.includes("便秘（排便困難或排便次數減少）") ? "是" : "否";
+    answers[constipationQuestion.field] = makeAnswerEntry(constipationQuestion, constipationValue, source === "uncertain" ? "uncertain" : "symptom_group_choice");
+  }
   currentIndex += 1;
   const nextQuestion = getCurrentQuestion();
   moduleFeedback = getModuleFeedback(fromModuleId, nextQuestion?.module || "confirm");
@@ -1855,7 +1978,7 @@ function buildConsentRecord(submittedAt) {
 
 function buildAnswerCodeRows() {
   return questions
-    .filter((question) => !["consent_acknowledgement", "email"].includes(question.id))
+    .filter((question) => !question.isComposite && !["consent_acknowledgement", "email"].includes(question.id))
     .map((question) => {
       const applicable = !question.appliesIf || question.appliesIf(answers);
       if (!applicable) return { question_id: question.id, status: "not_applicable", value: null };
@@ -2341,6 +2464,13 @@ backBtn.addEventListener("click", () => {
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
   if (question?.id === "consent_acknowledgement" || question?.type === "email") return;
+  if (question?.isComposite) {
+    getCompositeRows(question).forEach((row) => {
+      answers[row.field] = makeAnswerEntry(row, "不確定", "uncertain");
+    });
+    finishCompositeQuestion(question);
+    return;
+  }
   saveAnswer("不確定", "uncertain");
 });
 

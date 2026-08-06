@@ -5,7 +5,7 @@
   "description": "EG BioMed AI cancer risk interactive assessment platform.",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test-contract.js",
+    "test": "node --test test-contract.js test-questionnaire-ui.js",
     "validate:contract": "node --test test-contract.js",
     "generate:answer-codes": "node scripts/generate-answer-code-manifest.js"
   },

@@ -1,8 +1,8 @@
 {
   "status": "frozen_v19.4_phase1_question_ids",
   "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
-  "question_definition_count": 78,
-  "canonical_answer_question_count": 76,
+  "question_definition_count": 79,
+  "canonical_answer_question_count": 77,
   "answer_contract": {
     "canonical_key": "question_id",
     "display_labels_are_canonical": false,
@@ -11,7 +11,7 @@
   },
   "modules": [
     { "id": "consent", "question_ids": ["consent_acknowledgement"] },
-    { "id": "basic", "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex"] },
+    { "id": "basic", "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex", "race"] },
     {
       "id": "symptoms",
       "question_ids": [
@@ -56,6 +56,23 @@
       ]
     },
     { "id": "contact", "question_ids": ["email"] }
+  ],
+  "presentation_composites": [
+    {
+      "id": "mental_frequency_matrix",
+      "question_ids": ["stress", "sleep_problem", "low_mood"],
+      "preserves_canonical_fields": true
+    },
+    {
+      "id": "diet_frequency_matrix",
+      "question_ids": ["meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"],
+      "preserves_canonical_fields": true
+    },
+    {
+      "id": "bowel_constipation_merge",
+      "question_ids": ["symptoms_bowel_abdominal", "constipation"],
+      "preserves_canonical_fields": true
+    }
   ],
   "conditional_question_rules": {
     "sex_specific": [

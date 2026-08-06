@@ -847,6 +847,155 @@ html[lang="en"] h1 {
   grid-template-columns: 1fr;
 }
 
+.frequency-matrix,
+.diet-frequency-matrix {
+  grid-column: 1 / -1;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+
+.frequency-matrix__header,
+.frequency-matrix__row {
+  display: grid;
+  grid-template-columns: minmax(190px, 1.35fr) repeat(4, minmax(105px, 1fr));
+  min-width: 650px;
+}
+
+.frequency-matrix__header {
+  background: #eaf4f1;
+  color: var(--teal-deep);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.frequency-matrix__header span,
+.matrix-row-label,
+.matrix-choice {
+  padding: 12px 10px;
+}
+
+.frequency-matrix__row,
+.diet-frequency-row {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+.frequency-matrix__row .matrix-row-label {
+  display: flex;
+  align-items: center;
+  width: auto;
+  font-weight: 750;
+}
+
+.matrix-choice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.matrix-choice input {
+  width: 19px;
+  height: 19px;
+  margin: 0;
+  accent-color: var(--teal);
+}
+
+.frequency-matrix__row .matrix-choice span {
+  display: none;
+}
+
+.diet-frequency-matrix__header,
+.diet-frequency-row {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(105px, 0.32fr) minmax(105px, 0.32fr);
+  min-width: 590px;
+}
+
+.diet-frequency-matrix__header {
+  padding: 12px 10px;
+  background: #eaf4f1;
+  color: var(--teal-deep);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+.diet-frequency-matrix__header span:first-child {
+  text-align: left;
+}
+
+.diet-frequency-group h3 {
+  margin: 0;
+  padding: 13px 14px;
+  border-top: 1px solid var(--line);
+  background: var(--surface-soft);
+  color: var(--teal-deep);
+  font-size: 15px;
+}
+
+.diet-frequency-row .matrix-row-label {
+  display: flex;
+  align-items: center;
+  width: auto;
+  padding: 12px 14px;
+  line-height: 1.45;
+}
+
+.matrix-save {
+  grid-column: 1 / -1;
+  justify-self: end;
+}
+
+@media (max-width: 720px) {
+  .frequency-matrix__header,
+  .diet-frequency-matrix__header {
+    display: none;
+  }
+
+  .frequency-matrix__row {
+    grid-template-columns: 1fr 1fr;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .frequency-matrix__row .matrix-row-label {
+    grid-column: 1 / -1;
+    padding: 0 0 8px;
+  }
+
+  .frequency-matrix__row .matrix-choice {
+    justify-content: flex-start;
+    padding: 8px;
+  }
+
+  .frequency-matrix__row .matrix-choice span {
+    display: inline;
+  }
+
+  .diet-frequency-row {
+    grid-template-columns: 1fr 1fr;
+    min-width: 0;
+    padding: 12px;
+  }
+
+  .diet-frequency-row .matrix-row-label {
+    grid-column: 1 / -1;
+    padding: 0 0 8px;
+  }
+
+  .diet-frequency-row .matrix-choice {
+    padding: 8px;
+  }
+}
+
 .number-entry {
   grid-template-columns: minmax(180px, 1fr) auto;
   align-items: center;
