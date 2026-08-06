@@ -68,6 +68,20 @@ powershell -NoProfile -ExecutionPolicy Bypass -File scripts\start-postgres-local
 The local development login details for pgAdmin are stored in
 `runtime\developer-connection.txt`. Do not send this file by email or commit it.
 
+On this workstation the Node.js application runs as the automatic Windows service
+`EGBioMedCancerRisk`. It depends on `postgresql-x64-18`, starts after PostgreSQL,
+restarts after failures, and writes rolling logs under
+`C:\ProgramData\EGBioMed\CancerRisk\logs`.
+
+Service operations require an elevated PowerShell window:
+
+```powershell
+Get-Service EGBioMedCancerRisk
+Restart-Service EGBioMedCancerRisk
+Stop-Service EGBioMedCancerRisk
+Start-Service EGBioMedCancerRisk
+```
+
 ## Developer queries
 
 Research records:
