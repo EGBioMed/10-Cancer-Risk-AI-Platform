@@ -2,13 +2,14 @@
   "status": "frozen_v19.4_phase1_question_ids",
   "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
   "question_definition_count": 79,
-  "canonical_answer_question_count": 77,
+  "canonical_answer_question_count": 76,
   "answer_contract": {
     "canonical_key": "question_id",
     "display_labels_are_canonical": false,
     "unknown_status": "unknown",
     "not_applicable_status": "not_applicable"
   },
+  "row_only_question_ids": ["race"],
   "modules": [
     { "id": "consent", "question_ids": ["consent_acknowledgement"] },
     { "id": "basic", "question_ids": ["birth_year", "height_cm", "weight_kg", "weight_change", "exercise_time", "sex", "race"] },

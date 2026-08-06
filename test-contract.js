@@ -119,6 +119,14 @@ test("generated answer-code manifest is synchronized with app.js", () => {
   assert.equal(after, before, "Run the generator, review the changed codes, and bump the questionnaire/code schema version.");
 });
 
+test("Power Automate answer-row limits match the canonical answer contract", () => {
+  const schema = require("./contracts/power-automate/transitional-submission.schema.json");
+  const expectedCount = answerCodeManifest.canonical_answer_question_count;
+  assert.equal(fieldManifest.counts.answer_code_rows, expectedCount);
+  assert.equal(schema.properties.answer_code_rows.minItems, expectedCount);
+  assert.equal(schema.properties.answer_code_rows.maxItems, expectedCount);
+});
+
 test("backend mapping covers the frozen 71 features and references valid answer codes", () => {
   const mapping = require("./contracts/v1/answer-to-feature-mapping.json");
   assert.equal(mapping.mapping_version, EXPECTED_VERSIONS.mapping_version);

@@ -7,8 +7,8 @@
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 79,
-  "canonical_answer_question_count": 77,
+  "question_count": 78,
+  "canonical_answer_question_count": 76,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -167,42 +167,6 @@
           "code": "sex.option_02",
           "label_zh": "女性",
           "label_en": "Female"
-        }
-      ]
-    },
-    {
-      "question_id": "race",
-      "field": "demographics.race",
-      "module": "basic",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "您認為自己屬於哪一個人種？",
-      "title_en": "Which racial group do you identify with?",
-      "options": [
-        {
-          "code": "race.option_01",
-          "label_zh": "亞洲裔",
-          "label_en": "Asian"
-        },
-        {
-          "code": "race.option_02",
-          "label_zh": "白人",
-          "label_en": "White"
-        },
-        {
-          "code": "race.option_03",
-          "label_zh": "黑人或非洲裔",
-          "label_en": "Black or of African descent"
-        },
-        {
-          "code": "race.option_04",
-          "label_zh": "其他族群",
-          "label_en": "Another racial group"
-        },
-        {
-          "code": "race.option_05",
-          "label_zh": "選擇不回答",
-          "label_en": "Prefer not to answer"
         }
       ]
     },

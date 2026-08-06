@@ -39,7 +39,9 @@ function englishOption(option) {
   return symptomOptionTranslations[option] || englishOptions[option] || option;
 }
 
-const manifestQuestions = questions.filter((question) => !question.isComposite).map((question) => {
+const manifestQuestions = questions.filter(
+  (question) => !question.isComposite && !question.excludeFromCanonicalContract
+).map((question) => {
   const item = {
     question_id: question.id,
     field: question.field,

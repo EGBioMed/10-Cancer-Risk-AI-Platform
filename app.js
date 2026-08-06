@@ -404,7 +404,7 @@ const questions = [
   { id: "weight_change", module: "basic", type: "single", required: true, title: "近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？", note: "若不確定，請選不確定。", field: "demographics.weight_change_over_5_percent", options: ["是", "否", "不確定"] },
   { id: "exercise_time", module: "basic", type: "single", required: true, title: "每週運動時間", note: "請選擇最接近您一般狀況的選項。", field: "lifestyle.weekly_exercise_time", options: ["幾乎不運動", "30-60 分鐘", "1-2 小時", "多於 2 小時"] },
   { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
-  { id: "race", module: "basic", type: "single", required: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
+  { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
 
   ...symptomQuestions,
 
@@ -717,7 +717,9 @@ const frozenSubmissionVectorCounts = Object.freeze({
   rule_input_columns: 29
 });
 const canonicalAnswerQuestions = questions.filter(
-  (question) => !question.isComposite && !["consent_acknowledgement", "email"].includes(question.id)
+  (question) => !question.isComposite
+    && !question.excludeFromCanonicalContract
+    && !["consent_acknowledgement", "email"].includes(question.id)
 );
 
 const answers = {};
@@ -2304,9 +2306,15 @@ async function submitToPowerAutomate(submission) {
     },
     body: JSON.stringify(submission)
   });
+  const responsePayload = await response.json().catch(() => ({}));
 
   if (!response.ok) {
-    throw new Error(`Submission failed: ${response.status}`);
+    const error = new Error(responsePayload.error || `Submission failed: ${response.status}`);
+    error.status = response.status;
+    error.userMessage = currentLang === "en"
+      ? `Submission failed (reference ${response.status}). Please try again or contact support.`
+      : `資料送出失敗（參考代碼 ${response.status}），請再試一次或聯繫服務人員。`;
+    throw error;
   }
 
   window.latestPowerAutomateSubmit = {
@@ -2356,9 +2364,9 @@ async function renderResult() {
       runButton.disabled = false;
       runButton.textContent = currentLang === "en" ? i18n.en.ui.submitReview : "確認並送出";
     }
-    showSubmitError(currentLang === "en"
-      ? "Submission failed. Please try again later or contact support."
-      : "資料送出失敗，請稍後再試或聯繫服務人員。");
+    showSubmitError(error.userMessage || (currentLang === "en"
+      ? "Submission data validation failed. Please refresh the page and try again."
+      : "送出資料格式驗證失敗，請重新整理頁面後再試一次。"));
     return;
   }
 
