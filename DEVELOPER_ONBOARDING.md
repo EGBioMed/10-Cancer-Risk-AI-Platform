@@ -157,11 +157,11 @@ npm ci
 npm test
 ```
 
-目前完整測試應有 21 項。若 PATH 尚未更新：
+目前完整測試應有 22 項。若 PATH 尚未更新：
 
 ```powershell
 & "C:\Program Files\nodejs\npm.cmd" ci
-& "C:\Program Files\nodejs\node.exe" --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js
+& "C:\Program Files\nodejs\node.exe" --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js test-backup-retention.js
 ```
 
 修改問卷、答項、欄位 mapping 或提交格式時，至少執行：
@@ -516,6 +516,44 @@ Get-Content "C:\ProgramData\EGBioMed\CancerRisk\logs\https-access.log" -Tail 100
 payload。
 
 ### 3.3 載入 runtime 環境執行備份或匯出
+
+目前伺服器的每日自動備份排程為：
+
+| 項目 | 設定 |
+| --- | --- |
+| Task Scheduler 名稱 | `EGBioMedCancerRiskDailyBackup` |
+| 執行時間 | 每日 02:00；錯過時儘快補執行 |
+| 執行帳號 | `NT AUTHORITY\SYSTEM` |
+| 保留期限 | 30 天 |
+| 目的地 | `C:\Users\user\OneDrive - 沈氏集團\EG BioMed\Cancer Risk Platform\PostgreSQL Backups` |
+| 狀態 | `C:\ProgramData\EGBioMed\CancerRisk\logs\postgres-backup-status.json` |
+| 日誌 | `C:\ProgramData\EGBioMed\CancerRisk\logs\postgres-backup.log` |
+
+安裝或更新排程需使用系統管理員 PowerShell：
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass `
+  -File ".\deployment\windows\install-backup-task.ps1" `
+  -BackupRoot "C:\Users\user\OneDrive - 沈氏集團\EG BioMed\Cancer Risk Platform\PostgreSQL Backups" `
+  -DailyAt "02:00" `
+  -RetentionDays 30
+```
+
+立即測試及查看結果：
+
+```powershell
+Start-ScheduledTask EGBioMedCancerRiskDailyBackup
+Get-ScheduledTaskInfo EGBioMedCancerRiskDailyBackup
+Get-Content "C:\ProgramData\EGBioMed\CancerRisk\logs\postgres-backup-status.json"
+```
+
+`LastTaskResult` 為 `0` 才代表本地 dump 與 SHA-256 驗證成功。還要確認 OneDrive
+藍色公司帳戶圖示顯示同步完成，並定期從 OneDrive 網頁確認備份資料夾。OneDrive 是
+第二份異地副本，不取代獨立 NAS／外接碟、不可變備份或還原演練。
+
+保存期限以每份 `manifest.json` 的 `created_at` 判斷，不使用 OneDrive 可能重寫的資料夾
+`LastWriteTime`。目前 dump 本身尚未額外加密，只能用於已獲公司 IT／個資政策核准的
+開發資料；正式健康資料啟用前必須完成備份加密與存取權限審查。
 
 備份與匯出腳本讀取目前 PowerShell process 的環境變數。先從 Git-ignored 設定載入：
 

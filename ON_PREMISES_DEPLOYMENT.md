@@ -174,6 +174,12 @@ Create a PostgreSQL custom-format backup:
 npm run backup:local
 ```
 
+This workstation also runs Task Scheduler task `EGBioMedCancerRiskDailyBackup`
+at 02:00 daily. It writes verified dumps to the company OneDrive sync folder and
+retains 30 days. Local task success does not prove cloud synchronization; verify
+the company OneDrive client and web portal separately. OneDrive is a secondary
+off-host copy, not the only recovery layer.
+
 Set `PG_DUMP_PATH` if `pg_dump` is not in `PATH`. Set `LOCAL_BACKUP_DIR` to a
 different disk or NAS before production. The development backup is not encrypted;
 the destination must therefore have restricted Windows permissions.

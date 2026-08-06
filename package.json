@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "start:postgres": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-postgres-local.ps1",
-    "test": "node --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js",
+    "test": "node --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js test-backup-retention.js",
     "validate:contract": "node --test test-contract.js",
     "generate:answer-codes": "node scripts/generate-answer-code-manifest.js",
     "backup:local": "node scripts/backup-postgres.js",

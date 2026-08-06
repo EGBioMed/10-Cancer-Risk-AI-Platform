@@ -2,6 +2,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { spawnSync } = require("child_process");
+const { pruneOldBackups } = require("../lib/backup-retention");
 
 const backupRoot = path.resolve(process.env.LOCAL_BACKUP_DIR || path.join(__dirname, "..", "local-backups"));
 const retentionDays = Number(process.env.LOCAL_BACKUP_RETENTION_DAYS || 30);
@@ -13,16 +14,6 @@ if (!Number.isInteger(retentionDays) || retentionDays < 1 || retentionDays > 365
 
 function sha256(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
-}
-
-function pruneOldBackups() {
-  const cutoff = Date.now() - retentionDays * 86400000;
-  for (const entry of fs.readdirSync(backupRoot, { withFileTypes: true })) {
-    if (!entry.isDirectory() || !entry.name.startsWith("backup-")) continue;
-    const target = path.resolve(backupRoot, entry.name);
-    if (path.dirname(target) !== backupRoot) continue;
-    if (fs.statSync(target).mtimeMs < cutoff) fs.rmSync(target, { recursive: true, force: false });
-  }
 }
 
 fs.mkdirSync(backupRoot, { recursive: true });
@@ -47,5 +38,5 @@ const manifest = {
   files: { "cancer_risk.dump": sha256(dumpPath) }
 };
 fs.writeFileSync(path.join(destination, "manifest.json"), JSON.stringify(manifest, null, 2), "utf8");
-pruneOldBackups();
+pruneOldBackups(backupRoot, retentionDays);
 console.log(destination);

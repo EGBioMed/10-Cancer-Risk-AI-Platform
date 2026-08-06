@@ -41,7 +41,7 @@ npm test
 
 ```powershell
 & "C:\Program Files\nodejs\npm.cmd" ci
-& "C:\Program Files\nodejs\node.exe" --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js
+& "C:\Program Files\nodejs\node.exe" --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js test-backup-retention.js
 ```
 
 地端伺服器已使用 Windows 服務常駐，平常不必保持 PowerShell 視窗開啟。
