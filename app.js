@@ -716,6 +716,9 @@ const frozenSubmissionVectorCounts = Object.freeze({
   research_feature_columns: 1,
   rule_input_columns: 29
 });
+const canonicalAnswerQuestions = questions.filter(
+  (question) => !question.isComposite && !["consent_acknowledgement", "email"].includes(question.id)
+);
 
 const answers = {};
 let currentIndex = 0;
@@ -1977,8 +1980,7 @@ function buildConsentRecord(submittedAt) {
 }
 
 function buildAnswerCodeRows() {
-  return questions
-    .filter((question) => !question.isComposite && !["consent_acknowledgement", "email"].includes(question.id))
+  return canonicalAnswerQuestions
     .map((question) => {
       const applicable = !question.appliesIf || question.appliesIf(answers);
       if (!applicable) return { question_id: question.id, status: "not_applicable", value: null };
@@ -2252,10 +2254,17 @@ function validateSubmissionBeforeSend(submission) {
   Object.entries(SUBMISSION_VERSIONS).forEach(([key, value]) => {
     if (submission[key] !== value) errors.push(`${key} version mismatch`);
   });
+  const expectedAnswerQuestionIds = new Set(canonicalAnswerQuestions.map((question) => question.id));
+  const submittedAnswerQuestionIds = new Set(
+    Array.isArray(submission.answer_code_rows)
+      ? submission.answer_code_rows.map((row) => row.question_id)
+      : []
+  );
   if (!Array.isArray(submission.answer_code_rows)
-      || submission.answer_code_rows.length !== 76
-      || new Set(submission.answer_code_rows.map((row) => row.question_id)).size !== 76) {
-    errors.push("answer_code_rows must contain 76 unique question IDs");
+      || submission.answer_code_rows.length !== expectedAnswerQuestionIds.size
+      || submittedAnswerQuestionIds.size !== expectedAnswerQuestionIds.size
+      || [...expectedAnswerQuestionIds].some((id) => !submittedAnswerQuestionIds.has(id))) {
+    errors.push(`answer_code_rows must contain ${expectedAnswerQuestionIds.size} canonical question IDs`);
   }
   if (!submission.consent_record
       || submission.consent_record.accepted_item_ids?.length !== 3) {

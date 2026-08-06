@@ -10,9 +10,9 @@ const cutoff = source.indexOf("const answers = {};");
 const sandbox = { EGAnswerCodes: answerCodes };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n };`, sandbox);
+globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions };`, sandbox);
 
-const { questions, symptomGroups, symptomOptionTranslations, i18n } = sandbox.__uiDefinitions;
+const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions } = sandbox.__uiDefinitions;
 const byId = (id) => questions.find((question) => question.id === id);
 
 test("mental matrix preserves all three canonical answer fields", () => {
@@ -56,4 +56,11 @@ test("race question provides the requested bilingual choices", () => {
     "Another racial group",
     "Prefer not to answer"
   ]);
+});
+
+test("submission validation count follows the canonical questionnaire definitions", () => {
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
+  assert.equal(canonicalAnswerQuestions.length, 77);
+  assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
+  assert(canonicalAnswerQuestions.some((question) => question.id === "race"));
 });
