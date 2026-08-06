@@ -1,0 +1,23 @@
+<service>
+  <id>EGBioMedCancerRiskHttps</id>
+  <name>EG BioMed Cancer Risk HTTPS</name>
+  <description>Caddy HTTPS reverse proxy and internal CA for the local cancer-risk platform.</description>
+  <executable>C:\ProgramData\EGBioMed\CancerRisk\caddy\caddy.exe</executable>
+  <arguments>run --config "C:\ProgramData\EGBioMed\CancerRisk\caddy\Caddyfile" --adapter caddyfile</arguments>
+  <workingdirectory>C:\ProgramData\EGBioMed\CancerRisk\caddy</workingdirectory>
+  <env name="XDG_DATA_HOME" value="C:\ProgramData\EGBioMed\CancerRisk\caddy\data" />
+  <env name="XDG_CONFIG_HOME" value="C:\ProgramData\EGBioMed\CancerRisk\caddy\config" />
+  <depend>EGBioMedCancerRisk</depend>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <logpath>C:\ProgramData\EGBioMed\CancerRisk\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10485760</sizeThreshold>
+    <keepFiles>10</keepFiles>
+  </log>
+</service>

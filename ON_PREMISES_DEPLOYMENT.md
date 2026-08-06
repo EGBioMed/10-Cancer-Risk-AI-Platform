@@ -17,7 +17,7 @@ inspect it with `psql`, pgAdmin, or another approved SQL client.
 | Backup | PostgreSQL custom-format dump plus SHA-256 manifest |
 | AI model inference | Blocked: model source/weights are not in this repository |
 | PDF and email | Blocked: implementations and approved mail route are absent |
-| HTTPS/Windows service | Pending internal hostname and certificate decision |
+| HTTPS/Windows service | Caddy internal CA on LAN-only TCP 443; Node remains localhost-only |
 
 ## Development security boundary
 
@@ -82,6 +82,38 @@ Stop-Service EGBioMedCancerRisk
 Start-Service EGBioMedCancerRisk
 ```
 
+The LAN HTTPS reverse proxy runs as `EGBioMedCancerRiskHttps`. It accepts only
+`192.168.12.0/24` clients on `192.168.12.22:443` and proxies to the localhost-only
+Node service. Client devices must trust the exported internal CA certificate at:
+
+```text
+C:\ProgramData\EGBioMed\CancerRisk\certificates\EG-BioMed-LAN-Root-CA.crt
+```
+
+Supported development URLs are `https://DESKTOP-2LF2A4I` and
+`https://192.168.12.22`. Reserve `192.168.12.22` in the DHCP server before relying
+on the IP URL for routine use.
+
+For each authorized Windows client, copy the exported root certificate over a
+trusted channel, verify its SHA-256 fingerprint with the server administrator,
+then run the following from an elevated PowerShell window:
+
+```powershell
+certutil -addstore -f Root ".\EG-BioMed-LAN-Root-CA.crt"
+```
+
+Close and reopen the browser after importing the certificate. Do not distribute
+anything from Caddy's private `data\caddy\pki` directory; only distribute the
+exported `.crt` file above. The firewall rule `EG BioMed Cancer Risk HTTPS (LAN
+only)` permits TCP 443 only from `192.168.12.0/24` to `192.168.12.22`.
+
+HTTPS service operations also require an elevated PowerShell window:
+
+```powershell
+Get-Service EGBioMedCancerRiskHttps
+Restart-Service EGBioMedCancerRiskHttps
+```
+
 ## Developer queries
 
 Research records:
@@ -117,6 +149,12 @@ Health check:
 Invoke-RestMethod http://127.0.0.1:3000/api/health
 ```
 
+LAN browser health check after the client trusts the internal CA:
+
+```text
+https://192.168.12.22/api/health
+```
+
 CSV exports:
 
 ```powershell
@@ -139,7 +177,9 @@ the destination must therefore have restricted Windows permissions.
 1. Obtain the cancer-risk model source, weights, preprocessing code, response
    schema, runtime requirements, and verified test vector.
 2. Select an approved mail route and provide a non-personal service account.
-3. Approve an internal DNS name and trusted TLS certificate.
+3. Reserve the server address in DHCP. For production, approve an internal DNS
+   name and decide whether to retain the managed internal CA or replace it with
+   an organization-issued TLS certificate.
 4. Use a restricted Windows service account for the application.
 5. Keep PostgreSQL bound to localhost unless remote development access is explicitly
    approved; use VPN/SSH tunneling rather than exposing port 5432 publicly.
