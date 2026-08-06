@@ -41,6 +41,7 @@ npm start
 - 前端送出至同站台 `/api/submit`
 - 每筆 payload 會攜帶問卷、同意書、特徵、轉換規則與報告模板版本；後端會依凍結契約驗證，不再靜默覆寫錯誤版本
 - `server.js` 由環境變數讀取 Power Automate webhook URL，避免把簽章 URL 暴露在公開 JavaScript
+- Render 先驗證完整 `assessment-submission/1.1.0`，再由相容轉接層轉成正式 Flow 目前使用的 `assessment-submission/1.0.0`；人種等非模型題目仍保留在 `rows`
 - 送出 payload 同時包含：
   - `optimized_feature_row`：固定 71 欄模型 feature，供模型 API 使用
   - `answer_code_rows`：76 個固定 question ID 的語言中立答案，包含 answered、unknown 與 not_applicable 狀態

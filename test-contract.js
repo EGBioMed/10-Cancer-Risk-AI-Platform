@@ -9,6 +9,11 @@ const {
   fieldManifest,
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
+const {
+  POWER_AUTOMATE_CONTRACT_VERSION,
+  POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS,
+  buildPowerAutomatePayload
+} = require("./lib/power-automate-adapter");
 
 function rowFrom(columns, value = null) {
   return Object.fromEntries(columns.map((column) => [column, value]));
@@ -125,6 +130,19 @@ test("Power Automate answer-row limits match the canonical answer contract", () 
   assert.equal(fieldManifest.counts.answer_code_rows, expectedCount);
   assert.equal(schema.properties.answer_code_rows.minItems, expectedCount);
   assert.equal(schema.properties.answer_code_rows.maxItems, expectedCount);
+});
+
+test("Power Automate adapter converts the validated 1.1 payload to the deployed 1.0 trigger shape", () => {
+  const submission = buildValidSubmission();
+  const payload = buildPowerAutomatePayload(submission);
+  assert.equal(payload.contract_version, POWER_AUTOMATE_CONTRACT_VERSION);
+  for (const field of POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS) {
+    assert(!(field in payload), `${field} must not be forwarded to the deployed Flow trigger`);
+  }
+  assert.equal(payload.rows, submission.rows);
+  assert.equal(payload.optimized_feature_row, submission.optimized_feature_row);
+  assert.equal(Object.keys(payload).length, Object.keys(submission).length - POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.length);
+  assert.deepEqual(validateTransitionalSubmission(submission), []);
 });
 
 test("backend mapping covers the frozen 71 features and references valid answer codes", () => {

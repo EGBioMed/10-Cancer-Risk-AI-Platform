@@ -5,6 +5,7 @@ const {
   EXPECTED_VERSIONS,
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
+const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -226,12 +227,13 @@ async function forwardSubmission(req, res) {
   }
 
   try {
+    const powerAutomatePayload = buildPowerAutomatePayload(submission);
     const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(submission)
+      body: JSON.stringify(powerAutomatePayload)
     });
 
     if (!response.ok) {
