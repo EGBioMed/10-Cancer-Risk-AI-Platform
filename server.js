@@ -6,9 +6,15 @@ const {
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
+const { createPostgresRepository } = require("./lib/postgres-repository");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
+const CONFIGURED_SUBMISSION_MODE = String(
+  process.env.SUBMISSION_MODE || (POWER_AUTOMATE_WEBHOOK_URL ? "power-automate" : "postgres")
+).toLowerCase();
+const SUBMISSION_MODE = CONFIGURED_SUBMISSION_MODE === "local" ? "postgres" : CONFIGURED_SUBMISSION_MODE;
+const HOST = process.env.HOST || (SUBMISSION_MODE === "power-automate" ? "0.0.0.0" : "127.0.0.1");
 const MAX_BODY_BYTES = 1024 * 1024;
 const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
 
@@ -24,6 +30,16 @@ const MIME_TYPES = {
   ".svg": "image/svg+xml",
   ".ico": "image/x-icon"
 };
+
+let postgresRepository = null;
+let postgresRepositoryError = null;
+let postgresReady = Promise.resolve();
+if (["postgres", "dual"].includes(SUBMISSION_MODE)) {
+  postgresRepository = createPostgresRepository();
+  postgresReady = postgresRepository.initialize().catch((error) => {
+    postgresRepositoryError = error;
+  });
+}
 
 function sendJson(res, statusCode, payload) {
   res.writeHead(statusCode, {
@@ -165,15 +181,11 @@ function getValidSubmissionEmail(submission) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
 }
 
-async function forwardSubmission(req, res) {
-  if (!POWER_AUTOMATE_WEBHOOK_URL) {
-    sendJson(res, 503, {
-      ok: false,
-      error: "POWER_AUTOMATE_WEBHOOK_URL is not configured."
-    });
+async function receiveSubmission(req, res) {
+  if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
     return;
   }
-
   let submission;
   try {
     const rawBody = await readRequestBody(req);
@@ -226,6 +238,50 @@ async function forwardSubmission(req, res) {
     return;
   }
 
+  let postgresResult = null;
+  if (["postgres", "dual"].includes(SUBMISSION_MODE)) {
+    await postgresReady;
+    if (!postgresRepository || postgresRepositoryError) {
+      sendJson(res, 503, {
+        ok: false,
+        error: "PostgreSQL storage is not ready.",
+        detail: postgresRepositoryError?.message || "PostgreSQL repository initialization failed."
+      });
+      return;
+    }
+    try {
+      postgresResult = await postgresRepository.saveSubmission(submission);
+    } catch (error) {
+      sendJson(res, 500, {
+        ok: false,
+        error: "Could not persist the submission in PostgreSQL.",
+        detail: error.message
+      });
+      return;
+    }
+  }
+
+  if (SUBMISSION_MODE === "postgres") {
+    sendJson(res, 202, {
+      ok: true,
+      record_id: postgresResult.recordId,
+      duplicate: postgresResult.duplicate,
+      storage: "postgresql",
+      processing_status: "stored_postgresql",
+      report_status: "pending_model_migration"
+    });
+    return;
+  }
+
+  if (!["power-automate", "dual"].includes(SUBMISSION_MODE)) {
+    sendJson(res, 503, { ok: false, error: "Unsupported SUBMISSION_MODE configuration." });
+    return;
+  }
+  if (!POWER_AUTOMATE_WEBHOOK_URL) {
+    sendJson(res, 503, { ok: false, error: "POWER_AUTOMATE_WEBHOOK_URL is not configured." });
+    return;
+  }
+
   try {
     const powerAutomatePayload = buildPowerAutomatePayload(submission);
     const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
@@ -247,7 +303,13 @@ async function forwardSubmission(req, res) {
       return;
     }
 
-    sendJson(res, 200, { ok: true });
+    sendJson(res, 200, {
+      ok: true,
+      record_id: postgresResult?.recordId,
+      storage: postgresResult ? "postgresql_and_power_automate" : "power_automate",
+      processing_status: "forwarded",
+      report_status: "processing"
+    });
   } catch (error) {
     sendJson(res, 502, {
       ok: false,
@@ -288,7 +350,30 @@ const server = http.createServer(async (req, res) => {
   applySecurityHeaders(res);
 
   if (req.method === "POST" && req.url === "/api/submit") {
-    await forwardSubmission(req, res);
+    await receiveSubmission(req, res);
+    return;
+  }
+
+  if (req.method === "GET" && req.url === "/api/health") {
+    await postgresReady;
+    let databaseReady = false;
+    if (postgresRepository && !postgresRepositoryError) {
+      try {
+        await postgresRepository.health();
+        databaseReady = true;
+      } catch (error) {
+        postgresRepositoryError = error;
+      }
+    }
+    const requiresPostgres = ["postgres", "dual"].includes(SUBMISSION_MODE);
+    const ok = !requiresPostgres || databaseReady;
+    sendJson(res, ok ? 200 : 503, {
+      ok,
+      service: "eg-biomed-cancer-risk-platform",
+      submission_mode: SUBMISSION_MODE,
+      database: requiresPostgres ? "postgresql" : undefined,
+      database_ready: requiresPostgres ? databaseReady : undefined
+    });
     return;
   }
 
@@ -300,6 +385,17 @@ const server = http.createServer(async (req, res) => {
   sendJson(res, 405, { ok: false, error: "Method not allowed." });
 });
 
-server.listen(PORT, () => {
-  console.log(`EG BioMed assessment server listening on port ${PORT}`);
+server.listen(PORT, HOST, () => {
+  console.log(`EG BioMed assessment server listening on ${HOST}:${PORT} (${SUBMISSION_MODE} mode)`);
 });
+
+function shutdown() {
+  server.close(async () => {
+    await postgresRepository?.close();
+    process.exit(0);
+  });
+  setTimeout(() => process.exit(1), 10000).unref();
+}
+
+process.on("SIGINT", shutdown);
+process.on("SIGTERM", shutdown);

@@ -1,0 +1,9 @@
+local-data/
+local-backups/
+local-exports/
+runtime/
+.env
+.env.*
+!.env.example
+*.log
+node_modules/

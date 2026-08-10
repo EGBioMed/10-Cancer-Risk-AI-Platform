@@ -2297,7 +2297,7 @@ function validateSubmissionBeforeSend(submission) {
   }
 }
 
-async function submitToPowerAutomate(submission) {
+async function submitSubmission(submission) {
   validateSubmissionBeforeSend(submission);
   const response = await fetch(SUBMISSION_ENDPOINT, {
     method: "POST",
@@ -2317,11 +2317,14 @@ async function submitToPowerAutomate(submission) {
     throw error;
   }
 
-  window.latestPowerAutomateSubmit = {
+  const result = {
+    ...responsePayload,
     ok: true,
     submitted_at: new Date().toISOString()
   };
-  return { ok: true };
+  window.latestSubmissionSubmit = result;
+  window.latestPowerAutomateSubmit = result;
+  return result;
 }
 
 function showSubmitError(message) {
@@ -2353,8 +2356,9 @@ async function renderResult() {
     runButton.textContent = currentLang === "en" ? "Submitting..." : "送出中...";
   }
 
+  let submitResult;
   try {
-    await submitToPowerAutomate(submission);
+    submitResult = await submitSubmission(submission);
   } catch (error) {
     window.latestPowerAutomateSubmit = {
       ok: false,
@@ -2370,6 +2374,28 @@ async function renderResult() {
     return;
   }
 
+  const storedLocallyOnly = submitResult.report_status === "pending_model_migration";
+  const referenceId = submitResult.record_id || submission.optimized_feature_row?.record_id || "";
+  const resultGuide = storedLocallyOnly
+    ? (currentLang === "en"
+      ? "Your information has been securely stored on the on-premises server."
+      : "您的資料已安全保存於地端伺服器。")
+    : (currentLang === "en"
+      ? "Your submission was received. Please watch the email address you provided."
+      : "您的填答已完成送出。請留意您填寫的 Email 信箱。");
+  const resultPrimaryNote = storedLocallyOnly
+    ? (currentLang === "en"
+      ? `Your submission has been stored locally. Reference: ${referenceId}.`
+      : `本次填答已保存於地端，參考編號：${referenceId}。`)
+    : (currentLang === "en"
+      ? `Your submission was received. The report will be sent to ${submission.email} after processing.`
+      : `本次健康探索已收件，報告處理完成後將寄送至 ${submission.email}。`);
+  const resultSecondaryNote = storedLocallyOnly
+    ? (currentLang === "en"
+      ? "The local AI model and email service have not finished migration, so this submission will not generate an email report yet."
+      : "地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。")
+    : (currentLang === "en" ? i18n.en.ui.completedInbox : "請留意信箱收件匣與垃圾郵件匣。");
+
   const moduleIndex = modules.findIndex((item) => item.id === "result");
   moduleList.innerHTML = modules.map((module, index) => `
     <li class="${index < moduleIndex ? "is-done" : index === moduleIndex ? "is-active" : ""}">
@@ -2379,14 +2405,14 @@ async function renderResult() {
   `).join("");
   sectionTitle.textContent = currentLang === "en" ? i18n.en.ui.completedSection : "完成送出";
   sectionSummary.textContent = currentLang === "en" ? i18n.en.ui.completedSummary : "感謝您的填答。";
-  guideMessage.textContent = currentLang === "en" ? i18n.en.ui.completedGuide : "您的填答已完成送出。請留意您填寫的 Email 信箱。";
+  guideMessage.textContent = resultGuide;
 
   questionArea.innerHTML = `
     <div class="result-panel">
       <p class="eyebrow">${currentLang === "en" ? i18n.en.ui.completedSection : "已完成"}</p>
       <h2 class="question-title">${currentLang === "en" ? i18n.en.ui.completedTitle : "感謝您的填答"}</h2>
-      <p class="question-note">${currentLang === "en" ? `${i18n.en.ui.completedNote} ${submission.email}.` : `本次健康探索已完成，您的結果已寄送至 ${submission.email}。`}</p>
-      <p class="question-note">${currentLang === "en" ? i18n.en.ui.completedInbox : "請留意信箱收件匣與垃圾郵件匣。"}</p>
+      <p class="question-note">${resultPrimaryNote}</p>
+      <p class="question-note">${resultSecondaryNote}</p>
       <button class="text-link result-info-link" type="button" data-open-service-info>${currentLang === "en" ? i18n.en.ui.completedServiceInfo : "了解報告內容與服務限制"}</button>
       <script type="application/json" id="submissionRowsJson">${safeJsonForHtml(submission.rows)}</script>
       <script type="application/json" id="structuredFeaturesJson">${safeJsonForHtml({

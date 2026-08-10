@@ -1,0 +1,32 @@
+{
+	admin 127.0.0.1:2019
+	auto_https disable_redirects
+}
+
+https://localhost, https://DESKTOP-2LF2A4I, https://192.168.12.22 {
+	bind 127.0.0.1 192.168.12.22
+	tls internal
+	encode zstd gzip
+
+	log {
+		output file C:\ProgramData\EGBioMed\CancerRisk\logs\https-access.log {
+			roll_size 10MiB
+			roll_keep 10
+			roll_keep_for 720h
+		}
+		format json
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	reverse_proxy 127.0.0.1:3000 {
+		health_uri /api/health
+		health_interval 30s
+		health_timeout 5s
+	}
+}

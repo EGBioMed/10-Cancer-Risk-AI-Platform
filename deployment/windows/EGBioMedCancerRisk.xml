@@ -1,0 +1,21 @@
+<service>
+  <id>EGBioMedCancerRisk</id>
+  <name>EG BioMed Cancer Risk Platform</name>
+  <description>Local Node.js questionnaire and PostgreSQL submission service.</description>
+  <executable>C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe</executable>
+  <arguments>-NoProfile -ExecutionPolicy Bypass -File "C:\Users\user\Documents\Codex\10-Cancer-Risk-AI-Platform\scripts\start-postgres-local.ps1"</arguments>
+  <workingdirectory>C:\Users\user\Documents\Codex\10-Cancer-Risk-AI-Platform</workingdirectory>
+  <depend>postgresql-x64-18</depend>
+  <startmode>Automatic</startmode>
+  <delayedAutoStart>true</delayedAutoStart>
+  <onfailure action="restart" delay="10 sec" />
+  <onfailure action="restart" delay="30 sec" />
+  <onfailure action="restart" delay="60 sec" />
+  <resetfailure>1 hour</resetfailure>
+  <stoptimeout>20 sec</stoptimeout>
+  <logpath>C:\ProgramData\EGBioMed\CancerRisk\logs</logpath>
+  <log mode="roll-by-size">
+    <sizeThreshold>10485760</sizeThreshold>
+    <keepFiles>10</keepFiles>
+  </log>
+</service>
