@@ -98,8 +98,8 @@
       "module": "basic",
       "answer_type": "code",
       "required_when_applicable": true,
-      "title_zh": "近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？",
-      "title_en": "In the past six months, has your weight increased or decreased significantly (more than 5%)?",
+      "title_zh": "近半年內，您的體重是否明顯「下降」？（超過體重5%）",
+      "title_en": "In the past six months, has your weight decreased significantly (more than 5%)?",
       "options": [
         {
           "code": "yes",
