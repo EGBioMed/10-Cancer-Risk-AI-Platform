@@ -1,6 +1,7 @@
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
+const crypto = require("crypto");
 const {
   EXPECTED_VERSIONS,
   validateTransitionalSubmission
@@ -206,6 +207,23 @@ async function receiveSubmission(req, res) {
     return;
   }
   submission = normalizeSubmission(submission);
+
+  // Security/data-integrity: record_id is the primary key for research.assessments
+  // and must not be derived from client-controlled input (see DATA_CONTRACT.md).
+  // The client still sends a placeholder id for offline/display use, but the
+  // server overwrites it here with a collision-resistant UUID before any
+  // downstream persistence, forwarding, or contact_row derivation happens.
+  const recordId = crypto.randomUUID();
+  if (submission.optimized_feature_row && typeof submission.optimized_feature_row === "object") {
+    submission.optimized_feature_row.record_id = recordId;
+  }
+  if (submission.excel_row && typeof submission.excel_row === "object") {
+    submission.excel_row.record_id = recordId;
+  }
+  if (submission.ai_api_feature_row && typeof submission.ai_api_feature_row === "object") {
+    submission.ai_api_feature_row.record_id = recordId;
+  }
+
   const validEmail = getValidSubmissionEmail(submission);
   if (!validEmail) {
     sendJson(res, 422, {
