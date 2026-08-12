@@ -54,7 +54,7 @@
     "symptom_nosebleeds", "symptom_urinary_retention", "symptom_impotence", "symptom_sore_throat",
     "symptom_otalgia", "symptom_nasal_mass", "symptom_nasal_discharge", "symptom_head_neck_mass",
     "symptom_hematuria_visible", "symptom_dysuria", "symptom_fracture", "symptom_vte",
-    "symptom_oral_submucous_fibrosis", "hx_chronic_pancreatitis", "hx_liver_disease_etiology"
+    "symptom_oral_submucous_fibrosis", "hx_chronic_pancreatitis", "hx_gallstones", "hx_liver_disease_etiology"
   ],
   "research_feature_columns": ["processed_meat"],
   "rule_input_columns": [
@@ -78,7 +78,7 @@
     "answer_code_rows": 76,
     "optimized_feature_columns": 71,
     "symptom_feature_columns": 84,
-    "vnext_feature_columns": 32,
+    "vnext_feature_columns": 33,
     "research_feature_columns": 1,
     "rule_input_columns": 29
   }

@@ -48,7 +48,7 @@ The browser payload now contains:
 | --- | --- |
 | `ai_api_feature_row` | Existing model request. Shape remains `model-features/1.0.0`. |
 | `symptom_feature_row` | Binary symptom collection; `1` selected, `0` explicitly absent, `null` unknown/not applicable. |
-| `vnext_feature_row` | Complete ordered 32-field candidate set, combining symptom, clinician-confirmed/event, and liver-disease fields. |
+| `vnext_feature_row` | Complete ordered 33-field candidate set, combining symptom, clinician-confirmed/event, liver-disease, and gallstone/bile-duct-stone history fields. |
 | `vnext_feature_metadata` | Recurrence or duration answers for testicular pain, sore throat, head/neck mass, and visible haematuria. |
 | `excel_row` | Combined temporary research row for the Power Automate/Excel adapter. |
 

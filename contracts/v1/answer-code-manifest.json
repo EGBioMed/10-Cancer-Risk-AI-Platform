@@ -2199,6 +2199,11 @@
           "label_en": "Chronic pancreatitis diagnosed by a clinician"
         },
         {
+          "code": "vnext_diagnosed_conditions.option_05",
+          "label_zh": "曾由醫師診斷膽結石或膽道結石",
+          "label_en": "Gallstones or bile duct stones diagnosed by a clinician"
+        },
+        {
           "code": "none",
           "label_zh": "以上皆無",
           "label_en": "None of the above"

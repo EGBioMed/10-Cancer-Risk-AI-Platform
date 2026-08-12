@@ -293,7 +293,8 @@ const vnextHistoryFeatureDefinitions = [
   ["過去 12 個月內曾發生骨折", "A fracture during the past 12 months", "symptom_fracture"],
   ["曾由醫師診斷深層靜脈栓塞或肺栓塞（DVT／PE）", "A clinician-diagnosed deep vein thrombosis or pulmonary embolism (DVT/PE)", "symptom_vte"],
   ["曾由牙醫或醫師診斷口腔黏膜下纖維化", "Oral submucous fibrosis diagnosed by a dentist or physician", "symptom_oral_submucous_fibrosis"],
-  ["曾由醫師診斷慢性胰臟炎", "Chronic pancreatitis diagnosed by a clinician", "hx_chronic_pancreatitis"]
+  ["曾由醫師診斷慢性胰臟炎", "Chronic pancreatitis diagnosed by a clinician", "hx_chronic_pancreatitis"],
+  ["曾由醫師診斷膽結石或膽道結石", "Gallstones or bile duct stones diagnosed by a clinician", "hx_gallstones"]
 ];
 
 const liverEtiologyOptions = [
