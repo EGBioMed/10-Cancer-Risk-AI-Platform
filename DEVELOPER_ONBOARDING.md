@@ -9,6 +9,10 @@
 文件中的密碼一律以 `<...>` 表示。請向專案管理員透過核准的安全管道取得，絕對不要
 把真實密碼貼到 Git、Email、聊天記錄、截圖或 Issue。
 
+問卷前台的付款授權連結機制（`ACCESS_GATE_MODE`、開發者略過模式、
+`npm run access:grant`）請見 [ACCESS_GATE.md](ACCESS_GATE.md)；本機開發預設
+`ACCESS_GATE_MODE=open`，不影響既有的測試流程。
+
 ## 1. 目前架構與固定資訊
 
 ```mermaid

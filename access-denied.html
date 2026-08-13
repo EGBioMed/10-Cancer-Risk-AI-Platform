@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>連結無法使用 / Link unavailable</title>
+    <link rel="stylesheet" href="styles.css?v=20260724-diet-frequency-v2" />
+    <style>
+      .access-denied-shell {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: clamp(24px, 5vw, 72px);
+        background: #edf1ee;
+      }
+      .access-denied-card {
+        width: min(560px, 100%);
+        background: var(--surface, #ffffff);
+        border: 1px solid var(--line, #d8e0dc);
+        border-radius: 16px;
+        padding: clamp(28px, 4vw, 40px);
+        box-shadow: 0 18px 48px rgba(15, 32, 30, 0.08);
+      }
+      .access-denied-card .brand-row {
+        color: var(--ink, #162021);
+        margin-bottom: 24px;
+      }
+      .access-denied-card h1 {
+        font-size: clamp(22px, 3vw, 28px);
+        margin: 0 0 8px;
+        color: var(--ink, #162021);
+      }
+      .access-denied-card p {
+        color: var(--muted, #5d6968);
+        line-height: 1.6;
+        margin: 0 0 16px;
+      }
+      .access-denied-card .lang-block + .lang-block {
+        margin-top: 24px;
+        padding-top: 24px;
+        border-top: 1px solid var(--line, #d8e0dc);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="access-denied-shell">
+      <section class="access-denied-card">
+        <div class="brand-row">
+          <span class="brand-mark" aria-hidden="true">
+            <img src="assets/eg-biomed-icon.png" alt="" />
+          </span>
+          <span>EG BioMed 愛立基生醫</span>
+        </div>
+        <div class="lang-block" lang="zh-Hant">
+          <h1>此連結目前無法使用</h1>
+          <p>
+            這個連結可能已過期、已經使用過，或尚未確認付款狀態。
+            如需協助，請聯繫我們的客服團隊，我們會協助您確認狀態或重新提供連結。
+          </p>
+        </div>
+        <div class="lang-block" lang="en">
+          <h1>This link is not available</h1>
+          <p>
+            This link may have expired, already been used, or payment has not
+            yet been confirmed. Please contact our support team for help
+            checking your status or requesting a new link.
+          </p>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>

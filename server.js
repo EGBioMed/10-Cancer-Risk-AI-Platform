@@ -8,6 +8,16 @@ const {
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
 const { createPostgresRepository } = require("./lib/postgres-repository");
+const {
+  SESSION_COOKIE_NAME,
+  hashToken,
+  signSessionCookie,
+  verifySessionCookie,
+  parseAccessToken,
+  isExemptFromGate,
+  parseCookies,
+  buildCookieHeader
+} = require("./lib/access-gate");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -18,6 +28,25 @@ const SUBMISSION_MODE = CONFIGURED_SUBMISSION_MODE === "local" ? "postgres" : CO
 const HOST = process.env.HOST || (SUBMISSION_MODE === "power-automate" ? "0.0.0.0" : "127.0.0.1");
 const MAX_BODY_BYTES = 1024 * 1024;
 const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
+
+// Fail-closed by default: any deployment that forgets to set ACCESS_GATE_MODE
+// gets the enforced gate, never the fully-open behavior. Local development
+// opts into ACCESS_GATE_MODE=open explicitly via .env.
+const ACCESS_GATE_MODE = String(process.env.ACCESS_GATE_MODE || "enforced").toLowerCase();
+const ACCESS_GATE_SESSION_SECRET = process.env.ACCESS_GATE_SESSION_SECRET || "";
+const ACCESS_GATE_SESSION_TTL_SECONDS = Math.max(
+  60,
+  Math.round(Number(process.env.ACCESS_GATE_SESSION_TTL_HOURS || 0.5) * 3600)
+);
+const ACCESS_GATE_COOKIE_SECURE = String(process.env.ACCESS_GATE_COOKIE_SECURE ?? "true").toLowerCase() !== "false";
+const REQUIRES_POSTGRES = ["postgres", "dual"].includes(SUBMISSION_MODE) || ACCESS_GATE_MODE === "enforced";
+
+if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
+  throw new Error(
+    "ACCESS_GATE_SESSION_SECRET must be set when ACCESS_GATE_MODE=enforced. " +
+    "Set ACCESS_GATE_MODE=open for local development instead."
+  );
+}
 
 const PUBLIC_DIR = __dirname;
 const MIME_TYPES = {
@@ -35,7 +64,7 @@ const MIME_TYPES = {
 let postgresRepository = null;
 let postgresRepositoryError = null;
 let postgresReady = Promise.resolve();
-if (["postgres", "dual"].includes(SUBMISSION_MODE)) {
+if (REQUIRES_POSTGRES) {
   postgresRepository = createPostgresRepository();
   postgresReady = postgresRepository.initialize().catch((error) => {
     postgresRepositoryError = error;
@@ -364,15 +393,79 @@ function serveStatic(req, res) {
   });
 }
 
-const server = http.createServer(async (req, res) => {
-  applySecurityHeaders(res);
+function sendAccessDeniedPage(res, statusCode) {
+  const filePath = path.join(PUBLIC_DIR, "access-denied.html");
+  res.writeHead(statusCode, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store"
+  });
+  fs.createReadStream(filePath).pipe(res);
+}
 
-  if (req.method === "POST" && req.url === "/api/submit") {
-    await receiveSubmission(req, res);
+async function handleAccessRedemption(req, res, rawToken) {
+  if (ACCESS_GATE_MODE !== "enforced") {
+    res.writeHead(302, { Location: "/" });
+    res.end();
     return;
   }
 
-  if (req.method === "GET" && req.url === "/api/health") {
+  await postgresReady;
+  if (!postgresRepository || postgresRepositoryError) {
+    sendAccessDeniedPage(res, 503);
+    return;
+  }
+
+  let result;
+  try {
+    result = await postgresRepository.redeemAccessGrant({ tokenHash: hashToken(rawToken) });
+  } catch (error) {
+    sendAccessDeniedPage(res, 500);
+    return;
+  }
+
+  if (!result.ok) {
+    // Same generic denial for every failure reason (not_found/expired/
+    // already_used/revoked) so the response never tells a caller which
+    // one applies; the real reason is only in operations.access_events.
+    sendAccessDeniedPage(res, 403);
+    return;
+  }
+
+  const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
+  const cookieValue = signSessionCookie({ grantId: result.grantId, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+  const cookieHeader = buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
+    ttlSeconds: ACCESS_GATE_SESSION_TTL_SECONDS,
+    secure: ACCESS_GATE_COOKIE_SECURE
+  });
+  res.writeHead(302, {
+    "Set-Cookie": cookieHeader,
+    Location: "/"
+  });
+  res.end();
+}
+
+function isSessionAuthorized(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionCookie = cookies[SESSION_COOKIE_NAME];
+  if (!sessionCookie) return false;
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  return Boolean(verifySessionCookie(sessionCookie, ACCESS_GATE_SESSION_SECRET, nowSeconds));
+}
+
+const server = http.createServer(async (req, res) => {
+  applySecurityHeaders(res);
+
+  const pathname = decodeURIComponent(new URL(req.url, `http://${req.headers.host || "localhost"}`).pathname);
+
+  if (req.method === "GET" || req.method === "HEAD") {
+    const accessToken = parseAccessToken(pathname);
+    if (accessToken) {
+      await handleAccessRedemption(req, res, accessToken);
+      return;
+    }
+  }
+
+  if (req.method === "GET" && pathname === "/api/health") {
     await postgresReady;
     let databaseReady = false;
     if (postgresRepository && !postgresRepositoryError) {
@@ -383,15 +476,29 @@ const server = http.createServer(async (req, res) => {
         postgresRepositoryError = error;
       }
     }
-    const requiresPostgres = ["postgres", "dual"].includes(SUBMISSION_MODE);
-    const ok = !requiresPostgres || databaseReady;
+    const ok = !REQUIRES_POSTGRES || databaseReady;
     sendJson(res, ok ? 200 : 503, {
       ok,
       service: "eg-biomed-cancer-risk-platform",
       submission_mode: SUBMISSION_MODE,
-      database: requiresPostgres ? "postgresql" : undefined,
-      database_ready: requiresPostgres ? databaseReady : undefined
+      access_gate_mode: ACCESS_GATE_MODE,
+      database: REQUIRES_POSTGRES ? "postgresql" : undefined,
+      database_ready: REQUIRES_POSTGRES ? databaseReady : undefined
     });
+    return;
+  }
+
+  if (ACCESS_GATE_MODE === "enforced" && !isExemptFromGate(req.method, pathname) && !isSessionAuthorized(req)) {
+    if (req.method === "GET" || req.method === "HEAD") {
+      sendAccessDeniedPage(res, 403);
+    } else {
+      sendJson(res, 403, { ok: false, error: "Access requires a valid payment confirmation link." });
+    }
+    return;
+  }
+
+  if (req.method === "POST" && req.url === "/api/submit") {
+    await receiveSubmission(req, res);
     return;
   }
 

@@ -2,7 +2,8 @@
 
 第一次加入專案、設定新電腦或新伺服器時，請先依照
 [開發者與新電腦快速上手手冊](DEVELOPER_ONBOARDING.md) 完成環境、權限、HTTPS
-憑證與驗收。本文件著重地端架構、資料庫權限及正式上線邊界。
+憑證與驗收。本文件著重地端架構、資料庫權限及正式上線邊界。付款授權連結機制
+（`/access/<token>`、開發者略過模式）請見 [ACCESS_GATE.md](ACCESS_GATE.md)。
 
 ## Migration status
 

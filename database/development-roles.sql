@@ -15,17 +15,22 @@ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cancer_operations_developer') THEN
     CREATE ROLE cancer_operations_developer NOLOGIN;
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cancer_access_developer') THEN
+    CREATE ROLE cancer_access_developer NOLOGIN;
+  END IF;
 END
 $$;
 
-REVOKE ALL ON SCHEMA research, contact, operations FROM PUBLIC;
-REVOKE ALL ON ALL TABLES IN SCHEMA research, contact, operations FROM PUBLIC;
+REVOKE ALL ON SCHEMA research, contact, operations, access FROM PUBLIC;
+REVOKE ALL ON ALL TABLES IN SCHEMA research, contact, operations, access FROM PUBLIC;
 
-GRANT USAGE ON SCHEMA research, contact, operations TO cancer_app_writer;
+GRANT USAGE ON SCHEMA research, contact, operations, access TO cancer_app_writer;
 GRANT SELECT, INSERT ON research.assessments TO cancer_app_writer;
 GRANT SELECT, INSERT, UPDATE ON contact.delivery_contacts TO cancer_app_writer;
 GRANT SELECT, INSERT ON operations.submission_events TO cancer_app_writer;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA operations TO cancer_app_writer;
+GRANT SELECT, INSERT, UPDATE ON access.grants TO cancer_app_writer;
+GRANT SELECT, INSERT ON operations.access_events TO cancer_app_writer;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA operations, access TO cancer_app_writer;
 
 GRANT USAGE ON SCHEMA research TO cancer_research_developer;
 GRANT SELECT ON ALL TABLES IN SCHEMA research TO cancer_research_developer;
@@ -36,9 +41,14 @@ GRANT SELECT, UPDATE ON ALL TABLES IN SCHEMA contact TO cancer_contact_developer
 GRANT USAGE ON SCHEMA operations TO cancer_operations_developer;
 GRANT SELECT ON ALL TABLES IN SCHEMA operations TO cancer_operations_developer;
 
+GRANT USAGE ON SCHEMA access TO cancer_access_developer;
+GRANT SELECT ON ALL TABLES IN SCHEMA access TO cancer_access_developer;
+
 ALTER DEFAULT PRIVILEGES IN SCHEMA research
   GRANT SELECT ON TABLES TO cancer_research_developer;
 ALTER DEFAULT PRIVILEGES IN SCHEMA contact
   GRANT SELECT, UPDATE ON TABLES TO cancer_contact_developer;
 ALTER DEFAULT PRIVILEGES IN SCHEMA operations
   GRANT SELECT ON TABLES TO cancer_operations_developer;
+ALTER DEFAULT PRIVILEGES IN SCHEMA access
+  GRANT SELECT ON TABLES TO cancer_access_developer;

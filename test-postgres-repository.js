@@ -6,7 +6,8 @@ const {
   buildContactRecord,
   buildResearchRecord,
   getRecordId,
-  stableHash
+  stableHash,
+  listMigrationFiles
 } = require("./lib/postgres-repository");
 
 function submission() {
@@ -47,4 +48,9 @@ test("PostgreSQL migration defines separated schemas and record constraints", ()
   assert.match(sql, /record_id varchar\(128\) PRIMARY KEY/);
   assert.match(sql, /submission_payload jsonb NOT NULL/);
   assert.doesNotMatch(sql, /encrypted_payload/);
+});
+
+test("migration files are discovered in ascending numeric order", () => {
+  const files = listMigrationFiles().map((filePath) => path.basename(filePath));
+  assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql"]);
 });
