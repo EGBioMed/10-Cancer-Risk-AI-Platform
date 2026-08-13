@@ -50,7 +50,7 @@ async function main() {
   const tokenHash = hashToken(rawToken);
   const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
 
-  const repository = createPostgresRepository();
+  const repository = createPostgresRepository({ requireAccessGateSchema: true });
   try {
     await repository.initialize();
     const grant = await repository.createAccessGrant({

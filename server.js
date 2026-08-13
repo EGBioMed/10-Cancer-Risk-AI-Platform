@@ -65,7 +65,7 @@ let postgresRepository = null;
 let postgresRepositoryError = null;
 let postgresReady = Promise.resolve();
 if (REQUIRES_POSTGRES) {
-  postgresRepository = createPostgresRepository();
+  postgresRepository = createPostgresRepository({ requireAccessGateSchema: ACCESS_GATE_MODE === "enforced" });
   postgresReady = postgresRepository.initialize().catch((error) => {
     postgresRepositoryError = error;
   });

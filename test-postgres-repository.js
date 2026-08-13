@@ -7,8 +7,20 @@ const {
   buildResearchRecord,
   getRecordId,
   stableHash,
-  listMigrationFiles
+  listMigrationFiles,
+  createPostgresRepository
 } = require("./lib/postgres-repository");
+
+function mockPool(readinessRow) {
+  return {
+    async query(sql) {
+      if (/to_regclass/i.test(sql)) {
+        return { rows: [readinessRow] };
+      }
+      return { rows: [] };
+    }
+  };
+}
 
 function submission() {
   return {
@@ -53,4 +65,23 @@ test("PostgreSQL migration defines separated schemas and record constraints", ()
 test("migration files are discovered in ascending numeric order", () => {
   const files = listMigrationFiles().map((filePath) => path.basename(filePath));
   assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql"]);
+});
+
+test("initialize() tolerates a missing access-gate schema unless explicitly required", async () => {
+  const coreReadyOnly = {
+    assessments_ready: true,
+    contacts_ready: true,
+    events_ready: true,
+    access_grants_ready: false,
+    access_events_ready: false
+  };
+
+  const openRepository = createPostgresRepository({ pool: mockPool(coreReadyOnly) });
+  await assert.doesNotReject(openRepository.initialize());
+
+  const enforcedRepository = createPostgresRepository({
+    pool: mockPool(coreReadyOnly),
+    requireAccessGateSchema: true
+  });
+  await assert.rejects(enforcedRepository.initialize(), /PostgreSQL schema is not initialized/);
 });
