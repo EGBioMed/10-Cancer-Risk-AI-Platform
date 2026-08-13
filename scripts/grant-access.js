@@ -1,35 +1,32 @@
+const crypto = require("crypto");
 const { createPostgresRepository } = require("../lib/postgres-repository");
-const { generateRawToken, hashToken } = require("../lib/access-gate");
+const { generateRawToken, hashToken, normalizeCode, MIN_CODE_LENGTH, MAX_CODE_LENGTH } = require("../lib/access-gate");
+const { argument, guardAgainstAccidentalRemoteHost } = require("./cli-helpers");
 
 const USAGE = "Usage: node scripts/grant-access.js --created-by <name> "
-  + "[--provider <name>] [--reference <text>] [--notes <text>] "
-  + "[--ttl-hours <n>] [--max-uses <n>] [--confirm-remote-host]";
+  + "[--type link|code] [--provider <name>] [--reference <text>] [--notes <text>] "
+  + "[--ttl-hours <n>] [--max-uses <n>] [--confirm-remote-host]\n"
+  + "  --type link (default): personal one-time link.\n"
+  + "  --type code: shared quota code. Requires --max-uses, and either\n"
+  + "    --code <string> (use exactly as given) or --institution <code>\n"
+  + "    plus --quota-label <code> (system-composes institution-quotaLabel-random).";
 
-function argument(name) {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] : "";
+// Avoids visually ambiguous characters (0/O, 1/I/L) since front-desk staff
+// read this off a screen or printout to type or hand over.
+const RANDOM_SUFFIX_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+
+function generateRandomSuffix(length = 6) {
+  let suffix = "";
+  for (let i = 0; i < length; i += 1) {
+    suffix += RANDOM_SUFFIX_ALPHABET[crypto.randomInt(RANDOM_SUFFIX_ALPHABET.length)];
+  }
+  return suffix;
 }
 
-function guardAgainstAccidentalRemoteHost() {
-  const pgHost = process.env.PGHOST || "127.0.0.1";
-  const isLocal = pgHost === "127.0.0.1" || pgHost === "localhost";
-  const confirmed = process.argv.includes("--confirm-remote-host");
-  if (!isLocal && !confirmed) {
-    throw new Error(
-      `Refusing to write to non-local PGHOST '${pgHost}' without --confirm-remote-host.`
-    );
-  }
-}
-
-async function main() {
-  const createdBy = argument("--created-by");
-  if (!createdBy) {
-    throw new Error(USAGE);
-  }
-
-  const provider = argument("--provider") || "manual";
-  const reference = argument("--reference") || null;
-  const notes = argument("--notes") || null;
+// Parses and validates all DB-independent input up front, so a bad flag
+// combination fails immediately instead of after initiating a (possibly
+// slow) database connection.
+function prepareLinkGrant() {
   const ttlHours = Number(argument("--ttl-hours") || 1);
   const maxUses = Number(argument("--max-uses") || 1);
   if (!Number.isFinite(ttlHours) || ttlHours <= 0) {
@@ -39,34 +36,113 @@ async function main() {
     throw new Error("--max-uses must be a positive integer.");
   }
 
-  guardAgainstAccidentalRemoteHost();
-
   const publicBaseUrl = process.env.PUBLIC_BASE_URL || "";
   if (!publicBaseUrl) {
     console.error("Warning: PUBLIC_BASE_URL is not set. Printing a path-only link.");
   }
 
   const rawToken = generateRawToken();
-  const tokenHash = hashToken(rawToken);
   const expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
+
+  return {
+    grantInput: { tokenHash: hashToken(rawToken), expiresAt, maxUses },
+    printResult(grant) {
+      console.log("Access link created. This is the only time the raw token is shown:");
+      console.log(`${publicBaseUrl}/access/${rawToken}`);
+      console.log(`grant_id: ${grant.grantId}`);
+      console.log(`expires_at: ${grant.expiresAt}`);
+    }
+  };
+}
+
+function prepareCodeGrant() {
+  const maxUsesArg = argument("--max-uses");
+  if (!maxUsesArg) {
+    throw new Error("--max-uses is required for --type code.");
+  }
+  const maxUses = Number(maxUsesArg);
+  if (!Number.isInteger(maxUses) || maxUses <= 0) {
+    throw new Error("--max-uses must be a positive integer.");
+  }
+
+  let expiresAt = null;
+  const ttlHoursArg = argument("--ttl-hours");
+  if (ttlHoursArg) {
+    const ttlHours = Number(ttlHoursArg);
+    if (!Number.isFinite(ttlHours) || ttlHours <= 0) {
+      throw new Error("--ttl-hours must be a positive number.");
+    }
+    expiresAt = new Date(Date.now() + ttlHours * 3600 * 1000).toISOString();
+  }
+
+  const exactCode = argument("--code");
+  const institution = argument("--institution");
+  const quotaLabel = argument("--quota-label");
+
+  let rawCode;
+  if (exactCode) {
+    rawCode = exactCode;
+  } else if (institution && quotaLabel) {
+    rawCode = `${institution}-${quotaLabel}-${generateRandomSuffix()}`;
+  } else {
+    throw new Error(
+      "--type code requires either --code <string> or both --institution <code> and --quota-label <code>."
+    );
+  }
+
+  const normalized = normalizeCode(rawCode);
+  if (!normalized) {
+    throw new Error(
+      `--code failed normalization (min ${MIN_CODE_LENGTH}, max ${MAX_CODE_LENGTH} chars after trimming/lowercasing/whitespace collapse).`
+    );
+  }
+
+  return {
+    grantInput: {
+      tokenHash: hashToken(normalized),
+      expiresAt,
+      maxUses,
+      credentialType: "code",
+      code: normalized
+    },
+    printResult(grant) {
+      console.log("Access code created:");
+      console.log(normalized);
+      console.log(`grant_id: ${grant.grantId}`);
+      console.log(`max_uses: ${maxUses}`);
+      console.log(`expires_at: ${grant.expiresAt || "never"}`);
+    }
+  };
+}
+
+async function main() {
+  const type = argument("--type") || "link";
+  if (!["link", "code"].includes(type)) {
+    throw new Error("--type must be 'link' or 'code'.");
+  }
+  const createdBy = argument("--created-by");
+  if (!createdBy) {
+    throw new Error(USAGE);
+  }
+  const provider = argument("--provider") || "manual";
+  const reference = argument("--reference") || null;
+  const notes = argument("--notes") || null;
+
+  const prepared = type === "code" ? prepareCodeGrant() : prepareLinkGrant();
+
+  guardAgainstAccidentalRemoteHost();
 
   const repository = createPostgresRepository({ requireAccessGateSchema: true });
   try {
     await repository.initialize();
     const grant = await repository.createAccessGrant({
-      tokenHash,
+      ...prepared.grantInput,
       paymentProvider: provider,
       paymentReference: reference,
       createdBy,
-      notes,
-      expiresAt,
-      maxUses
+      notes
     });
-
-    console.log("Access link created. This is the only time the raw token is shown:");
-    console.log(`${publicBaseUrl}/access/${rawToken}`);
-    console.log(`grant_id: ${grant.grantId}`);
-    console.log(`expires_at: ${grant.expiresAt}`);
+    prepared.printResult(grant);
   } finally {
     await repository.close();
   }

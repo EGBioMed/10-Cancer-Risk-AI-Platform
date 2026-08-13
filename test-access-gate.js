@@ -9,9 +9,13 @@ const {
   signSessionCookie,
   verifySessionCookie,
   parseAccessToken,
+  normalizeCode,
+  getClientIp,
   isExemptFromGate,
   parseCookies,
-  buildCookieHeader
+  buildCookieHeader,
+  MIN_CODE_LENGTH,
+  MAX_CODE_LENGTH
 } = require("./lib/access-gate");
 
 test("generated tokens are high-entropy and hash deterministically", () => {
@@ -63,15 +67,39 @@ test("parseAccessToken accepts a valid token path and rejects malformed paths", 
   assert.equal(parseAccessToken("/other/path"), null);
 });
 
-test("isExemptFromGate allowlists health check, access-token redemption, and the denial page's own static assets", () => {
+test("isExemptFromGate allowlists health check, access-token redemption, code redemption, and the denial page's own static assets", () => {
   const token = generateRawToken();
   assert.equal(isExemptFromGate("GET", "/api/health"), true);
   assert.equal(isExemptFromGate("GET", `/access/${token}`), true);
+  assert.equal(isExemptFromGate("POST", "/api/access/redeem-code"), true);
+  assert.equal(isExemptFromGate("GET", "/api/access/redeem-code"), false);
   assert.equal(isExemptFromGate("GET", "/styles.css"), true);
   assert.equal(isExemptFromGate("GET", "/assets/eg-biomed-icon.png"), true);
   assert.equal(isExemptFromGate("GET", "/"), false);
   assert.equal(isExemptFromGate("GET", "/app.js"), false);
   assert.equal(isExemptFromGate("POST", "/api/submit"), false);
+});
+
+test("normalizeCode trims, lowercases, and collapses whitespace", () => {
+  assert.equal(normalizeCode("  Health-Check   A1  "), "health-check a1");
+  assert.equal(normalizeCode("健檢中心A1"), "健檢中心a1");
+});
+
+test("normalizeCode enforces length bounds and rejects invalid input", () => {
+  assert.equal(normalizeCode("short"), null);
+  assert.equal(normalizeCode("a".repeat(MIN_CODE_LENGTH)), "a".repeat(MIN_CODE_LENGTH));
+  assert.equal(normalizeCode("a".repeat(MAX_CODE_LENGTH)), "a".repeat(MAX_CODE_LENGTH));
+  assert.equal(normalizeCode("a".repeat(MAX_CODE_LENGTH + 1)), null);
+  assert.equal(normalizeCode(`abc${String.fromCharCode(1)}def`), null);
+  assert.equal(normalizeCode(123), null);
+  assert.equal(normalizeCode("   "), null);
+});
+
+test("getClientIp prefers the last X-Forwarded-For hop and falls back to the socket address", () => {
+  assert.equal(getClientIp("1.1.1.1, 2.2.2.2, 3.3.3.3", "9.9.9.9"), "3.3.3.3");
+  assert.equal(getClientIp(undefined, "9.9.9.9"), "9.9.9.9");
+  assert.equal(getClientIp("", "9.9.9.9"), "9.9.9.9");
+  assert.equal(getClientIp(undefined, undefined), "unknown");
 });
 
 test("parseCookies handles multiple cookies and an empty header", () => {
@@ -102,4 +130,17 @@ test("access-gate migration defines a hashed-only token table and a sibling audi
   assert.match(sql, /CREATE TABLE IF NOT EXISTS operations\.access_events/);
   assert.doesNotMatch(sql, /\btoken text\b/);
   assert.doesNotMatch(sql, /\braw_token\b/);
+});
+
+test("access-codes migration adds a credential-type discriminator and nullable expiry", () => {
+  const sql = fs.readFileSync(
+    path.join(__dirname, "database", "migrations", "003_access_codes.sql"),
+    "utf8"
+  );
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS credential_type text NOT NULL DEFAULT 'link'/);
+  assert.match(sql, /ADD COLUMN IF NOT EXISTS code text/);
+  assert.match(sql, /ALTER COLUMN expires_at DROP NOT NULL/);
+  assert.match(sql, /CREATE UNIQUE INDEX IF NOT EXISTS grants_code_active_idx/);
+  assert.match(sql, /grants_code_matches_type/);
+  assert.match(sql, /grant_topped_up/);
 });

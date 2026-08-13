@@ -1,18 +1,30 @@
 # Payment-confirmation access gate
 
-The questionnaire can be gated behind a one-time, payment-confirmation link
-instead of being fully open. This document describes the mechanism, how to
-operate it, and how to keep developing locally without it getting in the way.
+The questionnaire can be gated behind a credential instead of being fully
+open. There are two credential types, sharing the same underlying
+`access.grants` table and redemption logic:
+
+| | Link | Code |
+| --- | --- | --- |
+| Who it's for | One paying individual | A venue/organization buying quota in bulk (e.g. a health-check center, 健檢中心) |
+| Format | System-random, embedded in a URL | Staff-chosen or system-composed, typed into a form |
+| Delivery | `https://.../access/<token>` — auto-redeems on click | Typed into the code-entry form on [access-denied.html](access-denied.html) |
+| Limit | Time (`--ttl-hours`) + use count (usually 1) | Use count only (no expiry unless explicitly set) |
+| Storage | Hash only — raw token never stored | Hash (for lookup) **and** plaintext `code` column (staff need to look it back up — see below) |
+
+This document describes both mechanisms, how to operate them, and how to keep
+developing locally without either getting in the way.
 
 ## Status
 
 Payment gateway integration itself is **not implemented yet** (no provider is
-chosen). Today, access links are minted manually via a CLI script, after a
-staff member confirms payment out-of-band (bank transfer, manual gateway
-dashboard check, etc.). The mechanism is designed so that a future payment
-webhook can mint links the exact same way, automatically.
+chosen). Today, both links and codes are minted manually via CLI scripts,
+after a staff member confirms payment out-of-band (bank transfer, manual
+gateway dashboard check, a venue's purchase order, etc.). The mechanism is
+designed so that a future payment webhook can mint links the exact same way,
+automatically.
 
-## How it works
+## How links work
 
 1. A staff member (or, later, a payment webhook) mints a link with
    `npm run access:grant`. The link looks like
@@ -34,6 +46,46 @@ webhook can mint links the exact same way, automatically.
    styled page, [access-denied.html](access-denied.html) — the response never
    reveals which specific reason applied. The real reason is recorded
    server-side in `operations.access_events`.
+
+## How codes work
+
+1. A staff member mints a code with `npm run access:grant -- --type code`,
+   either as an exact string (`--code`) or system-composed from parts
+   (`--institution` + `--quota-label`, plus a random suffix). See
+   [Staff CLI](#staff-cli-scriptsgrant-accessjs) below.
+2. Codes are looked up the same way as links — hashed with SHA-256 into
+   `access.grants.token_hash` — so the redemption transaction
+   (`redeemAccessGrant`) needed **zero changes** to support codes. Unlike
+   links, the normalized plaintext is *also* stored in `access.grants.code`,
+   because staff need to look a code back up later (which venue does this
+   belong to, how much quota is left) — a one-time-reveal model like links
+   use would actively break that workflow. Treat the `code` column the same
+   way as any other plaintext operational data in this database (e.g.
+   `contact.delivery_contacts.email`) — not a secret on the level of a
+   password hash.
+3. Codes have **no time expiry by default** — only a usage quota
+   (`--max-uses`, required for `--type code`). Many different people can
+   redeem the same code, each incrementing `use_count`, until the quota is
+   exhausted. Running out is answered by **topping up**
+   (`npm run access:topup`), not minting a new code — this keeps one venue's
+   whole usage history under a single `grant_id`.
+4. A visitor without a session sees [access-denied.html](access-denied.html),
+   which now has a code-entry form. It submits to
+   `POST /api/access/redeem-code` (JSON body `{code}`) and, on success, sets
+   the same kind of session cookie as link redemption and redirects to `/`.
+5. `normalizeCode` (in `lib/access-gate.js`) trims, lowercases, and collapses
+   whitespace before hashing — so `"Health-Check A1"` and `"health-check a1"`
+   hash identically. Codes must be **6–64 characters** after normalization.
+   Not restricted to ASCII — venue names may be Chinese.
+6. `POST /api/access/redeem-code` has its **own rate limiter** (60 attempts
+   per 10 minutes, per IP) — codes are much lower entropy than a 256-bit link
+   token and are the more attractive brute-force target. The limit is
+   deliberately generous because the real usage pattern is one front-desk
+   computer, staff typing on behalf of many patients over a business day —
+   not one person per device. State resets on process restart; that's fine,
+   since a restart isn't something a caller can trigger through this
+   endpoint. Link redemption is unaffected — no rate limiter there, unchanged
+   justification (256-bit entropy makes brute force infeasible).
 
 ## Environment variables
 
@@ -68,6 +120,12 @@ the same way `001_initial.sql` was applied
 and extend `database/development-roles.sql` grants if a database
 administrator manages roles separately from the migration.
 
+Adding shared codes (`database/migrations/003_access_codes.sql`) is purely
+additive — every new column is nullable or defaulted, and no new required env
+var or startup check was introduced — so it does **not** need the same
+fail-closed care. Run it any time before or alongside deploying the updated
+code.
+
 ## Developer bypass
 
 For day-to-day development, `.env.example` ships `ACCESS_GATE_MODE=open`,
@@ -89,6 +147,8 @@ To test the real gate flow locally end-to-end:
 
 ## Staff CLI: `scripts/grant-access.js`
 
+Mint a link (default `--type`, unchanged from before codes existed):
+
 ```powershell
 npm run access:grant -- --created-by "Jane" --reference "bank-transfer-2026-08-13" --ttl-hours 1
 ```
@@ -101,6 +161,39 @@ minting grants against the wrong database).
 
 The raw token is printed exactly once. If it's lost, mint a new grant — it
 cannot be recovered from the database.
+
+Mint a code (`--type code`), either as an exact string:
+
+```powershell
+npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --code "健檢中心A-2026批次1"
+```
+
+or system-composed from parts (recommended for real venue sales — appends a
+6-character random suffix from an alphabet that avoids visually ambiguous
+characters like `0`/`O`/`1`/`I`/`L`, since staff read it off a screen or
+printout):
+
+```powershell
+npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --institution "健檢中心A" --quota-label "2026批次1"
+```
+
+`--max-uses` is **required** for `--type code` (quota sizing is the entire
+point — there's no sensible default). `--ttl-hours` is optional for codes
+(omit it for no expiry, the normal case; pass it if a specific code should
+also expire by date). `--confirm-remote-host` behaves identically to link
+mode.
+
+Check remaining quota:
+
+```powershell
+npm run access:status -- --code "健檢中心A-2026批次1"
+```
+
+Top up when a venue buys more:
+
+```powershell
+npm run access:topup -- --code "健檢中心A-2026批次1" --add-uses 200 --created-by "Jane"
+```
 
 ## Future: real payment gateway webhook
 
@@ -116,5 +209,8 @@ schema or repository changes are anticipated for that step.
 - Real payment gateway integration.
 - A manual-revoke tool (the schema already allows `status = 'revoked'`;
   nothing sets it yet).
-- Per-IP rate limiting on `/access/*` (256-bit token entropy already makes
-  brute-forcing infeasible; revisit if abuse is observed).
+- Per-IP rate limiting on `/access/*` (link redemption) — 256-bit token
+  entropy already makes brute-forcing infeasible; revisit if abuse is
+  observed. This is unrelated to the rate limiter that codes now have on
+  `POST /api/access/redeem-code` (see "How codes work" above) — that limiter
+  was added because codes are lower entropy by design.

@@ -14,10 +14,13 @@ const {
   signSessionCookie,
   verifySessionCookie,
   parseAccessToken,
+  normalizeCode,
+  getClientIp,
   isExemptFromGate,
   parseCookies,
   buildCookieHeader
 } = require("./lib/access-gate");
+const { createFixedWindowLimiter } = require("./lib/rate-limiter");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -40,6 +43,14 @@ const ACCESS_GATE_SESSION_TTL_SECONDS = Math.max(
 );
 const ACCESS_GATE_COOKIE_SECURE = String(process.env.ACCESS_GATE_COOKIE_SECURE ?? "true").toLowerCase() !== "false";
 const REQUIRES_POSTGRES = ["postgres", "dual"].includes(SUBMISSION_MODE) || ACCESS_GATE_MODE === "enforced";
+
+// Shared codes are lower-entropy than link tokens and are typed by a human
+// (often front-desk staff on behalf of many patients from one shared IP), so
+// they get their own rate limiter -- link redemption keeps relying solely on
+// 256-bit token entropy, unchanged. 60/10min comfortably covers a busy
+// front desk while still throttling scripted guessing against a short code.
+const codeRedeemLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 60 });
+setInterval(() => codeRedeemLimiter.sweep(), 30 * 60 * 1000).unref();
 
 if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
   throw new Error(
@@ -402,6 +413,15 @@ function sendAccessDeniedPage(res, statusCode) {
   fs.createReadStream(filePath).pipe(res);
 }
 
+function buildAccessSessionCookie(grantId) {
+  const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
+  const cookieValue = signSessionCookie({ grantId, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+  return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
+    ttlSeconds: ACCESS_GATE_SESSION_TTL_SECONDS,
+    secure: ACCESS_GATE_COOKIE_SECURE
+  });
+}
+
 async function handleAccessRedemption(req, res, rawToken) {
   if (ACCESS_GATE_MODE !== "enforced") {
     res.writeHead(302, { Location: "/" });
@@ -431,17 +451,67 @@ async function handleAccessRedemption(req, res, rawToken) {
     return;
   }
 
-  const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
-  const cookieValue = signSessionCookie({ grantId: result.grantId, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
-  const cookieHeader = buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
-    ttlSeconds: ACCESS_GATE_SESSION_TTL_SECONDS,
-    secure: ACCESS_GATE_COOKIE_SECURE
-  });
   res.writeHead(302, {
-    "Set-Cookie": cookieHeader,
+    "Set-Cookie": buildAccessSessionCookie(result.grantId),
     Location: "/"
   });
   res.end();
+}
+
+async function handleCodeRedemption(req, res) {
+  const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress);
+  if (!codeRedeemLimiter.check(clientIp)) {
+    sendJson(res, 429, { ok: false, error: "Too many attempts. Please wait and try again." });
+    return;
+  }
+
+  if (ACCESS_GATE_MODE !== "enforced") {
+    sendJson(res, 200, { ok: true });
+    return;
+  }
+
+  if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
+    return;
+  }
+
+  let body;
+  try {
+    body = JSON.parse(await readRequestBody(req));
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload." });
+    return;
+  }
+
+  const normalized = normalizeCode(body && body.code);
+  if (!normalized) {
+    // Same generic wording as every other denial reason -- don't reveal
+    // whether the issue was format/length vs. simply not found.
+    sendJson(res, 403, { ok: false, error: "Code not recognized. Please check it and try again." });
+    return;
+  }
+
+  await postgresReady;
+  if (!postgresRepository || postgresRepositoryError) {
+    sendJson(res, 503, { ok: false, error: "Service unavailable." });
+    return;
+  }
+
+  let result;
+  try {
+    result = await postgresRepository.redeemAccessGrant({ tokenHash: hashToken(normalized) });
+  } catch (error) {
+    sendJson(res, 500, { ok: false, error: "Service unavailable." });
+    return;
+  }
+
+  if (!result.ok) {
+    sendJson(res, 403, { ok: false, error: "Code not recognized. Please check it and try again." });
+    return;
+  }
+
+  res.setHeader("Set-Cookie", buildAccessSessionCookie(result.grantId));
+  sendJson(res, 200, { ok: true });
 }
 
 function isSessionAuthorized(req) {
@@ -463,6 +533,11 @@ const server = http.createServer(async (req, res) => {
       await handleAccessRedemption(req, res, accessToken);
       return;
     }
+  }
+
+  if (req.method === "POST" && pathname === "/api/access/redeem-code") {
+    await handleCodeRedemption(req, res);
+    return;
   }
 
   if (req.method === "GET" && pathname === "/api/health") {

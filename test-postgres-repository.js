@@ -64,7 +64,7 @@ test("PostgreSQL migration defines separated schemas and record constraints", ()
 
 test("migration files are discovered in ascending numeric order", () => {
   const files = listMigrationFiles().map((filePath) => path.basename(filePath));
-  assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql"]);
+  assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql", "003_access_codes.sql"]);
 });
 
 test("initialize() tolerates a missing access-gate schema unless explicitly required", async () => {
