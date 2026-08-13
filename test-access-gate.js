@@ -63,10 +63,12 @@ test("parseAccessToken accepts a valid token path and rejects malformed paths", 
   assert.equal(parseAccessToken("/other/path"), null);
 });
 
-test("isExemptFromGate only allowlists health check and access-token redemption", () => {
+test("isExemptFromGate allowlists health check, access-token redemption, and the denial page's own static assets", () => {
   const token = generateRawToken();
   assert.equal(isExemptFromGate("GET", "/api/health"), true);
   assert.equal(isExemptFromGate("GET", `/access/${token}`), true);
+  assert.equal(isExemptFromGate("GET", "/styles.css"), true);
+  assert.equal(isExemptFromGate("GET", "/assets/eg-biomed-icon.png"), true);
   assert.equal(isExemptFromGate("GET", "/"), false);
   assert.equal(isExemptFromGate("GET", "/app.js"), false);
   assert.equal(isExemptFromGate("POST", "/api/submit"), false);
