@@ -205,6 +205,27 @@ test("frontend vector definitions match the frozen field manifest", () => {
   assert.deepEqual(vnextColumns, fieldManifest.vnext_feature_columns);
   assert.deepEqual(extractStringArray(source, "researchFeatureColumns"), fieldManifest.research_feature_columns);
   assert.deepEqual(ruleColumns, fieldManifest.rule_input_columns);
+
+  // frozenSubmissionVectorCounts is a separate hardcoded object app.js uses to
+  // validate its own submission before sending (see validateSubmissionBeforeSend).
+  // It has no other connection to fieldManifest, so a count edited there can
+  // silently drift from the real column list above and break every submission
+  // without any test noticing -- this happened once already (vnext stayed at
+  // 32 after a 33rd column was added). Pin all five counts to the true lengths.
+  const frozenCountsSegment = source.slice(
+    source.indexOf("const frozenSubmissionVectorCounts = Object.freeze({"),
+    source.indexOf("});", source.indexOf("const frozenSubmissionVectorCounts = Object.freeze({"))
+  );
+  const frozenCounts = Object.fromEntries(
+    [...frozenCountsSegment.matchAll(/(\w+):\s*(\d+)/g)].map(([, key, value]) => [key, Number(value)])
+  );
+  assert.deepEqual(frozenCounts, {
+    optimized_feature_columns: fieldManifest.optimized_feature_columns.length,
+    symptom_feature_columns: fieldManifest.symptom_feature_columns.length,
+    vnext_feature_columns: fieldManifest.vnext_feature_columns.length,
+    research_feature_columns: fieldManifest.research_feature_columns.length,
+    rule_input_columns: fieldManifest.rule_input_columns.length
+  });
 });
 
 test("accepts the frozen v19.4 phase-1 submission", () => {

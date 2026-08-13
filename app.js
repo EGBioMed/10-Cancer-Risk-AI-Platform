@@ -713,7 +713,7 @@ const ruleInputColumns = [...ruleDirectFeatureColumns, ...ruleRepeatFeatureColum
 const frozenSubmissionVectorCounts = Object.freeze({
   optimized_feature_columns: 71,
   symptom_feature_columns: 84,
-  vnext_feature_columns: 32,
+  vnext_feature_columns: 33,
   research_feature_columns: 1,
   rule_input_columns: 29
 });
