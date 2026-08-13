@@ -9,7 +9,8 @@ const USAGE = "Usage: node scripts/grant-access.js --created-by <name> "
   + "  --type link (default): personal one-time link.\n"
   + "  --type code: shared quota code. Requires --max-uses, and either\n"
   + "    --code <string> (use exactly as given) or --institution <code>\n"
-  + "    plus --quota-label <code> (system-composes institution-quotaLabel-random).";
+  + "    [--quota-label <code>] (system-composes institutionQuotaLabelQ<maxUses><random>,\n"
+  + "    e.g. --institution SCH --quota-label B1 --max-uses 100 -> SCHB1Q100XXXXXX).";
 
 // Avoids visually ambiguous characters (0/O, 1/I/L) since front-desk staff
 // read this off a screen or printout to type or hand over.
@@ -77,16 +78,27 @@ function prepareCodeGrant() {
 
   const exactCode = argument("--code");
   const institution = argument("--institution");
-  const quotaLabel = argument("--quota-label");
+  const quotaLabel = argument("--quota-label") || "";
 
   let rawCode;
   if (exactCode) {
     rawCode = exactCode;
-  } else if (institution && quotaLabel) {
-    rawCode = `${institution}-${quotaLabel}-${generateRandomSuffix()}`;
+  } else if (institution) {
+    // Generated production codes are English/alphanumeric only, with no
+    // separator between segments -- avoids relying on non-ASCII text
+    // surviving every layer between minting and typing (terminals, printed
+    // slips, kiosk keyboards) intact. The purchased quota is always baked
+    // in as "Q<maxUses>", derived directly from --max-uses rather than
+    // left for the operator to type (and possibly mistype or forget) into
+    // --quota-label, so the visible number always matches the real quota.
+    const ALPHANUMERIC_ONLY = /^[A-Za-z0-9]*$/;
+    if (!ALPHANUMERIC_ONLY.test(institution) || !ALPHANUMERIC_ONLY.test(quotaLabel)) {
+      throw new Error("--institution and --quota-label must be English letters/digits only.");
+    }
+    rawCode = `${institution}${quotaLabel}Q${maxUses}${generateRandomSuffix()}`;
   } else {
     throw new Error(
-      "--type code requires either --code <string> or both --institution <code> and --quota-label <code>."
+      "--type code requires either --code <string> or --institution <code> (optionally with --quota-label <code>)."
     );
   }
 

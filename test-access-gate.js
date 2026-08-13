@@ -111,12 +111,14 @@ test("parseCookies handles multiple cookies and an empty header", () => {
   );
 });
 
-test("buildCookieHeader sets HttpOnly, SameSite, and Secure flags", () => {
-  const secureHeader = buildCookieHeader("eg_access_session", "abc123", { ttlSeconds: 1800, secure: true });
-  assert.match(secureHeader, /^eg_access_session=abc123; Path=\/; HttpOnly; SameSite=Lax; Max-Age=1800; Secure$/);
+test("buildCookieHeader sets HttpOnly, SameSite, and Secure flags, and omits Max-Age (browser session cookie)", () => {
+  const secureHeader = buildCookieHeader("eg_access_session", "abc123", { secure: true });
+  assert.match(secureHeader, /^eg_access_session=abc123; Path=\/; HttpOnly; SameSite=Lax; Secure$/);
+  assert.doesNotMatch(secureHeader, /Max-Age/);
 
-  const insecureHeader = buildCookieHeader("eg_access_session", "abc123", { ttlSeconds: 1800, secure: false });
+  const insecureHeader = buildCookieHeader("eg_access_session", "abc123", { secure: false });
   assert.doesNotMatch(insecureHeader, /Secure/);
+  assert.doesNotMatch(insecureHeader, /Max-Age/);
 });
 
 test("access-gate migration defines a hashed-only token table and a sibling audit log", () => {

@@ -417,7 +417,6 @@ function buildAccessSessionCookie(grantId) {
   const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
   const cookieValue = signSessionCookie({ grantId, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
-    ttlSeconds: ACCESS_GATE_SESSION_TTL_SECONDS,
     secure: ACCESS_GATE_COOKIE_SECURE
   });
 }

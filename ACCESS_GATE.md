@@ -36,9 +36,14 @@ automatically.
    (`--ttl-hours`, default `1`).
 4. When the link is visited, the server hashes the token, looks it up, and
    redeems it (single use by default). On success, it sets a signed,
-   httpOnly session cookie valid for **30 minutes**
-   (`ACCESS_GATE_SESSION_TTL_HOURS=0.5`) and redirects to `/`. Revisiting the
-   same link afterward is denied.
+   httpOnly session cookie and redirects to `/`. Revisiting the same link
+   afterward is denied. The cookie is a **browser session cookie** (no
+   Max-Age) — closing the browser clears it, so the next visitor on a shared
+   computer must enter their own credential rather than riding an earlier
+   visitor's session. Server-side, the signed payload still carries a real
+   expiry (`ACCESS_GATE_SESSION_TTL_HOURS=0.5`, i.e. 30 minutes) as a hard
+   ceiling even if the cookie somehow outlives the browser session (e.g. tab
+   restore).
 5. Every other route (`/`, static assets, `POST /api/submit`) requires that
    session cookie once the gate is `enforced`. `GET /api/health` and
    `GET /access/<token>` are always reachable.
@@ -162,37 +167,47 @@ minting grants against the wrong database).
 The raw token is printed exactly once. If it's lost, mint a new grant — it
 cannot be recovered from the database.
 
-Mint a code (`--type code`), either as an exact string:
+Mint a code (`--type code`), either as an exact string (English/alphanumeric
+recommended — non-ASCII text is technically accepted but not recommended,
+since it has to survive terminals, printed slips, and kiosk keyboards intact
+all the way to redemption):
 
 ```powershell
-npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --code "健檢中心A-2026批次1"
+npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --code "SCHB1TEST"
 ```
 
-or system-composed from parts (recommended for real venue sales — appends a
-6-character random suffix from an alphabet that avoids visually ambiguous
+or system-composed from parts (recommended for real venue sales — concatenates
+`institution + quotaLabel + "Q" + maxUses + randomSuffix` with **no
+separator**, and **requires English letters/digits only** for
+`--institution`/`--quota-label`). The purchased quota is always baked into
+the code itself as `Q<maxUses>`, taken directly from `--max-uses` — not left
+for the operator to type into `--quota-label` and risk it drifting from the
+real number. `--quota-label` is optional, for a batch/plan name if useful.
+The 6-character random suffix uses an alphabet that avoids visually ambiguous
 characters like `0`/`O`/`1`/`I`/`L`, since staff read it off a screen or
-printout):
+printout:
 
 ```powershell
-npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --institution "健檢中心A" --quota-label "2026批次1"
+npm run access:grant -- --type code --created-by "Jane" --max-uses 500 --institution "SCH" --quota-label "B1"
 ```
 
-`--max-uses` is **required** for `--type code` (quota sizing is the entire
-point — there's no sensible default). `--ttl-hours` is optional for codes
-(omit it for no expiry, the normal case; pass it if a specific code should
-also expire by date). `--confirm-remote-host` behaves identically to link
-mode.
+This prints something like `SCHB1Q500M5HS7Z` — anyone reading the code can
+see at a glance it's for `SCH`, batch `B1`, 500 uses. `--max-uses` is
+**required** for `--type code` (quota sizing is the entire point — there's no
+sensible default). `--ttl-hours` is optional for codes (omit it for no
+expiry, the normal case; pass it if a specific code should also expire by
+date). `--confirm-remote-host` behaves identically to link mode.
 
 Check remaining quota:
 
 ```powershell
-npm run access:status -- --code "健檢中心A-2026批次1"
+npm run access:status -- --code "SCHB1Q500M5HS7Z"
 ```
 
 Top up when a venue buys more:
 
 ```powershell
-npm run access:topup -- --code "健檢中心A-2026批次1" --add-uses 200 --created-by "Jane"
+npm run access:topup -- --code "SCHB1Q500M5HS7Z" --add-uses 200 --created-by "Jane"
 ```
 
 ## Future: real payment gateway webhook
