@@ -14,12 +14,24 @@ Candidate extension set: `feature-gap-candidates/2026-08-05`
 
 High-risk rule input specification: `high-risk-rules/19.4`
 
-The backend v19.4 workbook has now been transcribed and its phase-1 questionnaire
-collection has been implemented in
-`contracts/vnext/high-risk-rule-input-v19.4.json`. It defines a separate rule-layer
-contract: 7 new self-report inputs, 16 conditional repeat-count inputs, interval
-metadata, and 12 backend aliases. It must not be merged into the current 71-column
-model request merely because it is available to the rule engine. See
+The backend v19.4 workbook has now been transcribed in
+`contracts/vnext/high-risk-rule-input-v19.4.json`: a separate rule-layer contract
+of 7 new self-report inputs, 16 conditional repeat-count inputs, interval
+metadata, and 12 backend aliases, exactly as the backend workbook proposed. That
+file is a historical transcription of the backend's original request and is not
+edited to track implementation decisions.
+
+The questionnaire's phase-1 collection implements a **narrowed** 9 of those 16
+repeat-count inputs (plus 3 of the 4 interval-metadata fields). Seven
+repeat-count fields, and the interval field paired with one of them, were
+removed from collection on 2026-08-13 after a literature review
+(次數間隔追問欄位_文獻實證與存廢建議_20260812.docx) found insufficient evidence for a
+repeat-count-based rule; the parent yes/no symptom question was kept for all
+seven. `database/migrations`-style history for this decision lives in
+`DATA_CONTRACT.md`; this handoff file is not the place to duplicate it further.
+
+It must not be merged into the current 71-column model request merely because
+it is available to the rule engine. See
 `V19_4_BACKEND_ALIGNMENT_REPORT.md` for the phased alignment plan.
 
 ## 1. Why the questionnaire changed

@@ -72,8 +72,8 @@
     },
     "answer_code_rows": {
       "type": "array",
-      "minItems": 76,
-      "maxItems": 76,
+      "minItems": 68,
+      "maxItems": 68,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -181,8 +181,8 @@
     },
     "vnext_feature_columns": {
       "type": "array",
-      "minItems": 32,
-      "maxItems": 32,
+      "minItems": 33,
+      "maxItems": 33,
       "uniqueItems": true,
       "items": {
         "type": "string"
@@ -208,8 +208,8 @@
     },
     "rule_input_columns": {
       "type": "array",
-      "minItems": 29,
-      "maxItems": 29,
+      "minItems": 21,
+      "maxItems": 21,
       "uniqueItems": true,
       "items": {
         "type": "string"

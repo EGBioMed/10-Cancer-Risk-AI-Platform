@@ -307,22 +307,22 @@ const liverEtiologyOptions = [
   "不確定肝病種類"
 ];
 
+// symptom_dysphagia, symptom_abdominal_pain, symptom_oral_white_red_patch,
+// symptom_bowel_habit_change, symptom_hematuria_visible, symptom_nocturia, and
+// symptom_urinary_frequency previously had a repeat-count follow-up here.
+// Removed 2026-08-13 per literature review (次數間隔追問欄位_文獻實證與存廢建議_
+// 20260812.docx): evidence for a repeat-count-based rule was insufficient
+// (gray-area or no reliable data). The parent yes/no symptom question is
+// unaffected; only the "how many times" follow-up was removed.
 const ruleRepeatDefinitions = [
   ["symptom_jaundice", "黃疸", "jaundice", "symptom_jaundice_repeat_count"],
   ["symptom_mass", "原因不明的腫塊", "an unexplained lump", "symptom_mass_repeat_count", "symptom_mass_interval_days"],
   ["symptom_sore_throat", "喉嚨痛", "sore throat", "symptom_sore_throat_repeat_count"],
   ["symptom_shortness_of_breath", "呼吸喘或呼吸急促", "shortness of breath", "symptom_shortness_of_breath_repeat_count"],
-  ["symptom_dysphagia", "吞嚥困難、吞嚥疼痛或卡住感", "difficulty or pain when swallowing", "symptom_dysphagia_repeat_count"],
   ["symptom_hematochezia", "鮮紅色血便", "bright red blood in the stool", "symptom_hematochezia_repeat_count"],
-  ["symptom_abdominal_pain", "腹部疼痛", "abdominal pain", "symptom_abdominal_pain_repeat_count"],
   ["symptom_back_pain", "背痛", "back pain", "symptom_back_pain_repeat_count"],
-  ["symptom_bowel_habit_change", "排便習慣改變", "a change in bowel habits", "symptom_bowel_habit_change_repeat_count"],
   ["symptom_pelvic_discomfort_or_increased_girth", "骨盆腔不適或腹圍增加", "pelvic discomfort or increased abdominal girth", "symptom_pelvic_discomfort_or_increased_girth_repeat_count"],
-  ["symptom_hematuria_visible", "肉眼可見血尿", "visible blood in the urine", "symptom_hematuria_visible_repeat_count"],
-  ["symptom_nocturia", "夜尿增加", "increased nighttime urination", "symptom_nocturia_repeat_count"],
-  ["symptom_urinary_frequency", "頻尿", "frequent urination", "symptom_urinary_frequency_repeat_count"],
   ["symptom_oral_ulcer", "口腔潰瘍", "an oral ulcer", "symptom_oral_ulcer_repeat_count", "symptom_oral_ulcer_interval_days"],
-  ["symptom_oral_white_red_patch", "口腔白斑或紅斑", "a white or red patch in the mouth", "symptom_oral_white_red_patch_repeat_count", "symptom_oral_white_red_patch_interval_days"],
   ["symptom_mouth_symptoms", "上述口腔症狀", "the oral symptoms selected above", "symptom_mouth_symptoms_repeat_count", "symptom_mouth_symptoms_interval_days"]
 ];
 
@@ -715,7 +715,7 @@ const frozenSubmissionVectorCounts = Object.freeze({
   symptom_feature_columns: 84,
   vnext_feature_columns: 33,
   research_feature_columns: 1,
-  rule_input_columns: 29
+  rule_input_columns: 21
 });
 const canonicalAnswerQuestions = questions.filter(
   (question) => !question.isComposite

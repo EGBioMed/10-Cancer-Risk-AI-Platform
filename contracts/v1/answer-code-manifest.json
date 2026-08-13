@@ -7,8 +7,8 @@
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 78,
-  "canonical_answer_question_count": 76,
+  "question_count": 70,
+  "canonical_answer_question_count": 68,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -1018,20 +1018,6 @@
       }
     },
     {
-      "question_id": "symptom_dysphagia_repeat_count",
-      "field": "rule_inputs.symptom_dysphagia_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，吞嚥困難、吞嚥疼痛或卡住感總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience difficulty or pain when swallowing?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
       "question_id": "symptom_hematochezia_repeat_count",
       "field": "rule_inputs.symptom_hematochezia_repeat_count",
       "module": "symptoms",
@@ -1039,20 +1025,6 @@
       "required_when_applicable": true,
       "title_zh": "最近 6 個月內，鮮紅色血便總共出現過幾次？",
       "title_en": "During the past 6 months, how many times did you experience bright red blood in the stool?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
-      "question_id": "symptom_abdominal_pain_repeat_count",
-      "field": "rule_inputs.symptom_abdominal_pain_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，腹部疼痛總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience abdominal pain?",
       "number_constraints": {
         "minimum": 1,
         "maximum": 9,
@@ -1074,20 +1046,6 @@
       }
     },
     {
-      "question_id": "symptom_bowel_habit_change_repeat_count",
-      "field": "rule_inputs.symptom_bowel_habit_change_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，排便習慣改變總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience a change in bowel habits?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
       "question_id": "symptom_pelvic_discomfort_or_increased_girth_repeat_count",
       "field": "rule_inputs.symptom_pelvic_discomfort_or_increased_girth_repeat_count",
       "module": "symptoms",
@@ -1095,48 +1053,6 @@
       "required_when_applicable": true,
       "title_zh": "最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？",
       "title_en": "During the past 6 months, how many times did you experience pelvic discomfort or increased abdominal girth?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
-      "question_id": "symptom_hematuria_visible_repeat_count",
-      "field": "rule_inputs.symptom_hematuria_visible_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，肉眼可見血尿總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience visible blood in the urine?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
-      "question_id": "symptom_nocturia_repeat_count",
-      "field": "rule_inputs.symptom_nocturia_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，夜尿增加總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience increased nighttime urination?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
-      "question_id": "symptom_urinary_frequency_repeat_count",
-      "field": "rule_inputs.symptom_urinary_frequency_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，頻尿總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience frequent urination?",
       "number_constraints": {
         "minimum": 1,
         "maximum": 9,
@@ -1165,35 +1081,6 @@
       "required_when_applicable": true,
       "title_zh": "最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？",
       "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of an oral ulcer?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 180,
-        "integer": true,
-        "unit": "days"
-      }
-    },
-    {
-      "question_id": "symptom_oral_white_red_patch_repeat_count",
-      "field": "rule_inputs.symptom_oral_white_red_patch_repeat_count",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，口腔白斑或紅斑總共出現過幾次？",
-      "title_en": "During the past 6 months, how many times did you experience a white or red patch in the mouth?",
-      "number_constraints": {
-        "minimum": 1,
-        "maximum": 9,
-        "integer": true
-      }
-    },
-    {
-      "question_id": "symptom_oral_white_red_patch_interval_days",
-      "field": "rule_inputs.symptom_oral_white_red_patch_interval_days",
-      "module": "symptoms",
-      "answer_type": "number",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，兩次口腔白斑或紅斑之間最短相隔幾天？",
-      "title_en": "During the past 6 months, what was the shortest interval in days between two episodes of a white or red patch in the mouth?",
       "number_constraints": {
         "minimum": 1,
         "maximum": 180,

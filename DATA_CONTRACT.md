@@ -151,10 +151,14 @@ must retain distinct answer statuses in the production contract.
 These fields are research inputs and are not part of the current 71-field model
 unless a future feature schema version explicitly promotes them.
 
-The v19.4 phase-1 questionnaire also emits a separate 29-field `rule_input_row`:
-7 direct questionnaire inputs, 2 new parent symptoms, 16 conditional repeat-count
-fields, and 4 conditional interval fields. This row is stored for rule-engine
+The v19.4 phase-1 questionnaire also emits a separate 21-field `rule_input_row`:
+7 direct questionnaire inputs, 2 new parent symptoms, 9 conditional repeat-count
+fields, and 3 conditional interval fields. This row is stored for rule-engine
 alignment and research export, but is not sent to the current `/predict` model.
+Seven repeat-count fields (and the interval field paired with one of them) were
+removed 2026-08-13 after a literature review found insufficient evidence for a
+repeat-count-based rule (次數間隔追問欄位_文獻實證與存廢建議_20260812.docx); the
+parent yes/no symptom questions were not affected.
 
 ### 5.3 Research-only snapshot
 
@@ -268,7 +272,7 @@ These are adapter fields, not the future browser contract. During the transition
 - Restricted contact Excel uses `contact_row`.
 - `optimized_feature_row` is retained for compatibility and audit comparison only.
 - `answer_code_rows` is the language-neutral source for the future backend mapping
-  service. It contains all 76 canonical question IDs in frozen order, including
+  service. It contains all 68 canonical question IDs in frozen order, including
   explicit `unknown` and `not_applicable` statuses.
 - `rows` remains temporarily available for Power Automate display/report
   compatibility and must not be used as the future feature-mapping source.
@@ -295,7 +299,7 @@ leakage into `rows` or `excel_row`. The frozen ordered vector counts are:
 | `symptom_feature_columns` | 84 |
 | `vnext_feature_columns` | 33 |
 | `research_feature_columns` | 1 |
-| `rule_input_columns` | 29 |
+| `rule_input_columns` | 21 |
 
 Any change to names, order, types, missing-value semantics, or conditional meaning
 requires a deliberate version change plus synchronized updates to the app, schema,
