@@ -102,6 +102,18 @@ test("getClientIp prefers the last X-Forwarded-For hop and falls back to the soc
   assert.equal(getClientIp(undefined, undefined), "unknown");
 });
 
+test("getClientIp prefers CF-Connecting-IP over X-Forwarded-For when present", () => {
+  // Render sits behind Cloudflare, an anycast network of many edge nodes --
+  // the X-Forwarded-For chain there is "<real client>, <cloudflare edge>",
+  // and that trailing edge IP differs per request, so the last-hop
+  // heuristic alone silently defeats per-IP rate limiting on Render.
+  // CF-Connecting-IP is set by Cloudflare itself and is always the true
+  // client IP regardless of how many further hops follow it.
+  assert.equal(getClientIp("1.1.1.1, 2.2.2.2", "9.9.9.9", "5.5.5.5"), "5.5.5.5");
+  assert.equal(getClientIp("1.1.1.1, 2.2.2.2", "9.9.9.9", ""), "2.2.2.2");
+  assert.equal(getClientIp("1.1.1.1, 2.2.2.2", "9.9.9.9", undefined), "2.2.2.2");
+});
+
 test("parseCookies handles multiple cookies and an empty header", () => {
   assert.deepEqual(parseCookies(""), {});
   assert.deepEqual(parseCookies(undefined), {});
