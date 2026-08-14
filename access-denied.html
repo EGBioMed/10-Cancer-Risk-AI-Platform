@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>需要存取代碼或連結 / Access code or link required</title>
+    <title>需要付款或授權才能使用 / Payment or authorization required</title>
     <link rel="stylesheet" href="styles.css?v=20260724-diet-frequency-v2" />
     <style>
       .access-denied-shell {
@@ -37,14 +37,10 @@
         margin: 0 0 16px;
       }
       .access-denied-card .lang-block + .lang-block {
-        margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid var(--line, #d8e0dc);
+        margin-top: 12px;
       }
       .code-form {
         margin-top: 24px;
-        padding-top: 24px;
-        border-top: 1px solid var(--line, #d8e0dc);
       }
       .code-form label {
         display: block;
@@ -82,6 +78,18 @@
         margin: 12px 0 0;
         color: #b3261e;
       }
+      .link-issue-note {
+        margin-top: 24px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line, #d8e0dc);
+      }
+      .link-issue-note p {
+        font-size: 13px;
+        margin: 0 0 8px;
+      }
+      .link-issue-note .lang-block + .lang-block {
+        margin-top: 4px;
+      }
     </style>
   </head>
   <body>
@@ -94,24 +102,22 @@
           <span>EG BioMed 愛立基生醫</span>
         </div>
         <div class="lang-block" lang="zh-Hant">
-          <h1>此連結目前無法使用</h1>
+          <h1>此問卷需要付款或授權才能使用</h1>
           <p>
-            這個連結可能已過期、已經使用過，或尚未確認付款狀態。
-            如需協助，請聯繫我們的客服團隊，我們會協助您確認狀態或重新提供連結。
+            本服務採付費使用制。請透過購買方案取得您的專屬連結，或在下方輸入所屬機構提供的存取代碼以繼續。
           </p>
         </div>
         <div class="lang-block" lang="en">
-          <h1>This link is not available</h1>
+          <h1>Payment or authorization required</h1>
           <p>
-            This link may have expired, already been used, or payment has not
-            yet been confirmed. Please contact our support team for help
-            checking your status or requesting a new link.
+            This assessment requires payment to access. Purchase a plan to
+            receive your personal link, or enter the access code provided by
+            your organization below to continue.
           </p>
         </div>
         <form class="code-form" id="code-form">
           <label for="code-input">
-            如果您所屬的機構已提供存取代碼，請在下方輸入以繼續。<br />
-            If your organization gave you an access code, enter it below to continue.
+            存取代碼 / Access code
           </label>
           <div class="code-row">
             <input id="code-input" name="code" type="text" autocomplete="off" required minlength="6" placeholder="存取代碼 / Access code" />
@@ -119,6 +125,20 @@
           </div>
           <p class="code-error" id="code-error" role="alert" hidden></p>
         </form>
+        <div class="link-issue-note">
+          <div class="lang-block" lang="zh-Hant">
+            <p>
+              已經有專屬連結卻無法開啟？該連結可能已過期、已使用過，或付款尚未確認，請聯繫我們的客服團隊協助確認狀態或重新提供連結。
+            </p>
+          </div>
+          <div class="lang-block" lang="en">
+            <p>
+              Already have a personal link that isn't working? It may have
+              expired, already been used, or payment has not yet been
+              confirmed. Please contact our support team for help.
+            </p>
+          </div>
+        </div>
       </section>
     </main>
     <script>
