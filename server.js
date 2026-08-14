@@ -566,7 +566,10 @@ const server = http.createServer(async (req, res) => {
       submission_mode: SUBMISSION_MODE,
       access_gate_mode: ACCESS_GATE_MODE,
       database: REQUIRES_POSTGRES ? "postgresql" : undefined,
-      database_ready: REQUIRES_POSTGRES ? databaseReady : undefined
+      database_ready: REQUIRES_POSTGRES ? databaseReady : undefined,
+      debug_xff: req.headers["x-forwarded-for"] || null,
+      debug_resolved_ip: getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress),
+      debug_socket_ip: req.socket.remoteAddress
     });
     return;
   }
