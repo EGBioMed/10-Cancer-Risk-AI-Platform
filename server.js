@@ -52,6 +52,15 @@ const REQUIRES_POSTGRES = ["postgres", "dual"].includes(SUBMISSION_MODE) || ACCE
 const codeRedeemLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 60 });
 setInterval(() => codeRedeemLimiter.sweep(), 30 * 60 * 1000).unref();
 
+// Applies regardless of ACCESS_GATE_MODE -- even with the gate open, a
+// submission still writes to Postgres and (in dual mode) forwards to the
+// Power Automate webhook, so flooding this endpoint has a real cost either
+// way. A real person takes at least several minutes per questionnaire, so
+// 20/10min per IP comfortably covers several concurrent kiosks behind one
+// shared venue IP while still blocking a scripted flood of fake submissions.
+const submitLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 20 });
+setInterval(() => submitLimiter.sweep(), 30 * 60 * 1000).unref();
+
 if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
   throw new Error(
     "ACCESS_GATE_SESSION_SECRET must be set when ACCESS_GATE_MODE=enforced. " +
@@ -572,6 +581,11 @@ const server = http.createServer(async (req, res) => {
   }
 
   if (req.method === "POST" && req.url === "/api/submit") {
+    const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress);
+    if (!submitLimiter.check(clientIp)) {
+      sendJson(res, 429, { ok: false, error: "Too many submissions from this network. Please wait and try again." });
+      return;
+    }
     await receiveSubmission(req, res);
     return;
   }
