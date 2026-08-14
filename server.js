@@ -569,7 +569,9 @@ const server = http.createServer(async (req, res) => {
       database_ready: REQUIRES_POSTGRES ? databaseReady : undefined,
       debug_xff: req.headers["x-forwarded-for"] || null,
       debug_resolved_ip: getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress),
-      debug_socket_ip: req.socket.remoteAddress
+      debug_socket_ip: req.socket.remoteAddress,
+      debug_cf_connecting_ip: req.headers["cf-connecting-ip"] || null,
+      debug_true_client_ip: req.headers["true-client-ip"] || null
     });
     return;
   }
