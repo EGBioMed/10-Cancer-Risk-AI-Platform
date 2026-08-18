@@ -11,6 +11,9 @@
 - **區網部署（`https://192.168.12.22`）沒有這一層**：只有 Caddy 做 HTTPS，沒有
   Cloudflare，所有應用層防護完全依賴本文件其他章節列出的機制。
 - PostgreSQL（5432 埠）只綁定 `127.0.0.1`，從未對外或對區網開放。
+- Azure Database for MySQL（付款閘門可選的另一套儲存後端，見第 5 節）是**私有
+  存取（VNet-only）**，從 Azure 網路以外（包括 Render）完全連不到，只能透過
+  `egbiomed-ai-data-api` 這個 Azure App Service 的 HTTPS API 存取。
 
 ## 2. 進入權限（誰能碰到問卷）
 
@@ -23,6 +26,10 @@
   SHA-256 雜湊值，原始亂碼絕不落地儲存、絕不再次顯示。單次使用、有時效。
 - **共用代碼**：機構／健檢中心批量購買額度用，額度制（用完為止），代碼字串同樣
   以雜湊比對驗證。
+- **儲存後端可切換**（`ACCESS_GATE_BACKEND`）：預設仍是 Postgres/Supabase；也可
+  切成 Azure MySQL（透過 `egbiomed-ai-data-api` 這個 Azure API，因為那台 MySQL
+  是 VNet 私有存取，這裡連不到）。兩種後端的雜湊比對、額度鎖定、拒絕訊息邏輯
+  完全一致，詳見 [ACCESS_GATE.md](ACCESS_GATE.md#儲存後端postgres-或-azure-mysql)。
 - **登入狀態（session cookie）**：
   - HMAC-SHA256 簽章，防止使用者自行竄改內容。
   - `HttpOnly`：JavaScript 讀不到，防止 XSS 竊取。
@@ -81,6 +88,15 @@
   UPDATE`），確保同時湧入多個請求時，額度不會被超額扣用或重複兌換。
 - 問卷送出的識別碼（`record_id`）一律由伺服器端產生（`crypto.randomUUID()`），
   絕不採信使用者端送過來的 ID，避免有人蓄意送出衝突或可預測的 ID。
+- 當付款閘門切到 `ACCESS_GATE_BACKEND=azure_mysql` 時，這個服務（Render）本身
+  **完全不持有任何資料庫密碼**——所有讀寫都透過 `egbiomed-ai-data-api` 的
+  HTTPS API（該服務用 Managed Identity 連 MySQL，不是密碼），是比目前 Postgres
+  直連模式更進一步的改善。Azure 那邊的列鎖（`SELECT ... FOR UPDATE` in MySQL）
+  跟 Postgres 提供一樣的「同時湧入多個兌換請求時只有一個會成功」保證。
+- `egbiomed-ai-data-api` 上用**兩把不同的密鑰**分開授權：`x-egbiomed-ingest-key`
+  只能寫問卷研究資料（洩漏頂多是資料被污染）；`x-egbiomed-access-gate-key`
+  能核發付費存取權、能扣/加代碼額度，風險等級完全不同，所以刻意分開、可各自
+  獨立輪換，不共用同一把密鑰。
 
 ## 6. 傳輸安全
 
@@ -91,8 +107,10 @@
 
 ## 7. 稽核與追蹤（事後可查，不是預防）
 
-- `operations.access_events`：記錄每一次連結／代碼的核發、成功兌換、被拒絕
-  （含原因），但**絕對不記錄原始連結或代碼本身**，只記錄雜湊值與時間、操作者。
+- `operations.access_events`（`ACCESS_GATE_BACKEND=postgres` 時）或 Azure MySQL
+  的 `access_events` 表（`ACCESS_GATE_BACKEND=azure_mysql` 時）：記錄每一次
+  連結／代碼的核發、成功兌換、被拒絕（含原因），但**絕對不記錄原始連結或代碼
+  本身**，只記錄雜湊值與時間、操作者。
 - `operations.submission_events`：記錄每一次問卷送出嘗試的結果。
 
 ## 8. 已知的取捨與尚未做的事

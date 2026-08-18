@@ -15,6 +15,49 @@ open. There are two credential types, sharing the same underlying
 This document describes both mechanisms, how to operate them, and how to keep
 developing locally without either getting in the way.
 
+## Storage backend: Postgres or Azure MySQL
+
+The gate's storage is now **selectable**, independent of everything else in
+this document — links vs. codes, session cookies, rate limiting, and the
+denial page all work identically no matter which backend answers
+`redeemAccessGrant`/`createAccessGrant`/etc.
+
+- `ACCESS_GATE_BACKEND=postgres` (default, unchanged production behavior) —
+  talks directly to Postgres/Supabase, exactly as described in the rest of
+  this document (`access.grants`, `operations.access_events`).
+- `ACCESS_GATE_BACKEND=azure_mysql` — talks to `egbiomed-ai-data-api`'s
+  `POST /api/access-gate/*` endpoints instead (`lib/azure-access-gate-client.js`),
+  which do the real work against Azure Database for MySQL via Managed
+  Identity. This process can never connect to that MySQL server directly —
+  it's VNet-private — so this HTTPS layer is required, not optional.
+
+New environment variables (only used when `ACCESS_GATE_BACKEND=azure_mysql`):
+
+| Variable | Purpose |
+| --- | --- |
+| `AZURE_ACCESS_GATE_API_BASE_URL` | Base URL of `egbiomed-ai-data-api`, e.g. `https://egbiomed-ai-data-api-<suffix>.azurewebsites.net`. |
+| `AZURE_ACCESS_GATE_API_KEY` | Shared secret sent as `x-egbiomed-access-gate-key`. Deliberately a **separate** secret from that API's `INGEST_API_KEY` — a leak of this one lets someone mint free paid access or drain a code's quota, a categorically more sensitive blast radius than a research-data-ingest key. |
+
+**Local development and testing never use the real production key.** There's
+no harmless "local" Azure MySQL to point at the way `PGHOST=127.0.0.1` works
+for Postgres — it's one private instance reachable only by API key. Instead:
+use `ACCESS_GATE_MODE=open` (the existing bypass, no backend call at all —
+see [Developer bypass](#developer-bypass)), or point unit tests at the
+stubbed `fetchImpl` in `test-azure-access-gate-client.js`.
+
+Rollback is a single env var: flip `ACCESS_GATE_BACKEND` back to `postgres`
+(or unset it) and restart — no code deploy needed, since Postgres/Supabase
+stays untouched throughout the migration and any rollback window after
+cutover.
+
+Once Azure MySQL has been the live backend through a full rollback-window
+soak with no issues, the sections below describing direct Postgres operation
+(migrations 002/003, `database/development-roles.sql` grants,
+`guardAgainstAccidentalRemoteHost`) become legacy/rollback-reference only.
+Decommissioning Supabase itself is a separate, later decision — it also
+retires `SUBMISSION_MODE=postgres/dual` and the Postgres export/backup
+scripts, which are unrelated to the gate.
+
 ## Status
 
 Payment gateway integration itself is **not implemented yet** (no provider is
@@ -160,9 +203,11 @@ npm run access:grant -- --created-by "Jane" --reference "bank-transfer-2026-08-1
 
 Flags: `--created-by <name>` (required), `--provider <name>` (default
 `manual`), `--reference <text>`, `--notes <text>`, `--ttl-hours <n>` (default
-`1`), `--max-uses <n>` (default `1`), `--confirm-remote-host` (required if
-`PGHOST` is not `127.0.0.1`/`localhost` — a safety guard against accidentally
-minting grants against the wrong database).
+`1`), `--max-uses <n>` (default `1`), `--confirm-remote-host` (Postgres
+backend only — required if `PGHOST` is not `127.0.0.1`/`localhost`, a safety
+guard against accidentally minting grants against the wrong database; not
+applicable when `ACCESS_GATE_BACKEND=azure_mysql`, see
+[Storage backend](#storage-backend-postgres-or-azure-mysql)).
 
 The raw token is printed exactly once. If it's lost, mint a new grant — it
 cannot be recovered from the database.
@@ -214,10 +259,11 @@ npm run access:topup -- --code "SCHB1Q500M5HS7Z" --add-uses 200 --created-by "Ja
 
 Not built yet (no provider chosen). It will be a new route that, after
 verifying the provider's own webhook signature, calls the same
-`postgresRepository.createAccessGrant({ paymentProvider, paymentReference,
+`createAccessGrant({ paymentProvider, paymentReference,
 createdBy: "webhook:<provider>", ... })` used by `scripts/grant-access.js`
-today, then emails the resulting link instead of printing it to a console. No
-schema or repository changes are anticipated for that step.
+today (via whichever backend `ACCESS_GATE_BACKEND` selects), then emails the
+resulting link instead of printing it to a console. No schema or repository
+changes are anticipated for that step.
 
 ## Explicitly deferred
 

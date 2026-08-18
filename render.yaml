@@ -8,3 +8,9 @@ services:
     envVars:
       - key: POWER_AUTOMATE_WEBHOOK_URL
         sync: false
+      - key: ACCESS_GATE_BACKEND
+        sync: false
+      - key: AZURE_ACCESS_GATE_API_BASE_URL
+        sync: false
+      - key: AZURE_ACCESS_GATE_API_KEY
+        sync: false
