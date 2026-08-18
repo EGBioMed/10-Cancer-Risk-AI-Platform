@@ -12,6 +12,7 @@
     "backup:local": "node scripts/backup-postgres.js",
     "export:research": "node scripts/export-postgres-data.js --dataset research --output local-exports/research.csv",
     "export:contacts": "node scripts/export-postgres-data.js --dataset contacts --output local-exports/contacts.csv",
+    "access:export": "node scripts/export-access-grants.js",
     "access:grant": "node scripts/grant-access.js",
     "access:topup": "node scripts/topup-access-code.js",
     "access:status": "node scripts/access-code-status.js"
