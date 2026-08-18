@@ -1,6 +1,5 @@
-const { createPostgresRepository } = require("../lib/postgres-repository");
 const { hashToken, normalizeCode } = require("../lib/access-gate");
-const { argument, guardAgainstAccidentalRemoteHost } = require("./cli-helpers");
+const { argument, createAccessGateRepository } = require("./cli-helpers");
 
 const USAGE = "Usage: node scripts/topup-access-code.js --code <string> --add-uses <n> "
   + "--created-by <name> [--confirm-remote-host]";
@@ -23,9 +22,7 @@ async function main() {
     throw new Error("--code failed normalization. Check it matches the code exactly as issued.");
   }
 
-  guardAgainstAccidentalRemoteHost();
-
-  const repository = createPostgresRepository({ requireAccessGateSchema: true });
+  const repository = createAccessGateRepository();
   try {
     await repository.initialize();
     const result = await repository.topUpAccessCode({

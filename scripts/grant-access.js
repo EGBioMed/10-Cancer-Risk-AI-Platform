@@ -1,7 +1,6 @@
 const crypto = require("crypto");
-const { createPostgresRepository } = require("../lib/postgres-repository");
 const { generateRawToken, hashToken, normalizeCode, MIN_CODE_LENGTH, MAX_CODE_LENGTH } = require("../lib/access-gate");
-const { argument, guardAgainstAccidentalRemoteHost } = require("./cli-helpers");
+const { argument, createAccessGateRepository } = require("./cli-helpers");
 
 const USAGE = "Usage: node scripts/grant-access.js --created-by <name> "
   + "[--type link|code] [--provider <name>] [--reference <text>] [--notes <text>] "
@@ -142,9 +141,7 @@ async function main() {
 
   const prepared = type === "code" ? prepareCodeGrant() : prepareLinkGrant();
 
-  guardAgainstAccidentalRemoteHost();
-
-  const repository = createPostgresRepository({ requireAccessGateSchema: true });
+  const repository = createAccessGateRepository();
   try {
     await repository.initialize();
     const grant = await repository.createAccessGrant({

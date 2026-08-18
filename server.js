@@ -8,6 +8,7 @@ const {
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
 const { createPostgresRepository } = require("./lib/postgres-repository");
+const { createAzureAccessGateClient } = require("./lib/azure-access-gate-client");
 const {
   SESSION_COOKIE_NAME,
   hashToken,
@@ -42,7 +43,15 @@ const ACCESS_GATE_SESSION_TTL_SECONDS = Math.max(
   Math.round(Number(process.env.ACCESS_GATE_SESSION_TTL_HOURS || 0.5) * 3600)
 );
 const ACCESS_GATE_COOKIE_SECURE = String(process.env.ACCESS_GATE_COOKIE_SECURE ?? "true").toLowerCase() !== "false";
-const REQUIRES_POSTGRES = ["postgres", "dual"].includes(SUBMISSION_MODE) || ACCESS_GATE_MODE === "enforced";
+// Which backend answers gate reads/writes -- "postgres" (default, talks to
+// Supabase directly) or "azure_mysql" (talks to egbiomed-ai-data-api's API,
+// since that MySQL server is VNet-private and unreachable from here
+// directly). A single env var flip is the whole rollback lever.
+const ACCESS_GATE_BACKEND = String(process.env.ACCESS_GATE_BACKEND || "postgres").toLowerCase();
+// Submission storage (research/contact/operations) is the only remaining
+// reason this process needs Postgres -- the access gate has its own,
+// independently-selected backend above.
+const REQUIRES_POSTGRES = ["postgres", "dual"].includes(SUBMISSION_MODE);
 
 // Shared codes are lower-entropy than link tokens and are typed by a human
 // (often front-desk staff on behalf of many patients from one shared IP), so
@@ -85,9 +94,26 @@ let postgresRepository = null;
 let postgresRepositoryError = null;
 let postgresReady = Promise.resolve();
 if (REQUIRES_POSTGRES) {
-  postgresRepository = createPostgresRepository({ requireAccessGateSchema: ACCESS_GATE_MODE === "enforced" });
+  postgresRepository = createPostgresRepository();
   postgresReady = postgresRepository.initialize().catch((error) => {
     postgresRepositoryError = error;
+  });
+}
+
+// Separate from the submission-storage repository above: the gate can be
+// on a different backend than submission storage, and today's production
+// config (SUBMISSION_MODE=power-automate, ACCESS_GATE_BACKEND unset) needs
+// this block active with REQUIRES_POSTGRES false -- proof the two were
+// wrongly coupled together before this change.
+let accessGateClient = null;
+let accessGateClientError = null;
+let accessGateReady = Promise.resolve();
+if (ACCESS_GATE_MODE === "enforced") {
+  accessGateClient = ACCESS_GATE_BACKEND === "azure_mysql"
+    ? createAzureAccessGateClient()
+    : createPostgresRepository({ requireAccessGateSchema: true });
+  accessGateReady = accessGateClient.initialize().catch((error) => {
+    accessGateClientError = error;
   });
 }
 
@@ -437,15 +463,15 @@ async function handleAccessRedemption(req, res, rawToken) {
     return;
   }
 
-  await postgresReady;
-  if (!postgresRepository || postgresRepositoryError) {
+  await accessGateReady;
+  if (!accessGateClient || accessGateClientError) {
     sendAccessDeniedPage(res, 503);
     return;
   }
 
   let result;
   try {
-    result = await postgresRepository.redeemAccessGrant({ tokenHash: hashToken(rawToken) });
+    result = await accessGateClient.redeemAccessGrant({ tokenHash: hashToken(rawToken) });
   } catch (error) {
     sendAccessDeniedPage(res, 500);
     return;
@@ -499,15 +525,15 @@ async function handleCodeRedemption(req, res) {
     return;
   }
 
-  await postgresReady;
-  if (!postgresRepository || postgresRepositoryError) {
+  await accessGateReady;
+  if (!accessGateClient || accessGateClientError) {
     sendJson(res, 503, { ok: false, error: "Service unavailable." });
     return;
   }
 
   let result;
   try {
-    result = await postgresRepository.redeemAccessGrant({ tokenHash: hashToken(normalized) });
+    result = await accessGateClient.redeemAccessGrant({ tokenHash: hashToken(normalized) });
   } catch (error) {
     sendJson(res, 500, { ok: false, error: "Service unavailable." });
     return;
@@ -559,14 +585,29 @@ const server = http.createServer(async (req, res) => {
         postgresRepositoryError = error;
       }
     }
-    const ok = !REQUIRES_POSTGRES || databaseReady;
+
+    await accessGateReady;
+    let accessGateReadyNow = false;
+    if (accessGateClient && !accessGateClientError) {
+      try {
+        await accessGateClient.health();
+        accessGateReadyNow = true;
+      } catch (error) {
+        accessGateClientError = error;
+      }
+    }
+
+    const ok = (!REQUIRES_POSTGRES || databaseReady)
+      && (ACCESS_GATE_MODE !== "enforced" || accessGateReadyNow);
     sendJson(res, ok ? 200 : 503, {
       ok,
       service: "eg-biomed-cancer-risk-platform",
       submission_mode: SUBMISSION_MODE,
       access_gate_mode: ACCESS_GATE_MODE,
       database: REQUIRES_POSTGRES ? "postgresql" : undefined,
-      database_ready: REQUIRES_POSTGRES ? databaseReady : undefined
+      database_ready: REQUIRES_POSTGRES ? databaseReady : undefined,
+      access_gate_backend: ACCESS_GATE_MODE === "enforced" ? ACCESS_GATE_BACKEND : undefined,
+      access_gate_ready: ACCESS_GATE_MODE === "enforced" ? accessGateReadyNow : undefined
     });
     return;
   }
@@ -605,6 +646,7 @@ server.listen(PORT, HOST, () => {
 function shutdown() {
   server.close(async () => {
     await postgresRepository?.close();
+    await accessGateClient?.close();
     process.exit(0);
   });
   setTimeout(() => process.exit(1), 10000).unref();

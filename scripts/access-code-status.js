@@ -1,6 +1,5 @@
-const { createPostgresRepository } = require("../lib/postgres-repository");
 const { hashToken, normalizeCode } = require("../lib/access-gate");
-const { argument } = require("./cli-helpers");
+const { argument, createAccessGateRepository } = require("./cli-helpers");
 
 const USAGE = "Usage: node scripts/access-code-status.js --code <string>";
 
@@ -15,10 +14,10 @@ async function main() {
     throw new Error("--code failed normalization. Check it matches the code exactly as issued.");
   }
 
-  // Read-only: no guardAgainstAccidentalRemoteHost. That guard exists to
-  // prevent accidental WRITES to the wrong database; a mistaken read here
-  // has no destructive consequence.
-  const repository = createPostgresRepository({ requireAccessGateSchema: true });
+  // Read-only: skips the remote-host guard (Postgres backend only). That
+  // guard exists to prevent accidental WRITES to the wrong database; a
+  // mistaken read here has no destructive consequence.
+  const repository = createAccessGateRepository({ skipRemoteHostGuard: true });
   try {
     await repository.initialize();
     const grant = await repository.getAccessGrantStatus({ tokenHash: hashToken(normalized) });
