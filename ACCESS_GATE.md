@@ -8,7 +8,7 @@ open. There are two credential types, sharing the same underlying
 | --- | --- | --- |
 | Who it's for | One paying individual | A venue/organization buying quota in bulk (e.g. a health-check center, 健檢中心) |
 | Format | System-random, embedded in a URL | Staff-chosen or system-composed, typed into a form |
-| Delivery | `https://.../access/<token>` — auto-redeems on click | Typed into the code-entry form on [access-denied.html](access-denied.html) |
+| Delivery | `https://.../access/<token>` — auto-redeems on click | Typed into the code-entry form built into `index.html` (the homepage doubles as the gate view) |
 | Limit | Time (`--ttl-hours`) + use count (usually 1) | Use count only (no expiry unless explicitly set) |
 | Storage | Hash only — raw token never stored | Hash (for lookup) **and** plaintext `code` column (staff need to look it back up — see below) |
 
@@ -87,13 +87,19 @@ automatically.
    expiry (`ACCESS_GATE_SESSION_TTL_HOURS=0.5`, i.e. 30 minutes) as a hard
    ceiling even if the cookie somehow outlives the browser session (e.g. tab
    restore).
-5. Every other route (`/`, static assets, `POST /api/submit`) requires that
+5. `POST /api/submit` and every other non-exempt API route requires that
    session cookie once the gate is `enforced`. `GET /api/health` and
-   `GET /access/<token>` are always reachable.
-6. Any denial (expired / already used / unknown / revoked) shows the same
-   styled page, [access-denied.html](access-denied.html) — the response never
-   reveals which specific reason applied. The real reason is recorded
-   server-side in `operations.access_events`.
+   `GET /access/<token>` are always reachable. `GET /`/`/index.html` is also
+   always reachable, but its *content* depends on the same session check —
+   see the next point.
+6. `index.html` doubles as the gate entry page: without a valid session,
+   the server serves the same file with three sections swapped out
+   server-side (the "開始互動評估" call-to-action becomes the code-entry
+   form; the language switcher and the interactive assessment section are
+   removed) rather than a separate page. Any denial (expired / already used
+   / unknown / revoked / no session at all) renders that same gate view —
+   the response never reveals which specific reason applied. The real
+   reason is recorded server-side in `operations.access_events`.
 
 ## How codes work
 
@@ -117,8 +123,8 @@ automatically.
    exhausted. Running out is answered by **topping up**
    (`npm run access:topup`), not minting a new code — this keeps one venue's
    whole usage history under a single `grant_id`.
-4. A visitor without a session sees [access-denied.html](access-denied.html),
-   which now has a code-entry form. It submits to
+4. A visitor without a session sees the gate view built into `index.html`
+   (see point 6 above), which has a code-entry form. It submits to
    `POST /api/access/redeem-code` (JSON body `{code}`) and, on success, sets
    the same kind of session cookie as link redemption and redirects to `/`.
 5. `normalizeCode` (in `lib/access-gate.js`) trims, lowercases, and collapses

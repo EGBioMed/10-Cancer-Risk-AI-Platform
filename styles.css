@@ -610,6 +610,59 @@ html[lang="en"] h1 {
   color: #fff;
 }
 
+.access-gate-panel p {
+  margin: 0 0 12px;
+  color: #e8f3ef;
+  line-height: 1.65;
+}
+
+.access-gate-form {
+  margin-top: 16px;
+}
+
+.access-gate-form label {
+  display: block;
+  font-weight: 600;
+  color: #fff;
+  margin-bottom: 8px;
+}
+
+.access-gate-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.access-gate-input {
+  flex: 1 1 200px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 8px;
+  font-size: 16px;
+  background: #ffffff;
+  color: var(--ink);
+}
+
+.access-gate-error {
+  margin: 12px 0 0;
+  color: #ffd7d2;
+  font-weight: 600;
+}
+
+.access-gate-support {
+  margin: 16px 0 0;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.28);
+  font-size: 13px;
+  color: #e8f3ef;
+}
+
+.access-gate-support a {
+  color: #fff;
+  font-weight: 600;
+}
+
 .workspace {
   display: grid;
   grid-template-columns: minmax(250px, 330px) minmax(0, 1fr);
@@ -2004,8 +2057,19 @@ pre {
   .validation-card h2,
   .validation-card__header p,
   .validation-card__note,
-  .validation-card__link {
+  .validation-card__link,
+  .access-gate-panel p,
+  .access-gate-form label,
+  .access-gate-support {
     color: var(--ink);
+  }
+
+  .access-gate-error {
+    color: #b3261e;
+  }
+
+  .access-gate-support a {
+    color: var(--teal-deep);
   }
 
   .validation-metrics {
