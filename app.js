@@ -4,15 +4,15 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.1.0",
-  questionnaire_version: "questionnaire/2026-08-05-v19.4-phase1",
+  questionnaire_version: "questionnaire/2026-08-19-v19.5-phase1",
   consent_version: "consent/2026-08-05",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
   mapping_version: "answer-to-feature/1.0.0",
   vnext_feature_schema_version: "feature-gap-candidates/2026-08-05",
   vnext_mapping_version: "answer-mapping-vnext/0.1.0",
-  rule_input_schema_version: "high-risk-rules/19.4",
-  rule_input_mapping_version: "rule-input-mapping/19.4-phase1",
+  rule_input_schema_version: "high-risk-rules/19.5",
+  rule_input_mapping_version: "rule-input-mapping/19.5-phase1",
   report_template_version: "email-report/2026-08-05"
 });
 
@@ -400,6 +400,115 @@ const stoolLooseOrFrequentQuestion = { id: "stool_loose_or_frequent", module: "s
 const mastalgiaQuestion = { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
 const testicularPainPatternQuestion = { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") };
 
+// New 2026-08-19 course/duration follow-ups for lymphadenopathy, head/neck/
+// nasal lump (with a site-disambiguation sub-question), breast lump, and
+// testicular lump. Each pair asks whether the lump/node has stayed present,
+// come-and-gone, or resolved ("course"), and -- only if still relevant --
+// roughly how long it has lasted or how far apart the two episodes were
+// ("duration_band"). Shared option lists so the four pairs stay identical.
+const lumpCourseOptions = ["一直都在，沒有消掉過", "消掉過，但後來又出現", "消掉之後就沒有再出現", "不確定怎麼回答"];
+const lumpDurationBandOptions = ["不到2週", "2週到不滿6週", "6週到不滿6個月", "6個月以上", "不確定怎麼回答"];
+
+const symptomLymphadenopathyCourseQuestion = { id: "symptom_lymphadenopathy_course", module: "symptoms", type: "single", required: true, title: "這個腫起來的淋巴結，情況比較接近哪一種？", titleEn: "Since you first noticed the enlarged lymph node, which of the following best describes what happened?", note: "請依實際感受回答；若不確定，可選「不確定怎麼回答」。", noteEn: "Answer based on what you have experienced. Select \"Not sure how to answer\" if you are unsure.", field: "rule_inputs.symptom_lymphadenopathy_course", ruleField: "symptom_lymphadenopathy_course", options: lumpCourseOptions, appliesIf: () => isRuleParentPositive("symptom_lymphadenopathy") };
+const symptomLymphadenopathyDurationBandQuestion = {
+  id: "symptom_lymphadenopathy_duration_band",
+  module: "symptoms",
+  type: "single",
+  required: true,
+  title: "這個腫起來的淋巴結，到現在（或第一次到最近一次）大概經過多久？",
+  titleEn: "Roughly how much time has passed for the enlarged lymph node, either from onset until now or between the first and most recent occurrence?",
+  dynamicTitle: (answers) => getAnswerValue(answers, "rule_inputs.symptom_lymphadenopathy_course") === lumpCourseOptions[1] ? "第一次腫起來和最近一次腫起來，前後大概隔了多久？" : "這個腫起來的淋巴結到現在大概已經多久了？",
+  dynamicTitleEn: (answers) => getAnswerValue(answers, "rule_inputs.symptom_lymphadenopathy_course") === lumpCourseOptions[1] ? "Roughly how much time passed between the first and most recent time the lymph node was swollen?" : "Roughly how long has the enlarged lymph node lasted so far?",
+  note: "請選擇最接近的區間；若不確定，可選「不確定怎麼回答」。",
+  noteEn: "Select the closest range. Select \"Not sure how to answer\" if you are unsure.",
+  field: "rule_inputs.symptom_lymphadenopathy_duration_band",
+  ruleField: "symptom_lymphadenopathy_duration_band",
+  options: lumpDurationBandOptions,
+  appliesIf: (answers) => [lumpCourseOptions[0], lumpCourseOptions[1]].includes(getAnswerValue(answers, "rule_inputs.symptom_lymphadenopathy_course"))
+};
+
+// symptom_hn_lump's trigger is an OR across 3 checkboxes in the same group
+// (symptom_nasal_discharge is deliberately excluded). When 2+ are checked,
+// a disambiguation question asks which single lump to answer the course/
+// duration questions about; when exactly 1 is checked, that one is used
+// automatically and the disambiguation question never appears.
+const hnLumpSiteDefinitions = [
+  ["symptom_neck_lump", "頸部摸得到腫塊或硬塊", "頸部腫塊"],
+  ["symptom_head_neck_mass", "頭部、臉部或頸部出現新的腫塊", "頭臉頸腫塊"],
+  ["symptom_nasal_mass", "鼻腔內或鼻部出現腫塊", "鼻部腫塊"]
+];
+function getCheckedHnLumpSites() {
+  return hnLumpSiteDefinitions.filter(([, fullLabel]) => hasSelected("symptoms.head_neck_nasal", fullLabel));
+}
+const symptomHnLumpSiteQuestion = {
+  id: "symptom_hn_lump_site",
+  module: "symptoms",
+  type: "single",
+  required: true,
+  title: "你剛才提到不只一處腫塊，接下來想請你針對其中一個回答，請問是哪一個？",
+  titleEn: "You mentioned more than one lump earlier. We would like you to answer the next questions about just one of them -- which one?",
+  note: "請選擇其中一處回答；若不只一處讓您在意，請選擇最讓您在意的一處。",
+  noteEn: "Select one location to answer about. If more than one concerns you, choose the one you are most concerned about.",
+  field: "rule_inputs.symptom_hn_lump_site",
+  ruleField: "symptom_hn_lump_site",
+  options: hnLumpSiteDefinitions.map(([, , shortLabel]) => shortLabel),
+  filterOptions: (option) => getCheckedHnLumpSites().some(([, , shortLabel]) => shortLabel === option),
+  appliesIf: () => getCheckedHnLumpSites().length >= 2
+};
+const symptomHnLumpCourseQuestion = { id: "symptom_hn_lump_course", module: "symptoms", type: "single", required: true, title: "這個腫塊，情況比較接近哪一種？", titleEn: "Since you first noticed the lump, which of the following best describes what happened?", note: "請針對前面選擇的那一處腫塊回答；若不確定，可選「不確定怎麼回答」。", noteEn: "Answer about the location you selected earlier. Select \"Not sure how to answer\" if you are unsure.", field: "rule_inputs.symptom_hn_lump_course", ruleField: "symptom_hn_lump_course", options: lumpCourseOptions, appliesIf: () => isRuleParentPositive("symptom_hn_lump") };
+const symptomHnLumpDurationBandQuestion = {
+  id: "symptom_hn_lump_duration_band",
+  module: "symptoms",
+  type: "single",
+  required: true,
+  title: "這個腫塊，到現在（或第一次到最近一次）大概經過多久？",
+  titleEn: "Roughly how much time has passed for the lump, either from onset until now or between the first and most recent occurrence?",
+  dynamicTitle: (answers) => getAnswerValue(answers, "rule_inputs.symptom_hn_lump_course") === lumpCourseOptions[1] ? "第一次出現和最近一次出現，前後大概隔了多久？" : "這個腫塊到現在大概已經存在多久了？",
+  dynamicTitleEn: (answers) => getAnswerValue(answers, "rule_inputs.symptom_hn_lump_course") === lumpCourseOptions[1] ? "Roughly how much time passed between the first and most recent time the lump appeared?" : "Roughly how long has the lump been present so far?",
+  note: "請選擇最接近的區間；若不確定，可選「不確定怎麼回答」。",
+  noteEn: "Select the closest range. Select \"Not sure how to answer\" if you are unsure.",
+  field: "rule_inputs.symptom_hn_lump_duration_band",
+  ruleField: "symptom_hn_lump_duration_band",
+  options: lumpDurationBandOptions,
+  appliesIf: (answers) => [lumpCourseOptions[0], lumpCourseOptions[1]].includes(getAnswerValue(answers, "rule_inputs.symptom_hn_lump_course"))
+};
+
+const symptomBreastLumpCourseQuestion = { id: "symptom_breast_lump_course", module: "symptoms", type: "single", required: true, title: "這個乳房腫塊，情況比較接近哪一種？", titleEn: "Since you first noticed the breast lump, which of the following best describes what happened?", note: "請依實際感受回答；若不確定，可選「不確定怎麼回答」。", noteEn: "Answer based on what you have experienced. Select \"Not sure how to answer\" if you are unsure.", field: "rule_inputs.symptom_breast_lump_course", ruleField: "symptom_breast_lump_course", options: lumpCourseOptions, appliesIf: () => isRuleParentPositive("symptom_breast_lump") };
+const symptomBreastLumpDurationBandQuestion = {
+  id: "symptom_breast_lump_duration_band",
+  module: "symptoms",
+  type: "single",
+  required: true,
+  title: "這個乳房腫塊，到現在（或第一次到最近一次）大概經過多久？",
+  titleEn: "Roughly how much time has passed for the breast lump, either from onset until now or between the first and most recent occurrence?",
+  dynamicTitle: (answers) => getAnswerValue(answers, "rule_inputs.symptom_breast_lump_course") === lumpCourseOptions[1] ? "第一次腫起來和最近一次腫起來，前後大概隔了多久？" : "這個乳房腫塊到現在大概已經多久了？",
+  dynamicTitleEn: (answers) => getAnswerValue(answers, "rule_inputs.symptom_breast_lump_course") === lumpCourseOptions[1] ? "Roughly how much time passed between the first and most recent time the breast lump appeared?" : "Roughly how long has the breast lump lasted so far?",
+  note: "請選擇最接近的區間；若不確定，可選「不確定怎麼回答」。",
+  noteEn: "Select the closest range. Select \"Not sure how to answer\" if you are unsure.",
+  field: "rule_inputs.symptom_breast_lump_duration_band",
+  ruleField: "symptom_breast_lump_duration_band",
+  options: lumpDurationBandOptions,
+  appliesIf: (answers) => [lumpCourseOptions[0], lumpCourseOptions[1]].includes(getAnswerValue(answers, "rule_inputs.symptom_breast_lump_course"))
+};
+
+const symptomTesticularLumpCourseQuestion = { id: "symptom_testicular_lump_course", module: "symptoms", type: "single", required: true, title: "這個睪丸腫塊，情況比較接近哪一種？", titleEn: "Since you first noticed the testicular lump, which of the following best describes what happened?", note: "請依實際感受回答；若不確定，可選「不確定怎麼回答」。", noteEn: "Answer based on what you have experienced. Select \"Not sure how to answer\" if you are unsure.", field: "rule_inputs.symptom_testicular_lump_course", ruleField: "symptom_testicular_lump_course", options: lumpCourseOptions, appliesIf: () => isRuleParentPositive("symptom_testicular_lump") };
+const symptomTesticularLumpDurationBandQuestion = {
+  id: "symptom_testicular_lump_duration_band",
+  module: "symptoms",
+  type: "single",
+  required: true,
+  title: "這個睪丸腫塊，到現在（或第一次到最近一次）大概經過多久？",
+  titleEn: "Roughly how much time has passed for the testicular lump, either from onset until now or between the first and most recent occurrence?",
+  dynamicTitle: (answers) => getAnswerValue(answers, "rule_inputs.symptom_testicular_lump_course") === lumpCourseOptions[1] ? "第一次腫起來和最近一次腫起來，前後大概隔了多久？" : "這個睪丸腫塊到現在大概已經多久了？",
+  dynamicTitleEn: (answers) => getAnswerValue(answers, "rule_inputs.symptom_testicular_lump_course") === lumpCourseOptions[1] ? "Roughly how much time passed between the first and most recent time the testicular lump appeared?" : "Roughly how long has the testicular lump lasted so far?",
+  note: "請選擇最接近的區間；若不確定，可選「不確定怎麼回答」。",
+  noteEn: "Select the closest range. Select \"Not sure how to answer\" if you are unsure.",
+  field: "rule_inputs.symptom_testicular_lump_duration_band",
+  ruleField: "symptom_testicular_lump_duration_band",
+  options: lumpDurationBandOptions,
+  appliesIf: (answers) => [lumpCourseOptions[0], lumpCourseOptions[1]].includes(getAnswerValue(answers, "rule_inputs.symptom_testicular_lump_course"))
+};
+
 // Explicit group -> follow-up map, replacing the old design where every
 // follow-up was batched after all 13 symptom groups regardless of which
 // one triggered it. symptom_mass is the one case whose trigger spans four
@@ -412,16 +521,22 @@ const followUpsAfterSymptomGroup = {
   symptoms_bowel_abdominal: [stoolLooseOrFrequentQuestion, ...ruleRepeatQuestionsByParent.symptom_hematochezia],
   symptoms_hepatobiliary: [...ruleRepeatQuestionsByParent.symptom_jaundice],
   symptoms_respiratory: [...ruleRepeatQuestionsByParent.symptom_shortness_of_breath],
-  symptoms_breast: [mastalgiaQuestion],
-  symptoms_male_reproductive: [testicularPainPatternQuestion],
+  symptoms_breast: [symptomBreastLumpCourseQuestion, symptomBreastLumpDurationBandQuestion, mastalgiaQuestion],
+  symptoms_male_reproductive: [symptomTesticularLumpCourseQuestion, symptomTesticularLumpDurationBandQuestion, testicularPainPatternQuestion],
   symptoms_gynecological: [...ruleRepeatQuestionsByParent.symptom_pelvic_discomfort_or_increased_girth],
   symptoms_oral_throat: [
     ...ruleRepeatQuestionsByParent.symptom_oral_ulcer,
     ...ruleRepeatQuestionsByParent.symptom_sore_throat,
     ...ruleRepeatQuestionsByParent.symptom_mouth_symptoms
   ],
-  symptoms_head_neck_nasal: [...ruleRepeatQuestionsByParent.symptom_mass],
-  symptoms_bone_hematologic: [...ruleRepeatQuestionsByParent.symptom_back_pain]
+  symptoms_head_neck_nasal: [
+    symptomHnLumpSiteQuestion, symptomHnLumpCourseQuestion, symptomHnLumpDurationBandQuestion,
+    ...ruleRepeatQuestionsByParent.symptom_mass
+  ],
+  symptoms_bone_hematologic: [
+    ...ruleRepeatQuestionsByParent.symptom_back_pain,
+    symptomLymphadenopathyCourseQuestion, symptomLymphadenopathyDurationBandQuestion
+  ]
 };
 
 const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) => [
@@ -700,7 +815,10 @@ const i18n = {
       "是，過去曾被診斷，目前已完成治療或追蹤": "Yes, diagnosed in the past; treatment or follow-up has been completed",
       "否，未曾被診斷為癌症": "No, never diagnosed with cancer",
       "高血壓": "Hypertension", "糖尿病／高血糖": "Diabetes / high blood glucose", "高血脂／高膽固醇": "Hyperlipidemia / high cholesterol", "肝病（B 型肝炎／C 型肝炎／肝硬化）": "Liver disease (HBV / HCV / cirrhosis)", "胃食道逆流": "Gastroesophageal reflux disease", "心臟病／心律不整": "Heart disease / arrhythmia", "甲狀腺疾病": "Thyroid disease", "氣喘／慢性肺阻塞（COPD）": "Asthma / COPD", "痛風／高尿酸": "Gout / high uric acid", "關節炎（含類風濕性）": "Arthritis (including rheumatoid arthritis)", "憂鬱症／焦慮症": "Depression / anxiety", "中風病史": "History of stroke", "腎臟病／洗腎": "Kidney disease / dialysis", "自體免疫疾病（乾燥症、紅斑性狼瘡等）": "Autoimmune disease", "以上皆無": "None of the above", "其他慢性疾病": "Other chronic disease",
-      "乳癌": "Breast cancer", "攝護腺癌": "Prostate cancer", "肺癌": "Lung cancer", "頭頸癌": "Head and neck cancer", "胰臟癌": "Pancreatic cancer", "肝癌": "Liver cancer", "大腸直腸癌": "Colorectal cancer", "胃癌": "Stomach cancer", "子宮內膜癌": "Endometrial cancer", "膀胱癌": "Bladder cancer", "腎癌": "Kidney cancer", "其他癌種": "Other cancer type"
+      "乳癌": "Breast cancer", "攝護腺癌": "Prostate cancer", "肺癌": "Lung cancer", "頭頸癌": "Head and neck cancer", "胰臟癌": "Pancreatic cancer", "肝癌": "Liver cancer", "大腸直腸癌": "Colorectal cancer", "胃癌": "Stomach cancer", "子宮內膜癌": "Endometrial cancer", "膀胱癌": "Bladder cancer", "腎癌": "Kidney cancer", "其他癌種": "Other cancer type",
+      "一直都在，沒有消掉過": "It has stayed present the whole time and never went away", "消掉過，但後來又出現": "It went away but came back later", "消掉之後就沒有再出現": "It went away and has not come back", "不確定怎麼回答": "Not sure how to answer",
+      "不到2週": "Less than 2 weeks", "2週到不滿6週": "2 to less than 6 weeks", "6週到不滿6個月": "6 weeks to less than 6 months", "6個月以上": "6 months or more",
+      "頸部腫塊": "Neck lump", "頭臉頸腫塊": "Head/face/neck lump", "鼻部腫塊": "Nasal lump"
     }
   }
 };
@@ -741,7 +859,11 @@ const ruleDirectFeatureColumns = [
   "symptom_stool_loose_or_frequent", "symptom_mastalgia", "symptom_constipation",
   "dx_orchitis_epididymitis", "hx_benign_gynae_disease",
   "screen_pap_overdue_or_out_of_range", "screen_psa_elevated",
-  "symptom_mass", "symptom_shortness_of_breath"
+  "symptom_mass", "symptom_shortness_of_breath",
+  "symptom_lymphadenopathy_course", "symptom_lymphadenopathy_duration_band",
+  "symptom_hn_lump_course", "symptom_hn_lump_duration_band", "symptom_hn_lump_site",
+  "symptom_breast_lump_course", "symptom_breast_lump_duration_band",
+  "symptom_testicular_lump_course", "symptom_testicular_lump_duration_band"
 ];
 const ruleRepeatFeatureColumns = ruleRepeatDefinitions.map(([, , , countField]) => countField);
 const ruleIntervalFeatureColumns = ruleRepeatDefinitions.flatMap(([, , , , intervalField]) => intervalField ? [intervalField] : []);
@@ -751,7 +873,7 @@ const frozenSubmissionVectorCounts = Object.freeze({
   symptom_feature_columns: 84,
   vnext_feature_columns: 33,
   research_feature_columns: 1,
-  rule_input_columns: 21
+  rule_input_columns: 30
 });
 const canonicalAnswerQuestions = questions.filter(
   (question) => !question.isComposite
@@ -823,14 +945,16 @@ function getModuleCopy(module) {
 }
 
 function getQuestionCopy(question) {
+  const dynamicTitle = question.dynamicTitle ? question.dynamicTitle(answers) : null;
+  const dynamicTitleEn = question.dynamicTitleEn ? question.dynamicTitleEn(answers) : null;
   if (currentLang !== "en") return {
-    title: question.title,
+    title: dynamicTitle || question.title,
     note: question.note,
     placeholder: question.placeholder
   };
   const copy = i18n.en.questions[question.id] || [];
   return {
-    title: copy[0] || question.titleEn || question.title,
+    title: dynamicTitleEn || copy[0] || question.titleEn || question.title,
     note: copy[1] || question.noteEn || question.note,
     placeholder: copy[2] || question.placeholder
   };
@@ -1473,7 +1597,10 @@ function renderQuickInput(question) {
     return;
   }
 
-  quickOptions.innerHTML = question.options.map((option) => `
+  const singleOptions = question.filterOptions
+    ? question.options.filter((option) => question.filterOptions(option, answers))
+    : question.options;
+  quickOptions.innerHTML = singleOptions.map((option) => `
     <button class="option-button" type="button" data-value="${option}">${tx(option)}</button>
   `).join("");
 
@@ -1805,7 +1932,8 @@ function getRuleParentState(parent) {
     symptom_mass: ["symptom_mass", "symptom_neck_lump", "symptom_head_neck_mass", "symptom_nasal_mass", "symptom_breast_lump", "symptom_testicular_lump"],
     symptom_abdominal_pain: ["symptom_persistent_abdominal_pain", "symptom_epigastric_pain", "symptom_upper_abdominal_discomfort", "symptom_right_upper_abdominal_discomfort"],
     symptom_back_pain: ["symptom_persistent_back_pain"],
-    symptom_mouth_symptoms: ["symptom_oral_ulcer", "symptom_oral_white_red_patch"]
+    symptom_mouth_symptoms: ["symptom_oral_ulcer", "symptom_oral_white_red_patch"],
+    symptom_hn_lump: ["symptom_neck_lump", "symptom_head_neck_mass", "symptom_nasal_mass"]
   };
   return combineSymptomStates(derivedParents[parent] || [parent]);
 }
@@ -2132,6 +2260,36 @@ function mapRuleNumber(field) {
   return normalizeNumber(entry.value);
 }
 
+// Shared by the 4 lump/node course+duration_band pairs (see lumpCourseOptions/
+// lumpDurationBandOptions near the question definitions above): course codes
+// 1/2 mean the lump/node is still relevant, so only then does duration_band
+// get a code -- otherwise it stays null, matching how it's never shown.
+const courseCodeMap = Object.fromEntries(lumpCourseOptions.slice(0, 3).map((option, index) => [option, index + 1]));
+const durationBandCodeMap = Object.fromEntries(lumpDurationBandOptions.slice(0, 4).map((option, index) => [option, index + 1]));
+
+function buildCourseDurationPair(prefix) {
+  const course = courseCodeMap[getAnswerValue(answers, `rule_inputs.${prefix}_course`)] ?? null;
+  const duration = [1, 2].includes(course)
+    ? (durationBandCodeMap[getAnswerValue(answers, `rule_inputs.${prefix}_duration_band`)] ?? null)
+    : null;
+  return { [`${prefix}_course`]: course, [`${prefix}_duration_band`]: duration };
+}
+
+// symptom_hn_lump_site: 1 = neck lump, 2 = head/face/neck lump, 3 = nasal
+// lump. If only one of the three checkboxes was checked, that site is used
+// automatically (the disambiguation question never appeared); if two or
+// more were checked, the disambiguation answer decides.
+function resolveHnLumpSite() {
+  const checkedSites = getCheckedHnLumpSites();
+  if (checkedSites.length === 1) return hnLumpSiteDefinitions.indexOf(checkedSites[0]) + 1;
+  if (checkedSites.length >= 2) {
+    const answer = getAnswerValue(answers, "rule_inputs.symptom_hn_lump_site");
+    const index = hnLumpSiteDefinitions.findIndex(([, , shortLabel]) => shortLabel === answer);
+    return index >= 0 ? index + 1 : null;
+  }
+  return null;
+}
+
 function buildRuleInputRow(symptomFeatureRow) {
   const papTiming = getAnswerValue(answers, "rule_inputs.screen_pap_overdue_or_out_of_range");
   const psaHistory = getAnswerValue(answers, "rule_inputs.screen_psa_elevated");
@@ -2146,7 +2304,12 @@ function buildRuleInputRow(symptomFeatureRow) {
     screen_pap_overdue_or_out_of_range: ({ "3 年內": 1, "3 年以上": 2, "從未做過": 3 }[papTiming] ?? null),
     screen_psa_elevated: ({ "做過且曾被告知偏高": 1, "做過且結果正常": 2, "沒做過": 0 }[psaHistory] ?? null),
     symptom_mass: getRuleParentState("symptom_mass"),
-    symptom_shortness_of_breath: symptomFeatureRow.symptom_shortness_of_breath ?? null
+    symptom_shortness_of_breath: symptomFeatureRow.symptom_shortness_of_breath ?? null,
+    ...buildCourseDurationPair("symptom_lymphadenopathy"),
+    ...buildCourseDurationPair("symptom_hn_lump"),
+    ...buildCourseDurationPair("symptom_breast_lump"),
+    ...buildCourseDurationPair("symptom_testicular_lump"),
+    symptom_hn_lump_site: resolveHnLumpSite()
   };
 
   ruleRepeatDefinitions.forEach(([parent, , , countField, intervalField]) => {

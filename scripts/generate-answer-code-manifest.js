@@ -82,7 +82,7 @@ for (const question of manifestQuestions) {
 
 const manifest = {
   schema_version: "question-answer-codes/1.0.0",
-  questionnaire_version: "questionnaire/2026-08-05-v19.4-phase1",
+  questionnaire_version: "questionnaire/2026-08-19-v19.5-phase1",
   status_values: ["answered", "unknown", "not_applicable"],
   display_labels_are_data_values: false,
   question_count: manifestQuestions.length,

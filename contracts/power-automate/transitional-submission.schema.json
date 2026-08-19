@@ -9,7 +9,7 @@
     },
     "questionnaire_version": {
       "type": "string",
-      "enum": ["questionnaire/2026-08-05-v19.4-phase1"]
+      "enum": ["questionnaire/2026-08-19-v19.5-phase1"]
     },
     "consent_version": {
       "type": "string"
@@ -33,11 +33,11 @@
     },
     "rule_input_schema_version": {
       "type": "string",
-      "enum": ["high-risk-rules/19.4"]
+      "enum": ["high-risk-rules/19.5"]
     },
     "rule_input_mapping_version": {
       "type": "string",
-      "enum": ["rule-input-mapping/19.4-phase1"]
+      "enum": ["rule-input-mapping/19.5-phase1"]
     },
     "report_template_version": {
       "type": "string"
@@ -72,8 +72,8 @@
     },
     "answer_code_rows": {
       "type": "array",
-      "minItems": 68,
-      "maxItems": 68,
+      "minItems": 77,
+      "maxItems": 77,
       "items": {
         "type": "object",
         "additionalProperties": false,
@@ -208,8 +208,8 @@
     },
     "rule_input_columns": {
       "type": "array",
-      "minItems": 21,
-      "maxItems": 21,
+      "minItems": 30,
+      "maxItems": 30,
       "uniqueItems": true,
       "items": {
         "type": "string"

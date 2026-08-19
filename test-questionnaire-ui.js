@@ -60,7 +60,7 @@ test("race question provides the requested bilingual choices", () => {
 
 test("submission validation count follows the canonical questionnaire definitions", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
-  assert.equal(canonicalAnswerQuestions.length, 68);
+  assert.equal(canonicalAnswerQuestions.length, 77);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert(!canonicalAnswerQuestions.some((question) => question.id === "race"));

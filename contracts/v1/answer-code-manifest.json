@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+  "questionnaire_version": "questionnaire/2026-08-19-v19.5-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 70,
-  "canonical_answer_question_count": 68,
+  "question_count": 79,
+  "canonical_answer_question_count": 77,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -565,6 +565,73 @@
       ]
     },
     {
+      "question_id": "symptom_breast_lump_course",
+      "field": "rule_inputs.symptom_breast_lump_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個乳房腫塊，情況比較接近哪一種？",
+      "title_en": "Since you first noticed the breast lump, which of the following best describes what happened?",
+      "options": [
+        {
+          "code": "symptom_breast_lump_course.option_01",
+          "label_zh": "一直都在，沒有消掉過",
+          "label_en": "It has stayed present the whole time and never went away"
+        },
+        {
+          "code": "symptom_breast_lump_course.option_02",
+          "label_zh": "消掉過，但後來又出現",
+          "label_en": "It went away but came back later"
+        },
+        {
+          "code": "symptom_breast_lump_course.option_03",
+          "label_zh": "消掉之後就沒有再出現",
+          "label_en": "It went away and has not come back"
+        },
+        {
+          "code": "symptom_breast_lump_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_breast_lump_duration_band",
+      "field": "rule_inputs.symptom_breast_lump_duration_band",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個乳房腫塊，到現在（或第一次到最近一次）大概經過多久？",
+      "title_en": "Roughly how much time has passed for the breast lump, either from onset until now or between the first and most recent occurrence?",
+      "options": [
+        {
+          "code": "symptom_breast_lump_duration_band.option_01",
+          "label_zh": "不到2週",
+          "label_en": "Less than 2 weeks"
+        },
+        {
+          "code": "symptom_breast_lump_duration_band.option_02",
+          "label_zh": "2週到不滿6週",
+          "label_en": "2 to less than 6 weeks"
+        },
+        {
+          "code": "symptom_breast_lump_duration_band.option_03",
+          "label_zh": "6週到不滿6個月",
+          "label_en": "6 weeks to less than 6 months"
+        },
+        {
+          "code": "symptom_breast_lump_duration_band.option_04",
+          "label_zh": "6個月以上",
+          "label_en": "6 months or more"
+        },
+        {
+          "code": "symptom_breast_lump_duration_band.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
       "question_id": "mastalgia",
       "field": "rule_inputs.symptom_mastalgia",
       "module": "symptoms",
@@ -704,6 +771,73 @@
           "code": "unknown",
           "label_zh": "不確定",
           "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_testicular_lump_course",
+      "field": "rule_inputs.symptom_testicular_lump_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個睪丸腫塊，情況比較接近哪一種？",
+      "title_en": "Since you first noticed the testicular lump, which of the following best describes what happened?",
+      "options": [
+        {
+          "code": "symptom_testicular_lump_course.option_01",
+          "label_zh": "一直都在，沒有消掉過",
+          "label_en": "It has stayed present the whole time and never went away"
+        },
+        {
+          "code": "symptom_testicular_lump_course.option_02",
+          "label_zh": "消掉過，但後來又出現",
+          "label_en": "It went away but came back later"
+        },
+        {
+          "code": "symptom_testicular_lump_course.option_03",
+          "label_zh": "消掉之後就沒有再出現",
+          "label_en": "It went away and has not come back"
+        },
+        {
+          "code": "symptom_testicular_lump_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_testicular_lump_duration_band",
+      "field": "rule_inputs.symptom_testicular_lump_duration_band",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個睪丸腫塊，到現在（或第一次到最近一次）大概經過多久？",
+      "title_en": "Roughly how much time has passed for the testicular lump, either from onset until now or between the first and most recent occurrence?",
+      "options": [
+        {
+          "code": "symptom_testicular_lump_duration_band.option_01",
+          "label_zh": "不到2週",
+          "label_en": "Less than 2 weeks"
+        },
+        {
+          "code": "symptom_testicular_lump_duration_band.option_02",
+          "label_zh": "2週到不滿6週",
+          "label_en": "2 to less than 6 weeks"
+        },
+        {
+          "code": "symptom_testicular_lump_duration_band.option_03",
+          "label_zh": "6週到不滿6個月",
+          "label_en": "6 weeks to less than 6 months"
+        },
+        {
+          "code": "symptom_testicular_lump_duration_band.option_04",
+          "label_zh": "6個月以上",
+          "label_en": "6 months or more"
+        },
+        {
+          "code": "symptom_testicular_lump_duration_band.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
         }
       ]
     },
@@ -973,6 +1107,99 @@
       ]
     },
     {
+      "question_id": "symptom_hn_lump_site",
+      "field": "rule_inputs.symptom_hn_lump_site",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "你剛才提到不只一處腫塊，接下來想請你針對其中一個回答，請問是哪一個？",
+      "title_en": "You mentioned more than one lump earlier. We would like you to answer the next questions about just one of them -- which one?",
+      "options": [
+        {
+          "code": "symptom_hn_lump_site.option_01",
+          "label_zh": "頸部腫塊",
+          "label_en": "Neck lump"
+        },
+        {
+          "code": "symptom_hn_lump_site.option_02",
+          "label_zh": "頭臉頸腫塊",
+          "label_en": "Head/face/neck lump"
+        },
+        {
+          "code": "symptom_hn_lump_site.option_03",
+          "label_zh": "鼻部腫塊",
+          "label_en": "Nasal lump"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_hn_lump_course",
+      "field": "rule_inputs.symptom_hn_lump_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個腫塊，情況比較接近哪一種？",
+      "title_en": "Since you first noticed the lump, which of the following best describes what happened?",
+      "options": [
+        {
+          "code": "symptom_hn_lump_course.option_01",
+          "label_zh": "一直都在，沒有消掉過",
+          "label_en": "It has stayed present the whole time and never went away"
+        },
+        {
+          "code": "symptom_hn_lump_course.option_02",
+          "label_zh": "消掉過，但後來又出現",
+          "label_en": "It went away but came back later"
+        },
+        {
+          "code": "symptom_hn_lump_course.option_03",
+          "label_zh": "消掉之後就沒有再出現",
+          "label_en": "It went away and has not come back"
+        },
+        {
+          "code": "symptom_hn_lump_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_hn_lump_duration_band",
+      "field": "rule_inputs.symptom_hn_lump_duration_band",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個腫塊，到現在（或第一次到最近一次）大概經過多久？",
+      "title_en": "Roughly how much time has passed for the lump, either from onset until now or between the first and most recent occurrence?",
+      "options": [
+        {
+          "code": "symptom_hn_lump_duration_band.option_01",
+          "label_zh": "不到2週",
+          "label_en": "Less than 2 weeks"
+        },
+        {
+          "code": "symptom_hn_lump_duration_band.option_02",
+          "label_zh": "2週到不滿6週",
+          "label_en": "2 to less than 6 weeks"
+        },
+        {
+          "code": "symptom_hn_lump_duration_band.option_03",
+          "label_zh": "6週到不滿6個月",
+          "label_en": "6 weeks to less than 6 months"
+        },
+        {
+          "code": "symptom_hn_lump_duration_band.option_04",
+          "label_zh": "6個月以上",
+          "label_en": "6 months or more"
+        },
+        {
+          "code": "symptom_hn_lump_duration_band.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
       "question_id": "symptom_mass_repeat_count",
       "field": "rule_inputs.symptom_mass_repeat_count",
       "module": "symptoms",
@@ -1121,6 +1348,73 @@
         "maximum": 9,
         "integer": true
       }
+    },
+    {
+      "question_id": "symptom_lymphadenopathy_course",
+      "field": "rule_inputs.symptom_lymphadenopathy_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個腫起來的淋巴結，情況比較接近哪一種？",
+      "title_en": "Since you first noticed the enlarged lymph node, which of the following best describes what happened?",
+      "options": [
+        {
+          "code": "symptom_lymphadenopathy_course.option_01",
+          "label_zh": "一直都在，沒有消掉過",
+          "label_en": "It has stayed present the whole time and never went away"
+        },
+        {
+          "code": "symptom_lymphadenopathy_course.option_02",
+          "label_zh": "消掉過，但後來又出現",
+          "label_en": "It went away but came back later"
+        },
+        {
+          "code": "symptom_lymphadenopathy_course.option_03",
+          "label_zh": "消掉之後就沒有再出現",
+          "label_en": "It went away and has not come back"
+        },
+        {
+          "code": "symptom_lymphadenopathy_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "symptom_lymphadenopathy_duration_band",
+      "field": "rule_inputs.symptom_lymphadenopathy_duration_band",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "這個腫起來的淋巴結，到現在（或第一次到最近一次）大概經過多久？",
+      "title_en": "Roughly how much time has passed for the enlarged lymph node, either from onset until now or between the first and most recent occurrence?",
+      "options": [
+        {
+          "code": "symptom_lymphadenopathy_duration_band.option_01",
+          "label_zh": "不到2週",
+          "label_en": "Less than 2 weeks"
+        },
+        {
+          "code": "symptom_lymphadenopathy_duration_band.option_02",
+          "label_zh": "2週到不滿6週",
+          "label_en": "2 to less than 6 weeks"
+        },
+        {
+          "code": "symptom_lymphadenopathy_duration_band.option_03",
+          "label_zh": "6週到不滿6個月",
+          "label_en": "6 weeks to less than 6 months"
+        },
+        {
+          "code": "symptom_lymphadenopathy_duration_band.option_04",
+          "label_zh": "6個月以上",
+          "label_en": "6 months or more"
+        },
+        {
+          "code": "symptom_lymphadenopathy_duration_band.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
     },
     {
       "question_id": "constipation",

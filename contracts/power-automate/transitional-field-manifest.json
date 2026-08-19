@@ -1,6 +1,6 @@
 {
   "contract_version": "assessment-submission/1.1.0",
-  "questionnaire_version": "questionnaire/2026-08-05-v19.4-phase1",
+  "questionnaire_version": "questionnaire/2026-08-19-v19.5-phase1",
   "feature_schema_version": "model-features/1.0.0",
   "mapping_version": "answer-to-feature/1.0.0",
   "optimized_feature_columns": [
@@ -61,6 +61,10 @@
     "symptom_stool_loose_or_frequent", "symptom_mastalgia", "symptom_constipation",
     "dx_orchitis_epididymitis", "hx_benign_gynae_disease", "screen_pap_overdue_or_out_of_range",
     "screen_psa_elevated", "symptom_mass", "symptom_shortness_of_breath",
+    "symptom_lymphadenopathy_course", "symptom_lymphadenopathy_duration_band",
+    "symptom_hn_lump_course", "symptom_hn_lump_duration_band", "symptom_hn_lump_site",
+    "symptom_breast_lump_course", "symptom_breast_lump_duration_band",
+    "symptom_testicular_lump_course", "symptom_testicular_lump_duration_band",
     "symptom_jaundice_repeat_count", "symptom_mass_repeat_count", "symptom_sore_throat_repeat_count",
     "symptom_shortness_of_breath_repeat_count",
     "symptom_hematochezia_repeat_count",
@@ -74,11 +78,11 @@
     "testicular_pain_pattern", "sore_throat_pattern", "head_neck_mass_pattern", "visible_hematuria_pattern"
   ],
   "counts": {
-    "answer_code_rows": 68,
+    "answer_code_rows": 77,
     "optimized_feature_columns": 71,
     "symptom_feature_columns": 84,
     "vnext_feature_columns": 33,
     "research_feature_columns": 1,
-    "rule_input_columns": 21
+    "rule_input_columns": 30
   }
 }
