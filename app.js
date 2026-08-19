@@ -326,6 +326,10 @@ const ruleRepeatDefinitions = [
   ["symptom_mouth_symptoms", "上述口腔症狀", "the oral symptoms selected above", "symptom_mouth_symptoms_repeat_count", "symptom_mouth_symptoms_interval_days"]
 ];
 
+// Keyed alongside the flat list below so symptomQuestionsWithInlineFollowUps
+// can place each repeat-count/interval-days pair right after its trigger
+// group instead of leaving them all batched at the end.
+const ruleRepeatQuestionsByParent = {};
 const ruleRepeatQuestions = ruleRepeatDefinitions.flatMap(([parent, labelZh, labelEn, countField, intervalField]) => {
   const questionsForField = [{
     id: countField,
@@ -359,6 +363,7 @@ const ruleRepeatQuestions = ruleRepeatDefinitions.flatMap(([parent, labelZh, lab
       appliesIf: () => normalizeNumber(getAnswerValue(answers, `rule_inputs.${countField}`)) >= 2
     });
   }
+  ruleRepeatQuestionsByParent[parent] = questionsForField;
   return questionsForField;
 });
 
@@ -387,6 +392,43 @@ Object.assign(symptomOptionTranslations, Object.fromEntries(
   "沒做過": "Never tested"
 });
 
+// These three follow-ups used to sit as inline literals batched at the end
+// of the symptoms module. Extracted to named consts so
+// followUpsAfterSymptomGroup (below) can place each one right after its
+// trigger group instead -- content/appliesIf logic is unchanged.
+const stoolLooseOrFrequentQuestion = { id: "stool_loose_or_frequent", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？", titleEn: "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?", note: "此題只在您勾選排便習慣改變後出現。", noteEn: "This question appears only after you report a change in bowel habits.", field: "rule_inputs.symptom_stool_loose_or_frequent", ruleField: "symptom_stool_loose_or_frequent", options: ["是", "否", "不確定"], appliesIf: () => isRuleParentPositive("symptom_bowel_habit_change") };
+const mastalgiaQuestion = { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
+const testicularPainPatternQuestion = { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") };
+
+// Explicit group -> follow-up map, replacing the old design where every
+// follow-up was batched after all 13 symptom groups regardless of which
+// one triggered it. symptom_mass is the one case whose trigger spans four
+// non-adjacent groups (general, breast, male-reproductive, head/neck/nasal
+// -- see getRuleParentState's derivedParents); symptoms_head_neck_nasal is
+// declared last among those four for every user regardless of sex, so
+// placing it there means it always appears as soon as every possible
+// trigger has already been asked.
+const followUpsAfterSymptomGroup = {
+  symptoms_bowel_abdominal: [stoolLooseOrFrequentQuestion, ...ruleRepeatQuestionsByParent.symptom_hematochezia],
+  symptoms_hepatobiliary: [...ruleRepeatQuestionsByParent.symptom_jaundice],
+  symptoms_respiratory: [...ruleRepeatQuestionsByParent.symptom_shortness_of_breath],
+  symptoms_breast: [mastalgiaQuestion],
+  symptoms_male_reproductive: [testicularPainPatternQuestion],
+  symptoms_gynecological: [...ruleRepeatQuestionsByParent.symptom_pelvic_discomfort_or_increased_girth],
+  symptoms_oral_throat: [
+    ...ruleRepeatQuestionsByParent.symptom_oral_ulcer,
+    ...ruleRepeatQuestionsByParent.symptom_sore_throat,
+    ...ruleRepeatQuestionsByParent.symptom_mouth_symptoms
+  ],
+  symptoms_head_neck_nasal: [...ruleRepeatQuestionsByParent.symptom_mass],
+  symptoms_bone_hematologic: [...ruleRepeatQuestionsByParent.symptom_back_pain]
+};
+
+const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) => [
+  question,
+  ...(followUpsAfterSymptomGroup[question.id] || [])
+]);
+
 const questions = [
   {
     id: "consent_acknowledgement",
@@ -407,15 +449,9 @@ const questions = [
   { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
   { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
 
-  ...symptomQuestions,
+  ...symptomQuestionsWithInlineFollowUps,
 
-  { id: "stool_loose_or_frequent", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？", titleEn: "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?", note: "此題只在您勾選排便習慣改變後出現。", noteEn: "This question appears only after you report a change in bowel habits.", field: "rule_inputs.symptom_stool_loose_or_frequent", ruleField: "symptom_stool_loose_or_frequent", options: ["是", "否", "不確定"], appliesIf: () => isRuleParentPositive("symptom_bowel_habit_change") },
-  { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "constipation", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
-
-  ...ruleRepeatQuestions,
-
-  { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") },
 
   { id: "menarche_age", module: "female", type: "single", required: true, title: "初經（第一次月經）來潮年齡", note: "若不確定，可使用下方不確定選項。", field: "female_health.menarche_age", options: ["12 歲以前（含 12 歲）", "13 歲以後（含 13 歲）"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "menopause_status", module: "female", type: "single", required: true, title: "目前停經（更年期）狀態", note: "請選擇最接近目前狀況的選項。", field: "female_health.menopause_status", options: ["尚未停經（仍有月經）", "已停經（55 歲或以前停經）", "已停經（55 歲或以後停經）", "已切除子宮或卵巢"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
