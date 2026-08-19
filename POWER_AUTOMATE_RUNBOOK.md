@@ -57,12 +57,38 @@ and a frozen ordered feature manifest. See `MODEL_VNEXT_HANDOFF.md`.
 
 ## Unified Transitional Submission Schema
 
-During the migration period, the HTTP trigger and Parse JSON action must use the
-same schema:
+**IMPORTANT (added 2026-08-19, after a real production outage caused by this):**
+`contracts/power-automate/transitional-submission.schema.json` is the FULL
+internal contract that Render validates browser submissions against. It is
+**not** what the deployed Flow's trigger receives. Every outbound request is
+passed through `buildPowerAutomatePayload()` (`lib/power-automate-adapter.js`)
+first, which strips `answer_code_schema_version`, `consent_record`, and
+`answer_code_rows`, and rewrites `contract_version` to
+`POWER_AUTOMATE_CONTRACT_VERSION` (currently `assessment-submission/1.0.0`)
+before the Flow ever sees the request. Pasting the full schema into the
+Flow's trigger or Parse JSON action makes it require fields the adapter never
+sends and reject the version the adapter always sends -- every submission
+then fails with `TriggerInputSchemaMismatch`, in production, immediately.
+
+Always paste the **adapted** schema instead:
 
 ```text
-contracts/power-automate/transitional-submission.schema.json
+contracts/power-automate/deployed-flow-trigger.schema.json
 ```
+
+This file is generated, not hand-edited. After any change to
+`transitional-submission.schema.json` or to
+`POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS`/`POWER_AUTOMATE_CONTRACT_VERSION` in
+`lib/power-automate-adapter.js`, regenerate it:
+
+```text
+npm run generate:power-automate-trigger-schema
+```
+
+`npm test` fails if this file is stale (see the
+"generated deployed-flow trigger schema is synchronized with the adapter"
+test in `test-contract.js`), so a stale copy should never reach this step in
+the first place -- but always regenerate before pasting, to be sure.
 
 The schema intentionally keeps feature row objects unexpanded. Power Automate
 passes those objects to Office Script or the model API as a whole, so expanding all
@@ -72,7 +98,8 @@ designer harder to maintain.
 Apply it in both locations:
 
 1. Open `When an HTTP request is received`.
-2. Replace `Request Body JSON Schema` with the complete schema file contents.
+2. Replace `Request Body JSON Schema` with the complete contents of
+   `contracts/power-automate/deployed-flow-trigger.schema.json`.
 3. Open `Parse JSON`.
 4. Set `Content` to the Expression:
 
@@ -80,16 +107,19 @@ Apply it in both locations:
 triggerBody()
 ```
 
-5. Replace its `Schema` with the exact same schema file contents.
+5. Replace its `Schema` with the exact same generated file's contents.
 6. Save the Flow.
 7. Submit one Chinese and one English test response.
 
 All version fields are now required. The Render intermediary rejects requests whose
 declared versions or ordered field lists do not match the frozen contract.
 
-Contract `assessment-submission/1.1.0` adds language-neutral coded answers. Existing
-Power Automate actions do not need to map all 76 items yet, but the HTTP trigger and
-Parse JSON schemas must be replaced so the new required fields are accepted.
+Contract `assessment-submission/1.1.0` adds language-neutral coded answers, but
+this is an **internal** version between the browser and Render only. The
+deployed Flow still only ever receives the older adapted shape described
+above -- do not expect (or require) it to accept `answer_code_schema_version`,
+`consent_record`, or `answer_code_rows` until the Flow itself is migrated off
+`buildPowerAutomatePayload()`'s downgrade path, which has not happened yet.
 
 Do not use `Generate from sample` after installing this schema. A single sample may
 infer optional or empty fields incorrectly and cause the trigger and Parse JSON

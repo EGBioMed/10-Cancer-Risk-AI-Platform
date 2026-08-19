@@ -9,6 +9,7 @@
     "test": "node --test test-contract.js test-questionnaire-ui.js test-postgres-repository.js test-backup-retention.js test-access-gate.js test-rate-limiter.js test-azure-access-gate-client.js",
     "validate:contract": "node --test test-contract.js",
     "generate:answer-codes": "node scripts/generate-answer-code-manifest.js",
+    "generate:power-automate-trigger-schema": "node scripts/generate-power-automate-trigger-schema.js",
     "backup:local": "node scripts/backup-postgres.js",
     "export:research": "node scripts/export-postgres-data.js --dataset research --output local-exports/research.csv",
     "export:contacts": "node scripts/export-postgres-data.js --dataset contacts --output local-exports/contacts.csv",

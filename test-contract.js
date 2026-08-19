@@ -145,6 +145,33 @@ test("Power Automate adapter converts the validated 1.1 payload to the deployed 
   assert.deepEqual(validateTransitionalSubmission(submission), []);
 });
 
+// The deployed Power Automate Flow's trigger and Parse JSON schemas must be
+// pasted from deployed-flow-trigger.schema.json, NOT from
+// transitional-submission.schema.json directly -- every outbound request is
+// adapted by buildPowerAutomatePayload() first (see the test above), so the
+// Flow only ever receives the adapted shape. Pasting the full schema into
+// the Flow makes it require fields the adapter strips and reject the
+// version the adapter always sends, producing a real production outage
+// (TriggerInputSchemaMismatch on every submission) that this test exists to
+// catch before it ships, not just document after the fact.
+test("generated deployed-flow trigger schema is synchronized with the adapter", () => {
+  const generatedPath = path.join(__dirname, "contracts", "power-automate", "deployed-flow-trigger.schema.json");
+  const before = fs.readFileSync(generatedPath, "utf8");
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "generate-power-automate-trigger-schema.js")], {
+    cwd: __dirname,
+    stdio: "pipe"
+  });
+  const after = fs.readFileSync(generatedPath, "utf8");
+  assert.equal(after, before, "Run npm run generate:power-automate-trigger-schema, then paste its new content into both Flow actions.");
+
+  const deployedSchema = JSON.parse(after);
+  for (const field of POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS) {
+    assert(!(field in deployedSchema.properties), `${field} must not appear in the deployed Flow trigger schema`);
+    assert(!deployedSchema.required.includes(field), `${field} must not be required by the deployed Flow trigger schema`);
+  }
+  assert.deepEqual(deployedSchema.properties.contract_version.enum, [POWER_AUTOMATE_CONTRACT_VERSION]);
+});
+
 test("backend mapping covers the frozen 71 features and references valid answer codes", () => {
   const mapping = require("./contracts/v1/answer-to-feature-mapping.json");
   assert.equal(mapping.mapping_version, EXPECTED_VERSIONS.mapping_version);
