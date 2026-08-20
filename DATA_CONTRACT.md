@@ -20,7 +20,7 @@ authoritative merely because the browser supplied them.
 The machine-readable files are:
 
 - `contracts/v1/assessment-submission.schema.json`
-- `contracts/v1/questionnaire-manifest.json`
+- `contracts/v1/questionnaire-manifest.json` (deprecated stale stub as of 2026-08-20 -- see the file itself; use `answer-code-manifest.json` below instead)
 - `contracts/v1/model-feature-manifest.json`
 - `contracts/v1/answer-code-manifest.json`
 - `contracts/v1/answer-to-feature-mapping.json`
@@ -77,6 +77,13 @@ used for feature mapping.
 
 `answers` excludes `consent_acknowledgement` and `email`. Consent is represented by
 the versioned `consent` object, and Email is represented only by `contact.email`.
+
+`answers` also excludes `race` (`excludeFromCanonicalContract: true` in `app.js`,
+enforced by a `test-questionnaire-ui.js` assertion). The question is still asked
+and its raw answer is retained in the transitional `rows` array for research
+reference, but it never reaches `answer_code_rows`, the model feature pipeline, or
+any risk-scoring input -- self-reported race is not used as a model feature or
+rule-engine input in this system.
 
 Example:
 
