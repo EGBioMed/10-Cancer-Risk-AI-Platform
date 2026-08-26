@@ -167,6 +167,21 @@ test("generated deployed-flow trigger schema is synchronized with the adapter", 
   assert.equal(after, before, "Run npm run generate:power-automate-trigger-schema, then paste its new content into both Flow actions.");
 
   const deployedSchema = JSON.parse(after);
+  const unsupportedSchemaKeywords = new Set(["pattern", "patternProperties"]);
+  const assertFlowCompatibleSchema = (value, schemaPath = "$") => {
+    if (Array.isArray(value)) {
+      value.forEach((entry, index) => assertFlowCompatibleSchema(entry, `${schemaPath}[${index}]`));
+      return;
+    }
+    if (!value || typeof value !== "object") return;
+
+    for (const [key, entry] of Object.entries(value)) {
+      assert(!unsupportedSchemaKeywords.has(key), `${schemaPath}.${key} is not supported by Power Automate`);
+      assertFlowCompatibleSchema(entry, `${schemaPath}.${key}`);
+    }
+  };
+  assertFlowCompatibleSchema(deployedSchema);
+
   for (const field of POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS) {
     assert(!(field in deployedSchema.properties), `${field} must not appear in the deployed Flow trigger schema`);
     assert(!deployedSchema.required.includes(field), `${field} must not be required by the deployed Flow trigger schema`);

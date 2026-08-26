@@ -23,6 +23,25 @@ const outputPath = path.join(root, "contracts", "power-automate", "deployed-flow
 const source = JSON.parse(fs.readFileSync(sourcePath, "utf8"));
 const schema = JSON.parse(JSON.stringify(source));
 
+// Power Automate's HTTP trigger schema validator implements only a subset of
+// JSON Schema. In particular, saving a Flow with schema validation enabled
+// fails when `pattern` or `patternProperties` appears anywhere in the schema.
+// Keep these constraints in the browser/API contract and remove them only
+// from the generated Flow-compatible copy.
+function stripUnsupportedSchemaKeywords(value) {
+  if (Array.isArray(value)) {
+    value.forEach(stripUnsupportedSchemaKeywords);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
+
+  delete value.pattern;
+  delete value.patternProperties;
+  Object.values(value).forEach(stripUnsupportedSchemaKeywords);
+}
+
+stripUnsupportedSchemaKeywords(schema);
+
 POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.forEach((field) => {
   delete schema.properties[field];
 });

@@ -95,6 +95,12 @@ passes those objects to Office Script or the model API as a whole, so expanding 
 model and symptom properties would add unnecessary dynamic fields and make the
 designer harder to maintain.
 
+The generator also removes the JSON Schema keywords `pattern` and
+`patternProperties` recursively. Power Automate's HTTP trigger rejects a Flow save
+when either keyword is present and trigger schema validation is enabled. The browser
+and Azure API still enforce the full-name character rules; only the Flow-compatible
+copy omits those unsupported schema keywords.
+
 Apply it in both locations:
 
 1. Open `When an HTTP request is received`.

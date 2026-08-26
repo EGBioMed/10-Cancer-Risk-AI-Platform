@@ -54,8 +54,7 @@
     "full_name": {
       "type": "string",
       "minLength": 1,
-      "maxLength": 100,
-      "pattern": "^[^<>\\u0000-\\u001F\\u007F]+$"
+      "maxLength": 100
     },
     "email": {
       "type": "string"
@@ -212,8 +211,7 @@
         "full_name": {
           "type": "string",
           "minLength": 1,
-          "maxLength": 100,
-          "pattern": "^[^<>\\u0000-\\u001F\\u007F]+$"
+          "maxLength": 100
         },
         "email": {
           "type": "string"
