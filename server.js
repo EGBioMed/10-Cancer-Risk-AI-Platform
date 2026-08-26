@@ -4,6 +4,7 @@ const path = require("path");
 const crypto = require("crypto");
 const {
   EXPECTED_VERSIONS,
+  sanitizeLegacyDirectIdentifiers,
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
 const { buildPowerAutomatePayload } = require("./lib/power-automate-adapter");
@@ -279,6 +280,7 @@ async function receiveSubmission(req, res) {
     return;
   }
 
+  submission = sanitizeLegacyDirectIdentifiers(submission);
   const contractErrors = validateTransitionalSubmission(submission);
   if (contractErrors.length > 0) {
     sendJson(res, 422, {
@@ -326,20 +328,6 @@ async function receiveSubmission(req, res) {
   submission.full_name = validFullName;
   submission.email = validEmail;
   submission.contact_row = buildContactRow(submission, validFullName, validEmail);
-  if (Array.isArray(submission.rows)) {
-    submission.rows = submission.rows
-      .filter((row) => row && !["full_name", "email"].includes(row.question_id))
-      .map((row) => {
-        const deidentifiedRow = { ...row };
-        delete deidentifiedRow.full_name;
-        delete deidentifiedRow.email;
-        return deidentifiedRow;
-      });
-  }
-  if (submission.excel_row && typeof submission.excel_row === "object") {
-    delete submission.excel_row.full_name;
-    delete submission.excel_row.email;
-  }
   const featureValidationError = validateAiApiFeatureRow(submission.ai_api_feature_row);
   if (featureValidationError) {
     sendJson(res, 422, {

@@ -7,6 +7,7 @@ const {
   EXPECTED_VERSIONS,
   answerCodeManifest,
   fieldManifest,
+  sanitizeLegacyDirectIdentifiers,
   validateTransitionalSubmission
 } = require("./lib/transitional-contract");
 const {
@@ -302,6 +303,27 @@ test("rejects participant-name leakage into research data", () => {
   submission.excel_row.full_name = submission.full_name;
   const errors = validateTransitionalSubmission(submission);
   assert(errors.some((error) => error.path === "$.excel_row.full_name" && error.code === "identifier_leak"));
+});
+
+test("sanitizes legacy contact identifiers before HTTP contract validation", () => {
+  const submission = buildValidSubmission();
+  submission.rows.push(
+    { submitted_at: submission.submitted_at, question_id: "full_name", question_text: "Name", answer: submission.full_name },
+    { submitted_at: submission.submitted_at, question_id: "email", question_text: "Email", answer: submission.email }
+  );
+  submission.rows[0].full_name = submission.full_name;
+  submission.rows[0].email = submission.email;
+  submission.excel_row.full_name = submission.full_name;
+  submission.excel_row.email = submission.email;
+
+  const sanitized = sanitizeLegacyDirectIdentifiers(submission);
+  assert.deepEqual(validateTransitionalSubmission(sanitized), []);
+  assert(!sanitized.rows.some((row) => ["full_name", "email"].includes(row.question_id)));
+  assert(sanitized.rows.every((row) => !("full_name" in row) && !("email" in row)));
+  assert(!("full_name" in sanitized.excel_row));
+  assert(!("email" in sanitized.excel_row));
+  assert.equal(sanitized.full_name, submission.full_name);
+  assert.deepEqual(sanitized.contact_row, submission.contact_row);
 });
 
 test("rejects an unversioned questionnaire change", () => {
