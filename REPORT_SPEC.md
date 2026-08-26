@@ -245,7 +245,7 @@ Report API 不應接收：
 - API 金鑰
 - 不需要顯示於報告的內部欄位
 
-Email 地址只保留在 Power Automate 寄信步驟。
+受試者姓名與 Email 只保留在限制權限的聯絡資料與 Power Automate 報告寄送步驟；不得寫入模型輸入、研究資料列或提供給 LLM。
 
 ---
 

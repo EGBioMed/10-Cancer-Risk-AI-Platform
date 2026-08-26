@@ -24,13 +24,14 @@ function mockPool(readinessRow) {
 
 function submission() {
   return {
-    contract_version: "assessment-submission/1.1.0",
+    contract_version: "assessment-submission/1.2.0",
     submitted_at: "2026-08-06T08:00:00.000Z",
+    full_name: "王小明",
     email: "patient@example.test",
     language: "zh",
     report_language: "zh-Hant",
     optimized_feature_row: { record_id: "WEB-PG-001", age: 55 },
-    contact_row: { record_id: "WEB-PG-001", email: "patient@example.test" },
+    contact_row: { record_id: "WEB-PG-001", full_name: "王小明", email: "patient@example.test" },
     rows: [{ question_id: "recent_discomfort", answer: "腹部不適" }],
     excel_row: { record_id: "WEB-PG-001", age: 55 },
     ai_api_feature_row: { record_id: "WEB-PG-001", age: 55 },
@@ -42,9 +43,11 @@ function submission() {
 test("PostgreSQL research record excludes direct contact data", () => {
   const value = submission();
   const research = buildResearchRecord(value);
+  assert.equal(research.full_name, undefined);
   assert.equal(research.email, undefined);
   assert.equal(research.contact_row, undefined);
   assert.equal(research.excel_row.email, undefined);
+  assert.equal(buildContactRecord(value, getRecordId(value)).full_name, value.full_name);
   assert.equal(buildContactRecord(value, getRecordId(value)).email, value.email);
 });
 
@@ -64,7 +67,7 @@ test("PostgreSQL migration defines separated schemas and record constraints", ()
 
 test("migration files are discovered in ascending numeric order", () => {
   const files = listMigrationFiles().map((filePath) => path.basename(filePath));
-  assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql", "003_access_codes.sql"]);
+  assert.deepEqual(files, ["001_initial.sql", "002_access_gate.sql", "003_access_codes.sql", "004_contact_full_name.sql"]);
 });
 
 test("initialize() tolerates a missing access-gate schema unless explicitly required", async () => {

@@ -58,6 +58,21 @@ test("race question provides the requested bilingual choices", () => {
   ]);
 });
 
+test("participant name is a required contact-only bilingual field", () => {
+  const name = byId("full_name");
+  assert.equal(name.field, "contact.full_name");
+  assert.equal(name.type, "name");
+  assert.equal(name.required, true);
+  assert.equal(name.excludeFromCanonicalContract, true);
+  assert.deepEqual([...i18n.en.questions.full_name], [
+    "Please enter the participant's full name",
+    "The name is used only by the clinic to identify the participant and prepare the report. It is stored with the email in a restricted contact record and is not used as a model feature or research data.",
+    "Full name"
+  ]);
+  assert(!canonicalAnswerQuestions.some((question) => question.id === "full_name"));
+  assert(source.includes('.filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field))'));
+});
+
 test("interval-day number fields provide an English placeholder", () => {
   const intervalQuestions = questions.filter((question) => question.intervalDays);
   assert.deepEqual(Array.from(intervalQuestions, (question) => question.id).sort(), [
@@ -75,8 +90,10 @@ test("submission validation count follows the canonical questionnaire definition
   assert.equal(canonicalAnswerQuestions.length, 77);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
+  assert.equal(byId("full_name").excludeFromCanonicalContract, true);
   assert(!canonicalAnswerQuestions.some((question) => question.id === "race"));
   assert(!manifest.questions.some((question) => question.question_id === "race"));
+  assert(!manifest.questions.some((question) => question.question_id === "full_name"));
 });
 
 test("local-only acceptance does not falsely claim that a report was emailed", () => {

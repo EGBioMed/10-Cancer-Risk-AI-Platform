@@ -34,8 +34,8 @@
       "options": [
         {
           "code": "data_use",
-          "label_zh": "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。",
-          "label_en": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my email address to send my result report."
+          "label_zh": "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。",
+          "label_en": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name and email address to identify the participant and deliver the result report."
         },
         {
           "code": "model_limitations",

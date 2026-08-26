@@ -156,7 +156,7 @@ Production Flow should parse the incoming submission and route rows by purpose:
 | AI API HTTP action | `body('Parse_JSON')?['ai_api_feature_row']` |
 | Research Excel / Office Script | `string(body('Parse_JSON')?['excel_row'])` |
 | Restricted contact Excel / Office Script | `string(body('Parse_JSON')?['contact_row'])` |
-| Email/report content | Report result plus `email` and human-readable rows as needed |
+| Email/report content | Report result plus `full_name`, `email`, and human-readable rows as needed |
 
 `answer_code_rows` is reserved for the future backend mapping service. Do not flatten
 it into the current model HTTP body and do not replace `ai_api_feature_row` until
@@ -172,7 +172,7 @@ Use two separate Excel workbooks so health research data and contact information
 
 - Receives `excel_row`.
 - Contains coded `record_id`, questionnaire/model fields, symptoms, timestamps, and language.
-- Must not contain an email column or other direct contact information.
+- Must not contain `full_name`, an email column, or other direct contact information.
 - Can be shared with authorized research and model-validation staff.
 
 ### Contact workbook
@@ -184,6 +184,7 @@ Use two separate Excel workbooks so health research data and contact information
 ```text
 record_id
 email
+full_name
 submitted_at
 language
 report_language
@@ -205,6 +206,7 @@ Add this property to both the HTTP trigger schema and Parse JSON schema:
   "type": "object",
   "properties": {
     "record_id": { "type": "string" },
+    "full_name": { "type": "string" },
     "email": { "type": "string" },
     "submitted_at": { "type": "string" },
     "language": { "type": "string" },
@@ -212,6 +214,7 @@ Add this property to both the HTTP trigger schema and Parse JSON schema:
   },
   "required": [
     "record_id",
+    "full_name",
     "email",
     "submitted_at",
     "language",

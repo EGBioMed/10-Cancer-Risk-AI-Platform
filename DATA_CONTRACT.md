@@ -274,14 +274,14 @@ The existing `/api/submit` payload remains temporarily supported during migratio
 - `rule_input_columns`
 - `rule_input_row`
 - `excel_row`
-- `contact_row`
+- `contact_row`（僅含 `record_id`、`full_name`、Email 與報告寄送欄位；與醫療／研究資料分開儲存）
 - `data_quality`
 
 These are adapter fields, not the future browser contract. During the transition:
 
 - Power Automate model HTTP uses `ai_api_feature_row`.
 - Research Excel uses `excel_row` and must not contain Email.
-- Restricted contact Excel uses `contact_row`.
+- Restricted contact storage uses `contact_row`; `full_name` and Email must never appear in the research row or model input.
 - `optimized_feature_row` is retained for compatibility and audit comparison only.
 - `answer_code_rows` is the language-neutral source for the future backend mapping
   service. It contains all 77 canonical question IDs in frozen order, including
@@ -356,6 +356,6 @@ Run this before every deployment:
 npm test
 ```
 
-The tests verify the accepted v19.4 phase-1 payload and rejection of field-order
+The tests verify the accepted v19.5 phase-1 payload and rejection of field-order
 drift, missing vector fields, identifier leakage, and unversioned questionnaire
 changes. A production CI pipeline should make this command a required check.

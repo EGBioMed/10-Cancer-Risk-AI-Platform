@@ -214,7 +214,7 @@ function normalizeSubmission(submission) {
   return submission;
 }
 
-function buildContactRow(submission, email) {
+function buildContactRow(submission, fullName, email) {
   const recordId = String(
     submission.optimized_feature_row?.record_id
     || submission.excel_row?.record_id
@@ -223,6 +223,7 @@ function buildContactRow(submission, email) {
 
   return {
     record_id: recordId,
+    full_name: fullName,
     email,
     submitted_at: submission.submitted_at || new Date().toISOString(),
     language: submission.language || "zh",
@@ -255,6 +256,13 @@ function validateAiApiFeatureRow(row) {
 function getValidSubmissionEmail(submission) {
   const email = String(submission.email || findAnswer(submission.rows, "email") || "").trim();
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+}
+
+function getValidSubmissionFullName(submission) {
+  const fullName = String(submission.full_name || submission.contact_row?.full_name || "")
+    .replace(/\s+/gu, " ")
+    .trim();
+  return fullName && fullName.length <= 100 && !/[<>\u0000-\u001f\u007f]/u.test(fullName) ? fullName : "";
 }
 
 async function receiveSubmission(req, res) {
@@ -299,6 +307,14 @@ async function receiveSubmission(req, res) {
     submission.ai_api_feature_row.record_id = recordId;
   }
 
+  const validFullName = getValidSubmissionFullName(submission);
+  if (!validFullName) {
+    sendJson(res, 422, {
+      ok: false,
+      error: "A valid participant name is required."
+    });
+    return;
+  }
   const validEmail = getValidSubmissionEmail(submission);
   if (!validEmail) {
     sendJson(res, 422, {
@@ -307,18 +323,21 @@ async function receiveSubmission(req, res) {
     });
     return;
   }
+  submission.full_name = validFullName;
   submission.email = validEmail;
-  submission.contact_row = buildContactRow(submission, validEmail);
+  submission.contact_row = buildContactRow(submission, validFullName, validEmail);
   if (Array.isArray(submission.rows)) {
     submission.rows = submission.rows
-      .filter((row) => row && row.question_id !== "email")
+      .filter((row) => row && !["full_name", "email"].includes(row.question_id))
       .map((row) => {
         const deidentifiedRow = { ...row };
+        delete deidentifiedRow.full_name;
         delete deidentifiedRow.email;
         return deidentifiedRow;
       });
   }
   if (submission.excel_row && typeof submission.excel_row === "object") {
+    delete submission.excel_row.full_name;
     delete submission.excel_row.email;
   }
   const featureValidationError = validateAiApiFeatureRow(submission.ai_api_feature_row);

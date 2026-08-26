@@ -13,7 +13,7 @@
 | `rule_input_schema_version` | `high-risk-rules/19.5` |
 | `rule_input_mapping_version` | `rule-input-mapping/19.5-phase1` |
 | `questions` 陣列總筆數 | 79 |
-| 排除知情同意／Email 後的標準化答案題目數（`answer_code_rows`） | 77 |
+| 排除知情同意／姓名／Email 與非模型識別欄位後的標準化答案題目數（`answer_code_rows`） | 77 |
 | `rule_input_columns` 欄位數 | 30 |
 
 來源檔案：`app.js`（題目定義）、`contracts/v1/answer-code-manifest.json`

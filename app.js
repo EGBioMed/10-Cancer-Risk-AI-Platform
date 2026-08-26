@@ -3,9 +3,9 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
   throw new Error("Answer-code module failed to load before app.js.");
 }
 const SUBMISSION_VERSIONS = Object.freeze({
-  contract_version: "assessment-submission/1.1.0",
-  questionnaire_version: "questionnaire/2026-08-19-v19.5-phase1",
-  consent_version: "consent/2026-08-05",
+  contract_version: "assessment-submission/1.2.0",
+  questionnaire_version: "questionnaire/2026-08-26-v19.5-phase1",
+  consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
   mapping_version: "answer-to-feature/1.0.0",
@@ -13,7 +13,7 @@ const SUBMISSION_VERSIONS = Object.freeze({
   vnext_mapping_version: "answer-mapping-vnext/0.1.0",
   rule_input_schema_version: "high-risk-rules/19.5",
   rule_input_mapping_version: "rule-input-mapping/19.5-phase1",
-  report_template_version: "email-report/2026-08-05"
+  report_template_version: "email-report/2026-08-26-name"
 });
 
 const zhShortServiceNote = "將您的生活習慣、病史與家族史整理成個人化癌症相關健康風險因子摘要。本服務不作為疾病診斷或篩檢。";
@@ -28,13 +28,13 @@ const modules = [
   { id: "mental", title: "心理健康", summary: "記錄近期壓力、睡眠與情緒困擾頻率。" },
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
-  { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
+  { id: "contact", title: "聯絡資料", summary: "填寫受試者姓名與接收結果報告的 Email。" },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
 
 const consentOptions = [
-  "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。",
+  "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。",
   "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。",
   "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。"
 ];
@@ -609,6 +609,7 @@ const questions = [
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
+  { id: "full_name", module: "contact", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
   { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
 ];
 
@@ -708,7 +709,7 @@ const i18n = {
       mental: ["Mental Health", "Record recent stress, sleep, and low mood frequency."],
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
-      contact: ["Contact Information", "Enter the email address for receiving the report."],
+      contact: ["Contact Information", "Enter the participant name and email address for the report."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -720,7 +721,7 @@ const i18n = {
       exposure: "Tobacco and environmental exposure completed. Next, we will ask about stress, sleep, and mood.",
       mental: "Mental health completed. Next, we will ask about dietary habits.",
       diet: "Dietary habits completed. Next, we will ask about personal and family medical history.",
-      history: "Medical and family history completed. Next, please enter the email address for receiving your report.",
+      history: "Medical and family history completed. Next, please enter the participant name and email address for the report.",
       contact: "Contact information completed. Finally, please review your answers."
     },
     symptom: {
@@ -788,10 +789,11 @@ const i18n = {
       chronic_conditions: ["Do you have any of the following chronic diseases?", "You may select multiple. If none apply, select none of the above."],
       family_cancer: ["Has any first-degree family member had cancer?", "First-degree relatives include parents, siblings, and children."],
       family_self_types: ["If yes, what type of cancer did your first-degree family member have?", "You may select multiple."],
+      full_name: ["Please enter the participant's full name", "The name is used only by the clinic to identify the participant and prepare the report. It is stored with the email in a restricted contact record and is not used as a model feature or research data.", "Full name"],
       email: ["Please enter your email", "The result report will be sent to this email.", "name@example.com"]
     },
     options: {
-      "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的 Email 寄送結果報告。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my email address to send my result report.",
+      "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name and email address to identify the participant and deliver the result report.",
       "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。": "I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer.",
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
@@ -1197,8 +1199,8 @@ function renderConsentNotice() {
           <dl>
             <div><dt>Who handles the data</dt><dd>EG BioMed Co. Ltd.</dd></div>
             <div><dt>Why we collect it</dt><dd>To organize personalized cancer-related health risk factors, produce your health information report, and support model training and validation.</dd></div>
-            <div><dt>What we collect</dt><dd>Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and an email address for report delivery.</dd></div>
-            <div><dt>How we protect your identity</dt><dd>All questionnaire and health data are de-identified, with a coded record ID used in place of your email address. The email and code mapping is stored separately in a restricted contact record. Your email is used only to deliver the report and is not used as a model feature or included in research analysis.</dd></div>
+            <div><dt>What we collect</dt><dd>Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and the participant name and email address for identification and report delivery.</dd></div>
+            <div><dt>How we protect your identity</dt><dd>All questionnaire and health data are de-identified, with a coded record ID used in place of the participant name and email address. The name, email, and code mapping are stored separately in a restricted contact record. The name and email are used only to identify the participant and prepare or deliver the report; they are not used as model features or included in research analysis.</dd></div>
             <div><dt>Where it is stored</dt><dd>Microsoft cloud servers in the United States, which meet GDPR and SOC 2 Type II security standards.</dd></div>
             <div><dt>How long it is kept</dt><dd>Research and contact records are kept separately for 5 years from the date of completion. At the end of this period, the contact record and the mapping between your identity and coded record ID will be deleted. The research record will either be destroyed or retained only in a form that can no longer be linked back to you.</dd></div>
             <div><dt>Who may use it</dt><dd>Only authorized EG BioMed staff responsible for research and model validation may use the de-identified data. We will not sell your data or provide it to other companies for advertising, marketing, or unrelated commercial use.</dd></div>
@@ -1236,8 +1238,8 @@ function renderConsentNotice() {
         <dl>
           <div><dt>由誰處理資料</dt><dd>愛立基生醫股份有限公司（EG BioMed Co. Ltd.）。</dd></div>
           <div><dt>為什麼收集</dt><dd>用來整理個人化癌症相關健康風險因子、製作您的健康資訊報告，以及進行模型訓練與驗證。</dd></div>
-          <div><dt>會收集哪些資料</dt><dd>年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及寄送報告所需的 Email。</dd></div>
-          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料皆已去識別化處理，並以代碼編號取代 Email。Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。Email 只用來寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
+          <div><dt>會收集哪些資料</dt><dd>年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及辨識受試者與寄送報告所需的姓名及 Email。</dd></div>
+          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料皆已去識別化處理，並以代碼編號取代姓名與 Email。姓名、Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。姓名與 Email 只用來辨識受試者、製作及寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
           <div><dt>資料存放在哪裡</dt><dd>Microsoft 位於美國的雲端伺服器，符合 GDPR 與 SOC 2 Type II 安全標準。</dd></div>
           <div><dt>保存多久</dt><dd>研究資料與聯絡資料會分開保存，自填寫日起保存 5 年。期滿後會刪除聯絡資料及可將代碼連回個人的對應關係；研究資料則會銷毀，或僅以無法再連回您的形式保留。</dd></div>
           <div><dt>誰可以使用</dt><dd>只有愛立基生醫內部經授權、負責研究與模型驗證的工作人員可以使用去識別化資料。我們不會販售您的資料，也不會提供其他公司作廣告、行銷或與本服務無關的商業用途。</dd></div>
@@ -1490,6 +1492,24 @@ function renderQuickInput(question) {
         return;
       }
       saveAnswer(value, "email_input");
+    });
+    return;
+  }
+
+  if (question.type === "name") {
+    quickOptions.innerHTML = `
+      <div class="number-entry">
+        <input id="fullNameInput" type="text" autocomplete="name" maxlength="100" placeholder="${questionCopy.placeholder || (currentLang === "en" ? "Full name" : "請輸入姓名")}" />
+        <button class="secondary-action" id="saveFullNameBtn" type="button">${ui("saveContinue")}</button>
+      </div>
+    `;
+    document.querySelector("#saveFullNameBtn").addEventListener("click", () => {
+      const value = document.querySelector("#fullNameInput").value.replace(/\s+/gu, " ").trim();
+      if (!value || value.length > 100 || /[<>\u0000-\u001f\u007f]/u.test(value)) {
+        showInlineNotice(currentLang === "en" ? "Please enter a valid participant name." : "請輸入有效的受試者姓名。");
+        return;
+      }
+      saveAnswer(value, "name_input");
     });
     return;
   }
@@ -2114,7 +2134,7 @@ function checkOptimizedFeatureRow(row) {
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
   return Object.values(answers)
-    .filter((entry) => entry.field !== "contact.email")
+    .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field))
     .map((entry) => ({
     submitted_at: submittedAt,
     question_id: entry.question_id,
@@ -2385,6 +2405,7 @@ function buildAiApiFeatureRow(optimizedFeatureRow) {
 function buildContactRow(optimizedFeatureRow, submittedAt) {
   return {
     record_id: optimizedFeatureRow.record_id,
+    full_name: getAnswerValue(answers, "contact.full_name") || "",
     email: getAnswerValue(answers, "contact.email") || "",
     submitted_at: submittedAt,
     language: currentLang,
@@ -2409,6 +2430,7 @@ function storeSubmissionForIntegration() {
   const submission = {
     ...SUBMISSION_VERSIONS,
     submitted_at: submittedAt,
+    full_name: getAnswerValue(answers, "contact.full_name") || "",
     email: getAnswerValue(answers, "contact.email") || "",
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
@@ -2489,6 +2511,12 @@ function validateSubmissionBeforeSend(submission) {
   });
   if (submission.excel_row && "email" in submission.excel_row) {
     errors.push("email must not appear in excel_row");
+  }
+  if (submission.excel_row && "full_name" in submission.excel_row) {
+    errors.push("full_name must not appear in excel_row");
+  }
+  if (submission.contact_row?.full_name !== submission.full_name) {
+    errors.push("contact_row full_name mismatch");
   }
   if (submission.contact_row?.email !== submission.email) {
     errors.push("contact_row email mismatch");

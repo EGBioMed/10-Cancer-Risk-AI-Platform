@@ -40,6 +40,7 @@ function buildValidSubmission() {
   return {
     ...EXPECTED_VERSIONS,
     submitted_at: submittedAt,
+    full_name: "王小明",
     email: "contract-test@example.com",
     language: "zh",
     report_language: "zh-Hant",
@@ -94,6 +95,7 @@ function buildValidSubmission() {
     },
     contact_row: {
       record_id: optimized.record_id,
+      full_name: "王小明",
       email: "contract-test@example.com",
       submitted_at: submittedAt,
       language: "zh",
@@ -132,7 +134,7 @@ test("Power Automate answer-row limits match the canonical answer contract", () 
   assert.equal(schema.properties.answer_code_rows.maxItems, expectedCount);
 });
 
-test("Power Automate adapter converts the validated 1.1 payload to the deployed 1.0 trigger shape", () => {
+test("Power Automate adapter converts the validated 1.2 payload to the deployed 1.0 trigger shape", () => {
   const submission = buildValidSubmission();
   const payload = buildPowerAutomatePayload(submission);
   assert.equal(payload.contract_version, POWER_AUTOMATE_CONTRACT_VERSION);
@@ -255,7 +257,7 @@ test("frontend vector definitions match the frozen field manifest", () => {
   });
 });
 
-test("accepts the frozen v19.4 phase-1 submission", () => {
+test("accepts the frozen v19.5 phase-1 submission", () => {
   assert.deepEqual(validateTransitionalSubmission(buildValidSubmission()), []);
 });
 
@@ -278,6 +280,13 @@ test("rejects email leakage into the research row", () => {
   submission.excel_row.email = submission.email;
   const errors = validateTransitionalSubmission(submission);
   assert(errors.some((error) => error.path === "$.excel_row.email" && error.code === "identifier_leak"));
+});
+
+test("rejects participant-name leakage into research data", () => {
+  const submission = buildValidSubmission();
+  submission.excel_row.full_name = submission.full_name;
+  const errors = validateTransitionalSubmission(submission);
+  assert(errors.some((error) => error.path === "$.excel_row.full_name" && error.code === "identifier_leak"));
 });
 
 test("rejects an unversioned questionnaire change", () => {

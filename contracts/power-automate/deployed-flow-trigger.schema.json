@@ -12,7 +12,7 @@
     "questionnaire_version": {
       "type": "string",
       "enum": [
-        "questionnaire/2026-08-19-v19.5-phase1"
+        "questionnaire/2026-08-26-v19.5-phase1"
       ]
     },
     "consent_version": {
@@ -50,6 +50,12 @@
     },
     "submitted_at": {
       "type": "string"
+    },
+    "full_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[^<>\\u0000-\\u001F\\u007F]+$"
     },
     "email": {
       "type": "string"
@@ -203,6 +209,12 @@
         "record_id": {
           "type": "string"
         },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100,
+          "pattern": "^[^<>\\u0000-\\u001F\\u007F]+$"
+        },
         "email": {
           "type": "string"
         },
@@ -218,6 +230,7 @@
       },
       "required": [
         "record_id",
+        "full_name",
         "email",
         "submitted_at",
         "language",
@@ -258,6 +271,7 @@
     "rule_input_mapping_version",
     "report_template_version",
     "submitted_at",
+    "full_name",
     "email",
     "language",
     "report_language",
