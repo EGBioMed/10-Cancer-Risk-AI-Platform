@@ -360,6 +360,7 @@ const ruleRepeatQuestions = ruleRepeatDefinitions.flatMap(([parent, labelZh, lab
       field: `rule_inputs.${intervalField}`,
       ruleField: intervalField,
       placeholder: "天數",
+      placeholderEn: "Number of days",
       appliesIf: () => normalizeNumber(getAnswerValue(answers, `rule_inputs.${countField}`)) >= 2
     });
   }
@@ -956,7 +957,7 @@ function getQuestionCopy(question) {
   return {
     title: dynamicTitleEn || copy[0] || question.titleEn || question.title,
     note: copy[1] || question.noteEn || question.note,
-    placeholder: copy[2] || question.placeholder
+    placeholder: copy[2] || question.placeholderEn || question.placeholder
   };
 }
 

@@ -58,6 +58,18 @@ test("race question provides the requested bilingual choices", () => {
   ]);
 });
 
+test("interval-day number fields provide an English placeholder", () => {
+  const intervalQuestions = questions.filter((question) => question.intervalDays);
+  assert.deepEqual(Array.from(intervalQuestions, (question) => question.id).sort(), [
+    "symptom_mass_interval_days",
+    "symptom_mouth_symptoms_interval_days",
+    "symptom_oral_ulcer_interval_days"
+  ]);
+  assert(intervalQuestions.every((question) => question.placeholder === "天數"));
+  assert(intervalQuestions.every((question) => question.placeholderEn === "Number of days"));
+  assert(source.includes("copy[2] || question.placeholderEn || question.placeholder"));
+});
+
 test("submission validation count follows the canonical questionnaire definitions", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
   assert.equal(canonicalAnswerQuestions.length, 77);
