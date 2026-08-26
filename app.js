@@ -1637,6 +1637,7 @@ function getCompositeRows(question) {
 function makeAnswerEntry(question, value, source) {
   return {
     question_id: question.id,
+    field: question.field,
     label: question.title,
     display_label: getQuestionCopy(question).title,
     value,
@@ -2134,7 +2135,8 @@ function checkOptimizedFeatureRow(row) {
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
   return Object.values(answers)
-    .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field))
+    .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field)
+      && !["full_name", "email"].includes(entry.question_id))
     .map((entry) => ({
     submitted_at: submittedAt,
     question_id: entry.question_id,
@@ -2514,6 +2516,11 @@ function validateSubmissionBeforeSend(submission) {
   }
   if (submission.excel_row && "full_name" in submission.excel_row) {
     errors.push("full_name must not appear in excel_row");
+  }
+  if (Array.isArray(submission.rows)
+      && submission.rows.some((row) => row?.full_name != null || row?.email != null
+        || ["full_name", "email"].includes(row?.question_id))) {
+    errors.push("direct identifiers must not appear in answer rows");
   }
   if (submission.contact_row?.full_name !== submission.full_name) {
     errors.push("contact_row full_name mismatch");
