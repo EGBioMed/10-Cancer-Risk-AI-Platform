@@ -23,6 +23,7 @@ const {
   buildCookieHeader
 } = require("./lib/access-gate");
 const { createFixedWindowLimiter } = require("./lib/rate-limiter");
+const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -446,83 +447,12 @@ function serveStatic(req, res) {
   });
 }
 
-// index.html doubles as the access-gate entry page: an unauthenticated
-// visitor gets the SAME file with three regions swapped out server-side,
-// marked by HTML comment pairs (invisible, and a no-op for the normal
-// authorized path, which streams index.html untouched via serveStatic).
-// See GATE_FORM_HTML below for what replaces the removed call-to-action.
-const GATE_MARKERS = {
-  langswitch: ["<!--GATE:LANGSWITCH_START-->", "<!--GATE:LANGSWITCH_END-->"],
-  cta: ["<!--GATE:CTA_START-->", "<!--GATE:CTA_END-->"],
-  workspace: ["<!--GATE:WORKSPACE_START-->", "<!--GATE:WORKSPACE_END-->"],
-  scripts: ["<!--GATE:SCRIPTS_START-->", "<!--GATE:SCRIPTS_END-->"]
-};
-
-const GATE_FORM_HTML = `
-          <section class="validation-card access-gate-panel" aria-labelledby="accessGateTitle">
-            <h2 id="accessGateTitle">需要授權才能使用 / Authorization required</h2>
-            <p>本服務採付費使用制。請透過購買方案取得您的專屬連結，或在下方輸入所屬機構提供的存取代碼以繼續。</p>
-            <p>This assessment requires payment to access. Purchase a plan to receive your personal link, or enter the access code provided by your organization below to continue.</p>
-            <form class="access-gate-form" id="code-form">
-              <label for="code-input">存取代碼 / Access code</label>
-              <div class="access-gate-row">
-                <input class="access-gate-input" id="code-input" name="code" type="text" autocomplete="off" required minlength="6" placeholder="存取代碼 / Access code" />
-                <button class="primary-action" type="submit">繼續 / Continue</button>
-              </div>
-              <p class="access-gate-error" id="code-error" role="alert" hidden></p>
-            </form>
-            <p class="access-gate-support">
-              已經有專屬連結卻無法開啟？請聯繫 <a href="mailto:egbiomedai@eg-bio.com">egbiomedai@eg-bio.com</a>。
-              Trouble with a personal link? Contact <a href="mailto:egbiomedai@eg-bio.com">egbiomedai@eg-bio.com</a>.
-            </p>
-          </section>
-          <script>
-            document.getElementById("code-form").addEventListener("submit", async function (event) {
-              event.preventDefault();
-              var button = event.target.querySelector("button");
-              var errorEl = document.getElementById("code-error");
-              var input = document.getElementById("code-input");
-              errorEl.hidden = true;
-              button.disabled = true;
-              try {
-                var response = await fetch("/api/access/redeem-code", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  credentials: "same-origin",
-                  body: JSON.stringify({ code: input.value })
-                });
-                if (response.ok) {
-                  window.location.href = "/";
-                  return;
-                }
-                errorEl.textContent = "代碼無法辨識，請確認後再試一次。 / Code not recognized. Please check it and try again.";
-                errorEl.hidden = false;
-              } catch (error) {
-                errorEl.textContent = "網路錯誤，請再試一次。 / Network error. Please try again.";
-                errorEl.hidden = false;
-              } finally {
-                button.disabled = false;
-              }
-            });
-          </script>`;
-
-function stripMarkerRegion(html, [startMarker, endMarker], replacement = "") {
-  const start = html.indexOf(startMarker);
-  const end = html.indexOf(endMarker);
-  if (start === -1 || end === -1) return html;
-  return html.slice(0, start) + replacement + html.slice(end + endMarker.length);
-}
-
 let cachedGatedIndexHtml = null;
 function buildGatedIndexHtml() {
   if (cachedGatedIndexHtml) return cachedGatedIndexHtml;
-  let html = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
-  html = stripMarkerRegion(html, GATE_MARKERS.langswitch);
-  html = stripMarkerRegion(html, GATE_MARKERS.cta, GATE_FORM_HTML);
-  html = stripMarkerRegion(html, GATE_MARKERS.workspace);
-  html = stripMarkerRegion(html, GATE_MARKERS.scripts);
-  cachedGatedIndexHtml = html;
-  return html;
+  const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
+  cachedGatedIndexHtml = renderGatedIndexHtml(indexHtml);
+  return cachedGatedIndexHtml;
 }
 
 function serveGatedIndex(res, statusCode) {

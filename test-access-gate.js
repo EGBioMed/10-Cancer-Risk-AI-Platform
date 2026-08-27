@@ -17,6 +17,7 @@ const {
   MIN_CODE_LENGTH,
   MAX_CODE_LENGTH
 } = require("./lib/access-gate");
+const { buildGatedIndexHtml } = require("./lib/access-gate-view");
 
 test("generated tokens are high-entropy and hash deterministically", () => {
   const tokenA = generateRawToken();
@@ -78,6 +79,26 @@ test("isExemptFromGate allowlists health check, access-token redemption, code re
   assert.equal(isExemptFromGate("GET", "/"), false);
   assert.equal(isExemptFromGate("GET", "/app.js"), false);
   assert.equal(isExemptFromGate("POST", "/api/submit"), false);
+});
+
+test("unauthorized gate view provides a bilingual language switch without loading the questionnaire", () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const gatedHtml = buildGatedIndexHtml(indexHtml);
+
+  assert.match(gatedHtml, /data-lang="zh"/);
+  assert.match(gatedHtml, /data-lang="en"/);
+  assert.match(gatedHtml, /需要授權才能使用/);
+  assert.match(gatedHtml, /Authorization required/);
+  assert.match(gatedHtml, /setGateLanguage/);
+  assert.match(gatedHtml, /localStorage\.getItem\("egbiomed_lang"\)/);
+  assert.match(gatedHtml, /data-service-copy="zh"/);
+  assert.match(gatedHtml, /data-service-copy="en"/);
+  const gateScript = gatedHtml.match(/<script>([\s\S]*?)<\/script>/);
+  assert.ok(gateScript);
+  assert.doesNotThrow(() => new Function(gateScript[1]));
+  assert.doesNotMatch(gatedHtml, /id="assessment"/);
+  assert.doesNotMatch(gatedHtml, /src="app\.js/);
+  assert.doesNotMatch(gatedHtml, /src="answer-codes\.js/);
 });
 
 test("normalizeCode trims, lowercases, and collapses whitespace", () => {
