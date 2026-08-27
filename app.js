@@ -21,14 +21,14 @@ const enShortServiceNote = "Receive a personalized summary of cancer-related hea
 
 const modules = [
   { id: "consent", title: "知情同意", summary: "先確認個資告知與非診斷性質。" },
-  { id: "basic", title: "基本資料", summary: "收集年齡、身高體重、運動與性別等基本資訊。" },
+  { id: "basic", title: "基本資料", summary: "收集受試者姓名、年齡、身高體重、運動與性別等基本資訊。" },
   { id: "symptoms", title: "近期症狀", summary: "依身體系統整理近期症狀；一般題目回想最近三個月，v19.4 追問題目會明確標示最近六個月。" },
   { id: "female", title: "女性相關資訊", summary: "依性別條件詢問月經、生育、哺乳、子宮頸抹片與荷爾蒙用藥。" },
   { id: "exposure", title: "菸草與環境暴露", summary: "整理抽菸、二手菸、油煙、空污與輻射等暴露因子。" },
   { id: "mental", title: "心理健康", summary: "記錄近期壓力、睡眠與情緒困擾頻率。" },
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
-  { id: "contact", title: "聯絡資料", summary: "填寫受試者姓名與接收結果報告的 Email。" },
+  { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -557,6 +557,7 @@ const questions = [
     options: consentOptions,
     minSelected: 3
   },
+  { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
@@ -609,7 +610,6 @@ const questions = [
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
-  { id: "full_name", module: "contact", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
   { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
 ];
 
@@ -702,14 +702,14 @@ const i18n = {
     },
     modules: {
       consent: ["Informed Consent", "Review privacy notice and non-diagnostic nature."],
-      basic: ["Basic Information", "Collect age, height, weight, exercise, sex, and race."],
+      basic: ["Basic Information", "Collect the participant name, age, height, weight, exercise, sex, and race."],
       symptoms: ["Recent Symptoms", "Review symptoms by body system. General questions use the past 3 months, while v19.4 follow-ups explicitly use the past 6 months."],
       female: ["Female Health Information", "Questions on menstruation, pregnancy, breastfeeding, Pap smear, and hormone use."],
       exposure: ["Tobacco and Environmental Exposure", "Record smoking, secondhand smoke, cooking fumes, air pollution, and radiation exposure."],
       mental: ["Mental Health", "Record recent stress, sleep, and low mood frequency."],
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
-      contact: ["Contact Information", "Enter the participant name and email address for the report."],
+      contact: ["Contact Information", "Enter the email address for the report."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -721,7 +721,7 @@ const i18n = {
       exposure: "Tobacco and environmental exposure completed. Next, we will ask about stress, sleep, and mood.",
       mental: "Mental health completed. Next, we will ask about dietary habits.",
       diet: "Dietary habits completed. Next, we will ask about personal and family medical history.",
-      history: "Medical and family history completed. Next, please enter the participant name and email address for the report.",
+      history: "Medical and family history completed. Next, please enter the email address for the report.",
       contact: "Contact information completed. Finally, please review your answers."
     },
     symptom: {
@@ -1296,7 +1296,7 @@ function renderQuestion() {
   inputZone.hidden = false;
   inputZone.classList.toggle("input-zone--consent", question.id === "consent_acknowledgement");
   panelFooter.hidden = false;
-  const cannotSkip = question.id === "consent_acknowledgement" || question.type === "email";
+  const cannotSkip = question.id === "consent_acknowledgement" || ["name", "email"].includes(question.type);
   skipBtn.hidden = !question.required || cannotSkip;
   skipBtn.disabled = cannotSkip;
   guideMessage.textContent = question.module === "symptoms"
@@ -2742,7 +2742,7 @@ backBtn.addEventListener("click", () => {
 
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
-  if (question?.id === "consent_acknowledgement" || question?.type === "email") return;
+  if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type)) return;
   if (question?.isComposite) {
     getCompositeRows(question).forEach((row) => {
       answers[row.field] = makeAnswerEntry(row, "不確定", "uncertain");

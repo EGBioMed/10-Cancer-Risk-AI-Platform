@@ -60,10 +60,13 @@ test("race question provides the requested bilingual choices", () => {
 
 test("participant name is a required contact-only bilingual field", () => {
   const name = byId("full_name");
+  const consentIndex = questions.findIndex((question) => question.id === "consent_acknowledgement");
   assert.equal(name.field, "contact.full_name");
+  assert.equal(name.module, "basic");
   assert.equal(name.type, "name");
   assert.equal(name.required, true);
   assert.equal(name.excludeFromCanonicalContract, true);
+  assert.equal(questions[consentIndex + 1].id, "full_name");
   assert.deepEqual([...i18n.en.questions.full_name], [
     "Please enter the participant's full name",
     "The name is used only by the clinic to identify the participant and prepare the report. It is stored with the email in a restricted contact record and is not used as a model feature or research data.",
