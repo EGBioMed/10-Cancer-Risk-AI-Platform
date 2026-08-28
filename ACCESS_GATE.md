@@ -87,6 +87,17 @@ automatically.
    expiry (`ACCESS_GATE_SESSION_TTL_HOURS=0.5`, i.e. 30 minutes) as a hard
    ceiling even if the cookie somehow outlives the browser session (e.g. tab
    restore).
+   - **A session is also consumed the moment its one `POST /api/submit`
+     succeeds** — not just after the 30-minute TTL runs out. The signed
+     cookie embeds a per-redemption `sid`; on a successful submission the
+     server records that `sid` as spent (`consumedSessions` in `server.js`,
+     backed by `createConsumedSessionStore` in `lib/access-gate.js`) and
+     replies with a `Set-Cookie` that clears the cookie immediately. Any
+     further request under that same cookie — including a retried submit —
+     is then treated exactly like having no session at all, and must go
+     through the code/link entry form again. This is what makes one
+     redemption map to exactly one report, instead of "as many submissions
+     as fit inside the 30-minute window."
 5. `POST /api/submit` and every other non-exempt API route requires that
    session cookie once the gate is `enforced`. `GET /api/health` and
    `GET /access/<token>` are always reachable. `GET /`/`/index.html` is also

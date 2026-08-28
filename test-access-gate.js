@@ -14,6 +14,8 @@ const {
   isExemptFromGate,
   parseCookies,
   buildCookieHeader,
+  buildExpiredCookieHeader,
+  createConsumedSessionStore,
   MIN_CODE_LENGTH,
   MAX_CODE_LENGTH
 } = require("./lib/access-gate");
@@ -152,6 +154,30 @@ test("buildCookieHeader sets HttpOnly, SameSite, and Secure flags, and omits Max
   const insecureHeader = buildCookieHeader("eg_access_session", "abc123", { secure: false });
   assert.doesNotMatch(insecureHeader, /Secure/);
   assert.doesNotMatch(insecureHeader, /Max-Age/);
+});
+
+test("buildExpiredCookieHeader clears the cookie immediately with Max-Age=0", () => {
+  const secureHeader = buildExpiredCookieHeader("eg_access_session", { secure: true });
+  assert.match(secureHeader, /^eg_access_session=; Path=\/; HttpOnly; SameSite=Lax; Max-Age=0; Secure$/);
+
+  const insecureHeader = buildExpiredCookieHeader("eg_access_session", { secure: false });
+  assert.doesNotMatch(insecureHeader, /Secure/);
+  assert.match(insecureHeader, /Max-Age=0/);
+});
+
+test("createConsumedSessionStore forgets a session only once it has been consumed, and sweep prunes expired entries", () => {
+  const store = createConsumedSessionStore();
+  const now = 1_700_000_000;
+
+  assert.equal(store.isConsumed("session-a"), false);
+  store.consume("session-a", now + 1800);
+  assert.equal(store.isConsumed("session-a"), true);
+  // A different session under the same grant (e.g. another redemption of a
+  // shared institution code) must be unaffected.
+  assert.equal(store.isConsumed("session-b"), false);
+
+  store.sweep(now + 1801);
+  assert.equal(store.isConsumed("session-a"), false);
 });
 
 test("access-gate migration defines a hashed-only token table and a sibling audit log", () => {

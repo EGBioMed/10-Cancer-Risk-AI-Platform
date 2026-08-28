@@ -20,7 +20,9 @@ const {
   getClientIp,
   isExemptFromGate,
   parseCookies,
-  buildCookieHeader
+  buildCookieHeader,
+  buildExpiredCookieHeader,
+  createConsumedSessionStore
 } = require("./lib/access-gate");
 const { createFixedWindowLimiter } = require("./lib/rate-limiter");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
@@ -72,6 +74,13 @@ setInterval(() => codeRedeemLimiter.sweep(), 30 * 60 * 1000).unref();
 const submitLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 20 });
 setInterval(() => submitLimiter.sweep(), 30 * 60 * 1000).unref();
 
+// A successful submission consumes the session it happened under (see
+// consumeSessionAndGetClearHeaders below), so one code/link redemption maps
+// to exactly one report submission instead of "unlimited submissions until
+// the 30-minute session TTL runs out."
+const consumedSessions = createConsumedSessionStore();
+setInterval(() => consumedSessions.sweep(), 30 * 60 * 1000).unref();
+
 if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
   throw new Error(
     "ACCESS_GATE_SESSION_SECRET must be set when ACCESS_GATE_MODE=enforced. " +
@@ -119,10 +128,11 @@ if (ACCESS_GATE_MODE === "enforced") {
   });
 }
 
-function sendJson(res, statusCode, payload) {
+function sendJson(res, statusCode, payload, extraHeaders = {}) {
   res.writeHead(statusCode, {
     "Content-Type": "application/json; charset=utf-8",
-    "Cache-Control": "no-store"
+    "Cache-Control": "no-store",
+    ...extraHeaders
   });
   res.end(JSON.stringify(payload));
 }
@@ -267,7 +277,7 @@ function getValidSubmissionFullName(submission) {
   return fullName && fullName.length <= 100 && !/[<>\u0000-\u001f\u007f]/u.test(fullName) ? fullName : "";
 }
 
-async function receiveSubmission(req, res) {
+async function receiveSubmission(req, res, sessionPayload) {
   if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
     sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
     return;
@@ -370,7 +380,7 @@ async function receiveSubmission(req, res) {
       storage: "postgresql",
       processing_status: "stored_postgresql",
       report_status: "pending_model_migration"
-    });
+    }, consumeSessionAndGetClearHeaders(sessionPayload));
     return;
   }
 
@@ -410,7 +420,7 @@ async function receiveSubmission(req, res) {
       storage: postgresResult ? "postgresql_and_power_automate" : "power_automate",
       processing_status: "forwarded",
       report_status: "processing"
-    });
+    }, consumeSessionAndGetClearHeaders(sessionPayload));
   } catch (error) {
     sendJson(res, 502, {
       ok: false,
@@ -470,7 +480,12 @@ function redirectToHome(res) {
 
 function buildAccessSessionCookie(grantId) {
   const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
-  const cookieValue = signSessionCookie({ grantId, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+  // sid identifies this one redemption, not the grant -- a shared
+  // institution code hands the same grantId to many independent sessions,
+  // and only the specific session that submits should be cut off (see
+  // consumeSessionAndGetClearHeaders).
+  const sid = crypto.randomBytes(16).toString("hex");
+  const cookieValue = signSessionCookie({ grantId, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
     secure: ACCESS_GATE_COOKIE_SECURE
   });
@@ -570,12 +585,28 @@ async function handleCodeRedemption(req, res) {
   sendJson(res, 200, { ok: true });
 }
 
-function isSessionAuthorized(req) {
+function getSessionPayload(req) {
   const cookies = parseCookies(req.headers.cookie);
   const sessionCookie = cookies[SESSION_COOKIE_NAME];
-  if (!sessionCookie) return false;
+  if (!sessionCookie) return null;
   const nowSeconds = Math.floor(Date.now() / 1000);
-  return Boolean(verifySessionCookie(sessionCookie, ACCESS_GATE_SESSION_SECRET, nowSeconds));
+  return verifySessionCookie(sessionCookie, ACCESS_GATE_SESSION_SECRET, nowSeconds);
+}
+
+function isSessionAuthorized(req) {
+  const payload = getSessionPayload(req);
+  return Boolean(payload) && !consumedSessions.isConsumed(payload.sid);
+}
+
+// Called once a submission has actually succeeded: marks this session as
+// spent (so any further request under the same cookie -- including a retry
+// of /api/submit itself -- is treated as unauthenticated) and returns a
+// Set-Cookie header that clears it client-side immediately, rather than
+// leaving the (now-inert) cookie sitting in the browser until its own exp.
+function consumeSessionAndGetClearHeaders(sessionPayload) {
+  if (!sessionPayload || !sessionPayload.sid) return {};
+  consumedSessions.consume(sessionPayload.sid, sessionPayload.exp);
+  return { "Set-Cookie": buildExpiredCookieHeader(SESSION_COOKIE_NAME, { secure: ACCESS_GATE_COOKIE_SECURE }) };
 }
 
 const server = http.createServer(async (req, res) => {
@@ -654,7 +685,7 @@ const server = http.createServer(async (req, res) => {
       sendJson(res, 429, { ok: false, error: "Too many submissions from this network. Please wait and try again." });
       return;
     }
-    await receiveSubmission(req, res);
+    await receiveSubmission(req, res, getSessionPayload(req));
     return;
   }
 
