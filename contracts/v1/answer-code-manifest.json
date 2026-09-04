@@ -7,8 +7,8 @@
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 79,
-  "canonical_answer_question_count": 77,
+  "question_count": 80,
+  "canonical_answer_question_count": 78,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -167,6 +167,52 @@
           "code": "sex.option_02",
           "label_zh": "女性",
           "label_en": "Female"
+        }
+      ]
+    },
+    {
+      "question_id": "country",
+      "field": "demographics.country",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您目前居住的國家／地區？",
+      "title_en": "Which country/region do you currently live in?",
+      "options": [
+        {
+          "code": "country.option_01",
+          "label_zh": "臺灣",
+          "label_en": "Taiwan"
+        },
+        {
+          "code": "country.option_02",
+          "label_zh": "香港",
+          "label_en": "Hong Kong"
+        },
+        {
+          "code": "country.option_03",
+          "label_zh": "中國",
+          "label_en": "China"
+        },
+        {
+          "code": "country.option_04",
+          "label_zh": "美國",
+          "label_en": "United States"
+        },
+        {
+          "code": "country.option_05",
+          "label_zh": "日本",
+          "label_en": "Japan"
+        },
+        {
+          "code": "country.option_06",
+          "label_zh": "加拿大",
+          "label_en": "Canada"
+        },
+        {
+          "code": "country.option_07",
+          "label_zh": "馬來西亞",
+          "label_en": "Malaysia"
         }
       ]
     },

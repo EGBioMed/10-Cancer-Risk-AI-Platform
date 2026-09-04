@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-08-26-v19.5-phase1",
+  questionnaire_version: "questionnaire/2026-09-04-v19.6-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -565,6 +565,7 @@ const questions = [
   { id: "exercise_time", module: "basic", type: "single", required: true, title: "每週運動時間", note: "請選擇最接近您一般狀況的選項。", field: "lifestyle.weekly_exercise_time", options: ["幾乎不運動", "30-60 分鐘", "1-2 小時", "多於 2 小時"] },
   { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
   { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
+  { id: "country", module: "basic", type: "single", renderAs: "dropdown", required: true, title: "您目前居住的國家／地區？", titleEn: "Which country/region do you currently live in?", note: "請選擇最符合您目前居住地的選項。", noteEn: "Select the option that best matches where you currently live.", field: "demographics.country", options: ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"] },
 
   ...symptomQuestionsWithInlineFollowUps,
 
@@ -651,6 +652,7 @@ const i18n = {
       voice: "Voice Answer (In progress)",
       back: "Back",
       uncertain: "Not sure how to answer",
+      selectPlaceholder: "Please select",
       guideIntro: "I will guide you through a few simple questions to organize lifestyle habits, family history, and health status related to cancer risk.",
       guideDefault: "Previous question completed. Please answer based on your closest everyday situation.",
       lifestyle: "Lifestyle",
@@ -799,6 +801,7 @@ const i18n = {
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
+      "臺灣": "Taiwan", "香港": "Hong Kong", "中國": "China", "美國": "United States", "日本": "Japan", "加拿大": "Canada", "馬來西亞": "Malaysia",
       "幾乎不運動": "Almost no exercise", "30-60 分鐘": "30-60 minutes", "1-2 小時": "1-2 hours", "多於 2 小時": "More than 2 hours",
       "12 歲以前（含 12 歲）": "Age 12 or younger", "13 歲以後（含 13 歲）": "Age 13 or older",
       "尚未停經（仍有月經）": "Not menopausal (still menstruating)", "已停經（55 歲或以前停經）": "Menopause at age 55 or earlier", "已停經（55 歲或以後停經）": "Menopause after age 55", "已切除子宮或卵巢": "Uterus or ovaries removed",
@@ -930,7 +933,8 @@ const zhUi = {
   consentScrollPrompt: "請向下滑動閱讀完整內容，即可開啟此按鈕。",
   consentScrollReady: "已閱讀至最後，請按下按鈕繼續。",
   submitReview: "確認並送出",
-  notFilled: "未填寫"
+  notFilled: "未填寫",
+  selectPlaceholder: "請選擇"
 };
 
 function ui(key) {
@@ -1621,6 +1625,20 @@ function renderQuickInput(question) {
   const singleOptions = question.filterOptions
     ? question.options.filter((option) => question.filterOptions(option, answers))
     : question.options;
+
+  if (question.renderAs === "dropdown") {
+    quickOptions.innerHTML = `
+      <select class="option-select" id="singleDropdown">
+        <option value="" disabled selected>${ui("selectPlaceholder")}</option>
+        ${singleOptions.map((option) => `<option value="${option}">${tx(option)}</option>`).join("")}
+      </select>
+    `;
+    document.querySelector("#singleDropdown").addEventListener("change", (event) => {
+      saveAnswer(event.target.value, "single_choice");
+    });
+    return;
+  }
+
   quickOptions.innerHTML = singleOptions.map((option) => `
     <button class="option-button" type="button" data-value="${option}">${tx(option)}</button>
   `).join("");
@@ -2380,6 +2398,7 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     submitted_at: submittedAt,
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
+    country: getAnswerValue(answers, "demographics.country") || "",
     personal_cancer_types: personalCancerTypes,
     symptom_positive_count: Object.values(symptomFeatureRow).filter((value) => value === 1).length,
     symptom_answers_json: JSON.stringify(symptomAnswers),

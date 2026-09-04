@@ -18,7 +18,7 @@
       "const": "assessment-submission/1.2.0"
     },
     "questionnaire_version": {
-      "const": "questionnaire/2026-08-26-v19.5-phase1"
+      "const": "questionnaire/2026-09-04-v19.6-phase1"
     },
     "answer_code_schema_version": {
       "const": "question-answer-codes/1.0.0"

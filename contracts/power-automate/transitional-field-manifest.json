@@ -78,7 +78,7 @@
     "testicular_pain_pattern", "sore_throat_pattern", "head_neck_mass_pattern", "visible_hematuria_pattern"
   ],
   "counts": {
-    "answer_code_rows": 77,
+    "answer_code_rows": 78,
     "optimized_feature_columns": 71,
     "symptom_feature_columns": 84,
     "vnext_feature_columns": 33,

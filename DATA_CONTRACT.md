@@ -85,6 +85,19 @@ reference, but it never reaches `answer_code_rows`, the model feature pipeline, 
 any risk-scoring input -- self-reported race is not used as a model feature or
 rule-engine input in this system.
 
+`country` (added 2026-09-04, `questionnaire/2026-09-04-v19.6-phase1`) is treated
+the opposite way from `race`: it is a normal canonical question (no
+`excludeFromCanonicalContract`), so it reaches `answer_code_rows` like any other
+demographic field, and is also copied into `excel_row.country` for downstream
+consumers. Like `race`, it is not used as an AI model feature or rule-engine
+input -- adding a feature to the trained model or rule engine is a separate,
+much larger change than adding a question here. It exists so a submission
+records which of Taiwan / Hong Kong / China / the US / Japan / Canada /
+Malaysia the respondent is answering from; using it to localize report content
+(e.g. which population's incidence rates to calibrate against, or which
+country's screening-program guidance to cite) is a follow-up for the
+report-generation system, not something this repo does today.
+
 Example:
 
 ```json

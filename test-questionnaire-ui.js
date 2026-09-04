@@ -93,13 +93,32 @@ test("interval-day number fields provide an English placeholder", () => {
 
 test("submission validation count follows the canonical questionnaire definitions", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
-  assert.equal(canonicalAnswerQuestions.length, 77);
+  assert.equal(canonicalAnswerQuestions.length, 78);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);
   assert(!canonicalAnswerQuestions.some((question) => question.id === "race"));
   assert(!manifest.questions.some((question) => question.question_id === "race"));
   assert(!manifest.questions.some((question) => question.question_id === "full_name"));
+});
+
+test("country question is a canonical dropdown with the requested bilingual choices", () => {
+  const country = byId("country");
+  assert.equal(country.renderAs, "dropdown");
+  assert.equal(country.excludeFromCanonicalContract, undefined);
+  assert(canonicalAnswerQuestions.some((question) => question.id === "country"));
+  assert.deepEqual([...country.options], ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"]);
+  assert.deepEqual(Array.from(country.options, (option) => i18n.en.options[option]), [
+    "Taiwan",
+    "Hong Kong",
+    "China",
+    "United States",
+    "Japan",
+    "Canada",
+    "Malaysia"
+  ]);
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
+  assert(manifest.questions.some((question) => question.question_id === "country"));
 });
 
 test("local-only acceptance does not falsely claim that a report was emailed", () => {
