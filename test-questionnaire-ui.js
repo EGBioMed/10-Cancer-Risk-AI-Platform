@@ -132,6 +132,47 @@ test("basic-info identity questions (sex, country, race) are asked as a block be
   assert(idIndex("weight_change") < idIndex("exercise_time"));
 });
 
+// 這一支測的不是題目定義，而是「答案有沒有真的走到 API body」。之所以必須單獨釘住：
+// 2026-09-04 的線上事故是受檢者選了美國、卻拿到以台灣人口校正的報告。後端早就會看
+// country 了，問題出在 API body 就是 ai_api_feature_row，而那個物件只由固定的 71 個
+// optimizedFeatureColumns 組成，新增的問卷答案只會落到 excel_row，永遠到不了後端。
+// v19.6 加了國別題卻沒補這一段，所以題目問了、bug 還在——這就是本測試存在的理由。
+test("country reaches the API body and the server fallback agrees with the client", () => {
+  const serverSource = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
+  const grab = (text) => {
+    const match = text.match(/const AI_API_COUNTRY_CODES = \{([\s\S]*?)\n\};/);
+    assert(match, "AI_API_COUNTRY_CODES not found");
+    // Round-tripped through JSON: runInNewContext hands back an object from
+    // another realm, which deepEqual rejects even when the contents match.
+    return JSON.parse(JSON.stringify(vm.runInNewContext(`({${match[1]}})`)));
+  };
+  // 後端 CALIB_TRUE_INCIDENCE_GLOBOCAN 只有 US 與 CA 兩組人口基準，其餘選項一律 TW
+  // （報告走國健署基準，並在該行印出 "(Taiwan baseline)" 說明分母）。
+  const expected = {
+    "臺灣": "TW", "香港": "TW", "中國": "TW", "美國": "US",
+    "日本": "TW", "加拿大": "CA", "馬來西亞": "TW"
+  };
+  assert.deepEqual(grab(source), expected);
+  // server.js rebuilds this row when the client did not supply one; if it forgot
+  // country, that path alone would silently fall back to the Taiwan baseline.
+  assert.deepEqual(grab(serverSource), expected);
+  // 對照表的鍵必須與題目選項逐字相同，否則會靜默落到 ?? "TW"。這一項專門擋
+  // 「臺灣」寫成「台灣」之類的字形漂移，以及日後增刪選項忘記同步這張表。
+  assert.equal(Object.keys(expected).join(","), [...byId("country").options].join(","));
+  assert(source.includes('country: AI_API_COUNTRY_CODES[getAnswerValue(answers, "demographics.country")] ?? "TW"'));
+  assert(serverSource.includes('row.country = AI_API_COUNTRY_CODES[findAnswer(submission.rows, "country")] ?? "TW"'));
+  // The backend accepts exactly these three codes; anything else falls back to TW.
+  assert.deepEqual([...new Set(Object.values(expected))].sort(), ["CA", "TW", "US"]);
+  // The contract files must record that ai_api_feature_row is no longer a pure
+  // model-features/1.0.0 vector, so a future reader does not "fix" this back out.
+  const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "vnext", "questionnaire-manifest.json"), "utf8"));
+  assert.equal(manifest.report_country.sent_as, "ai_api_feature_row.country");
+  assert.deepEqual(manifest.report_country.codes, expected);
+  assert(!/unchanged_model-features/.test(manifest.compatibility.ai_api_feature_row));
+  const trigger = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "power-automate", "deployed-flow-trigger.schema.json"), "utf8"));
+  assert.deepEqual(trigger.properties.ai_api_feature_row.properties.country.enum, ["TW", "US", "CA"]);
+});
+
 test("local-only acceptance does not falsely claim that a report was emailed", () => {
   assert(source.includes('submitResult.report_status === "pending_model_migration"'));
   assert(source.includes("地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。"));

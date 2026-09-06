@@ -55,6 +55,33 @@ model request. They include fields that the deployed model schema does not accep
 Switch to the vNext vector only after the model owner provides a versioned endpoint
 and a frozen ordered feature manifest. See `MODEL_VNEXT_HANDOFF.md`.
 
+#### `country` inside `ai_api_feature_row` (added 2026-09-06)
+
+`ai_api_feature_row` now carries one field beyond `model-features/1.0.0`: `country`,
+which takes `TW`, `US` or `CA`. It is not a model feature — the model ignores it, and
+risk scores, banding and hazard ratios are the same whichever value is sent. It
+selects the population baseline for the report's population-scale risk figure and
+which country's screening guidance the report cites. Of the questionnaire's seven
+options only 美國 and 加拿大 map to `US` and `CA`; 臺灣, 香港, 中國, 日本 and 馬來西亞
+all send `TW`, as does an unanswered question, and the English report then prints
+`(Taiwan baseline)` inline so the reader can see the denominator.
+
+**No Flow change is required, and that is why the field was placed here.** The HTTP
+action already posts this object verbatim, so the new key travels with it. One thing
+to confirm on the deployed Flow, though: if the **Parse JSON** action's schema
+declares `ai_api_feature_row` with `"additionalProperties": false`, the run will fail
+validation on the new key. Either leave that object as a bare `{"type": "object"}` or
+add `country` to it. `contracts/power-automate/deployed-flow-trigger.schema.json`
+now documents the field with its enum.
+
+Symptom of this field going missing: the report silently falls back to the Taiwan
+baseline. That is exactly the defect reported on 2026-09-04 — an examinee selected the
+United States and still received a report calibrated against the Taiwanese population,
+because at that time `country` was never placed in the request body at all. Note that
+adding the questionnaire question did not fix it: `v19.6-phase1` asked for the country
+and put the answer in `excel_row`, which the API never sees. When checking a run, look
+for `country` in the HTTP action's inputs, not just in the questionnaire answers.
+
 ## Unified Transitional Submission Schema
 
 **IMPORTANT (added 2026-08-19, after a real production outage caused by this):**

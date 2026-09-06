@@ -58,7 +58,7 @@ The browser payload now contains:
 
 | Payload field | Purpose |
 | --- | --- |
-| `ai_api_feature_row` | Existing model request. Shape remains `model-features/1.0.0`. |
+| `ai_api_feature_row` | Existing model request: `model-features/1.0.0` plus one report-only field, `country` (added 2026-09-06; see below). |
 | `symptom_feature_row` | Binary symptom collection; `1` selected, `0` explicitly absent, `null` unknown/not applicable. |
 | `vnext_feature_row` | Complete ordered 33-field candidate set, combining symptom, clinician-confirmed/event, liver-disease, and gallstone/bile-duct-stone history fields. |
 | `vnext_feature_metadata` | Recurrence or duration answers for testicular pain, sore throat, head/neck mass, and visible haematuria. |
@@ -66,6 +66,41 @@ The browser payload now contains:
 
 The current `/predict` request must continue to use `ai_api_feature_row`. Do not
 send the new fields to the deployed model until the contract below is frozen.
+
+### The one deliberate exception: `country`
+
+`ai_api_feature_row` carries exactly one field that is not part of
+`model-features/1.0.0`. `country` takes `TW`, `US` or `CA`, and it is not a model
+feature: nothing in the model consumes it, and the AI risk scores, risk banding and
+hazard ratios are identical whichever value is sent. What it selects is the
+population baseline used for the report's population-scale risk figure — that
+country's age-standardized incidence rate — and which country's screening guidance
+the report cites.
+
+It sits inside `ai_api_feature_row` rather than at another level of the submission
+because the Power Automate HTTP action posts that object verbatim as the API body,
+so this placement required no flow change. The cost, accepted knowingly, is that the
+object is no longer a pure `model-features/1.0.0` vector; every other field in it
+still is.
+
+The question offers seven options, of which only 美國 and 加拿大 map to their own
+baseline (`US`, `CA`); 臺灣, 香港, 中國, 日本 and 馬來西亞 all send `TW`, as does an
+unanswered question. That is not a shortcut but the limit of the backend's data:
+`CALIB_TRUE_INCIDENCE_GLOBOCAN` holds population baselines for the United States and
+Canada only. In those `TW` cases the report uses the Taiwan (Health Promotion
+Administration) baseline, and the English report states `(Taiwan baseline)` inline on
+the population-scale risk line, so a reader in Hong Kong or Japan can see which
+denominator produced the figure. To give any of them its own denominator, add the
+baseline to that backend constant first, then remap the code in
+`AI_API_COUNTRY_CODES` (which exists identically in `app.js` and `server.js`).
+
+The question itself shipped in `questionnaire/2026-09-04-v19.6-phase1`, but the
+`ai_api_feature_row.country` wiring described above came later. Between the two, the
+questionnaire asked for a country and the report ignored the answer — the examinee
+selected the United States and still received a Taiwan-calibrated report. Adding a
+question to the questionnaire is not enough on its own: `ai_api_feature_row` is built
+from the 71 fixed `optimizedFeatureColumns`, so a new answer reaches `excel_row` and
+stops there unless it is explicitly added to the API body.
 
 ## 3. Decisions required from the model owner
 

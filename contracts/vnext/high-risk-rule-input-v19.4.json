@@ -4,7 +4,8 @@
   "source_workbook": "v19.4_新增問卷題目設計規格.xlsx",
   "source_received_date": "2026-08-05",
   "lookback_days": 180,
-  "current_model_input": "ai_api_feature_row remains model-features/1.0.0",
+  "current_model_input": "ai_api_feature_row is model-features/1.0.0 plus one report-only field, country (added 2026-09-06); no rule-engine input is sent in it",
+  "current_model_input_note": "country selects the report's population baseline and screening-guidance source only. It is not a model feature and not a rule input, and it changes no risk score, banding or hazard ratio. It rides inside ai_api_feature_row so the Power Automate HTTP action, which posts that object verbatim, needs no change.",
   "questionnaire_additions": {
     "priority_1": [
       {

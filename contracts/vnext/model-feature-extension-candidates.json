@@ -25,7 +25,8 @@
     "binary_symptom_location": "symptom_feature_row",
     "complete_candidate_vector_location": "vnext_feature_row",
     "recurrence_duration_location": "vnext_feature_metadata",
-    "deployed_model_input": "ai_api_feature_row remains model-features/1.0.0"
+    "deployed_model_input": "ai_api_feature_row is model-features/1.0.0 plus one report-only field, country (added 2026-09-06)",
+    "deployed_model_input_note": "None of the 32 candidates below has been added to the model request; that statement is unchanged. The one field that was added, country, is not a candidate feature and not a model input: it selects the report's population baseline and screening-guidance source only. It rides inside ai_api_feature_row so the Power Automate HTTP action, which posts that object verbatim, needs no change."
   },
   "direct_new_candidates": [
     { "name": "symptom_testicular_lump", "label_zh": "睪丸腫塊", "source_row": 11 },

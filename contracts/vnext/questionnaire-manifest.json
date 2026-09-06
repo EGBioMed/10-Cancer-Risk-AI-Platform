@@ -51,8 +51,37 @@
     "repeat_counts": "corresponding_parent_symptom=1",
     "interval_days": "corresponding_repeat_count>=2"
   },
+  "report_country": {
+    "added_date": "2026-09-06",
+    "question_id": "country",
+    "field": "demographics.country",
+    "options_zh": [
+      "臺灣",
+      "香港",
+      "中國",
+      "美國",
+      "日本",
+      "加拿大",
+      "馬來西亞"
+    ],
+    "sent_as": "ai_api_feature_row.country",
+    "codes": {
+      "臺灣": "TW",
+      "香港": "TW",
+      "中國": "TW",
+      "美國": "US",
+      "日本": "TW",
+      "加拿大": "CA",
+      "馬來西亞": "TW"
+    },
+    "excluded_from_canonical_contract": false,
+    "purpose": "Selects the population baseline for the report's population-scale risk figure (that country's age-standardized incidence) and which country's screening guidance is cited. It is NOT a model feature: the model does not consume it, and AI risk scores and hazard ratios are identical whatever is chosen.",
+    "other_or_unanswered": "Every option other than the United States and Canada falls back to the Taiwan (HPA) baseline, because CALIB_TRUE_INCIDENCE_GLOBOCAN in the backend holds population baselines for those two countries only. The English report then prints '(Taiwan baseline)' inline on the population-scale risk line so a reader in Hong Kong, China, Japan or Malaysia can see which denominator produced the figure. Add a baseline to the backend constant first, then remap the code here, to give any of them its own denominator.",
+    "question_added_in": "questionnaire/2026-09-04-v19.6-phase1 (question only); ai_api_feature_row.country wiring added afterwards, without which the question had no effect on the report"
+  },
   "compatibility": {
-    "ai_api_feature_row": "unchanged_model-features/1.0.0",
+    "ai_api_feature_row": "model-features/1.0.0_plus_report_only_country_field",
+    "ai_api_feature_row_note": "Deliberate exception, decided 2026-09-06: country is carried inside ai_api_feature_row rather than at another level of the submission because the Power Automate HTTP action posts that object verbatim as the API body, so this placement needs zero flow changes. The trade-off accepted is that the object is no longer a pure model-features/1.0.0 vector. Every other field in it remains 1.0.0, and the backend ignores country when scoring.",
     "new_binary_symptoms": "stored_in_symptom_feature_row_and_excel_row",
     "all_32_candidates": "stored_in_vnext_feature_row_and_excel_row",
     "v19_4_rule_inputs": "stored_in_rule_input_row_and_excel_row_not_sent_to_current_predict"

@@ -762,6 +762,12 @@ const i18n = {
       exercise_time: ["Weekly exercise time", "Please select the option closest to your usual situation."],
       sex: ["What is your sex?", "Applicable questions will be shown based on your selection."],
       race: ["Which racial group do you identify with?", "Select the option that best describes you. You may choose not to answer."],
+      // 這一列會蓋掉題目物件上的 titleEn／noteEn（渲染時 copy[0] 優先），所以選項一旦增減，
+      // 這裡的文字也要跟著改。目前後端只有美國與加拿大的人口基準，其餘選項一律走台灣基準，
+      // 且英文報告會在人口尺度風險那一行印出 "(Taiwan baseline)"，故此處明講。
+      // 標題刻意與題目物件的 titleEn 逐字相同：contracts/v1/answer-code-manifest.json 的
+      // title_en 由這裡產生，改動字面會讓 canonical 合約檔跟著變動，而題目文字本身沒有要改。
+      country: ["Which country/region do you currently live in?", "This determines the population baseline used for the population-scale risk figure in your report and which country's screening guidance is cited. It does not affect your AI risk score. Selections other than the United States and Canada use the Taiwan baseline, which the report states explicitly."],
       menarche_age: ["Age at first menstruation", "If unsure, you may use the not sure option."],
       menopause_status: ["Current menopause status", "Please select the option closest to your current situation."],
       first_pregnancy_age: ["Age at first pregnancy", "If you have never been pregnant, select never pregnant."],
@@ -801,6 +807,8 @@ const i18n = {
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
+      // 本對照表以中文原字串為鍵、全表共用，故泛用詞一旦在別題也拿來當選項就會互相蓋台。
+      // 下列國別字串目前全檔僅國別題使用（人種題用的是「其他族群」），新增選項前請先 grep。
       "臺灣": "Taiwan", "香港": "Hong Kong", "中國": "China", "美國": "United States", "日本": "Japan", "加拿大": "Canada", "馬來西亞": "Malaysia",
       "幾乎不運動": "Almost no exercise", "30-60 分鐘": "30-60 minutes", "1-2 小時": "1-2 hours", "多於 2 小時": "More than 2 hours",
       "12 歲以前（含 12 歲）": "Age 12 or younger", "13 歲以後（含 13 歲）": "Age 13 or older",
@@ -2414,12 +2422,34 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
   };
 }
 
+// 問卷的中文國別選項 → 後端 main.normalize_country() 認得的代碼。鍵必須與國別題的
+// options 逐字相同（注意是「臺灣」而非「台灣」），否則會靜默落到下方的 ?? "TW"。
+// 後端目前只有美國與加拿大的人口基準（CALIB_TRUE_INCIDENCE_GLOBOCAN 僅此兩鍵），其餘
+// 選項與未填一律回 TW：報告走台灣（國健署）基準，並在人口尺度風險那一行明寫分母是台灣，
+// 香港、日本等地的讀者看得出自己拿到的是什麼。後端本身也會把未知值 fallback 成 TW，
+// 這裡對齊只是讓行為顯式；日後若補上其他國別基準，改這張表與後端常數即可。
+const AI_API_COUNTRY_CODES = {
+  "臺灣": "TW",
+  "香港": "TW",
+  "中國": "TW",
+  "美國": "US",
+  "日本": "TW",
+  "加拿大": "CA",
+  "馬來西亞": "TW"
+};
+
 function buildAiApiFeatureRow(optimizedFeatureRow) {
   return {
     ...optimizedFeatureRow,
     // AI API schema currently rejects negative quit_smoking values.
     // Keep raw modeling/storage features in optimized_feature_row and excel_row.
-    quit_smoking: Math.max(0, normalizeNumber(optimizedFeatureRow.quit_smoking) ?? 0)
+    quit_smoking: Math.max(0, normalizeNumber(optimizedFeatureRow.quit_smoking) ?? 0),
+    // country 不是模型特徵，模型不吃這一欄；它決定的是報告裡人口尺度風險的分母（該國
+    // 年齡標準化發生率）與篩檢建議依據。刻意放進 ai_api_feature_row 而不是併到 submission
+    // 的其他層級，因為 Power Automate 的 HTTP action 是把這個物件原封不動當 body 送出，
+    // 這樣就不必改 flow。代價是這個物件已不再是純粹的 model-features/1.0.0，
+    // contracts/vnext/ 下三份宣告該不變式的檔案必須同步更正（見 schema 註記）。
+    country: AI_API_COUNTRY_CODES[getAnswerValue(answers, "demographics.country")] ?? "TW"
   };
 }
 
