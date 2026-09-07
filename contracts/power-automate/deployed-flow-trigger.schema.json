@@ -106,7 +106,20 @@
       "type": "object"
     },
     "ai_api_feature_row": {
-      "type": "object"
+      "type": "object",
+      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-06 this is model-features/1.0.0 plus one report-only field, country, which selects the report's population baseline and screening-guidance source and is ignored when scoring. Placing it here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
+      "properties": {
+        "country": {
+          "type": "string",
+          "enum": [
+            "TW",
+            "US",
+            "CA"
+          ],
+          "description": "TW is the value sent for every questionnaire option other than 美國 (US) and 加拿大 (CA) -- that is 臺灣, 香港, 中國, 日本 and 馬來西亞 -- and for an unanswered question. The report then falls back to the Taiwan (HPA) baseline and says so inline, because the backend holds population baselines for the United States and Canada only."
+        }
+      },
+      "x-country-required-from": "Deliberately not in this object's required list yet: a browser holding a cached copy of the previous app.js would otherwise have its submission rejected outright, whereas omitting country only makes the backend fall back to the Taiwan baseline. Promote it to required once the deployed frontend has rolled out."
     },
     "symptom_feature_columns": {
       "type": "array",

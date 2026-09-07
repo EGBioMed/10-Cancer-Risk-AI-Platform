@@ -208,11 +208,26 @@ function normalizeNumber(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+// 必須與 app.js 的 AI_API_COUNTRY_CODES 逐字一致（test-questionnaire-ui.js 會比對兩份）。
+// 後端只有美國與加拿大的人口基準，其餘選項與未填一律 TW（報告走台灣基準並明寫分母）。
+const AI_API_COUNTRY_CODES = {
+  "臺灣": "TW",
+  "香港": "TW",
+  "中國": "TW",
+  "美國": "US",
+  "日本": "TW",
+  "加拿大": "CA",
+  "馬來西亞": "TW"
+};
+
 function buildAiApiFeatureRow(submission) {
   const row = {
     ...submission.optimized_feature_row
   };
   row.quit_smoking = Math.max(0, normalizeNumber(row.quit_smoking) ?? 0);
+  // 這條路徑只在前端沒送 ai_api_feature_row 時才走；不補 country 的話該情境會靜默掉回
+  // 台灣基準。country 不是模型特徵，只決定報告分母與篩檢建議依據。
+  row.country = AI_API_COUNTRY_CODES[findAnswer(submission.rows, "country")] ?? "TW";
   return row;
 }
 
