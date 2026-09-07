@@ -678,32 +678,6 @@
       ]
     },
     {
-      "question_id": "mastalgia",
-      "field": "rule_inputs.symptom_mastalgia",
-      "module": "symptoms",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？",
-      "title_en": "During the past 6 months, have you had breast pain or tenderness?",
-      "options": [
-        {
-          "code": "yes",
-          "label_zh": "是",
-          "label_en": "Yes"
-        },
-        {
-          "code": "no",
-          "label_zh": "否",
-          "label_en": "No"
-        },
-        {
-          "code": "unknown",
-          "label_zh": "不確定",
-          "label_en": "Not sure"
-        }
-      ]
-    },
-    {
       "question_id": "symptoms_urinary",
       "field": "symptoms.urinary",
       "module": "symptoms",
@@ -1537,6 +1511,32 @@
           "code": "menopause_status.option_04",
           "label_zh": "已切除子宮或卵巢",
           "label_en": "Uterus or ovaries removed"
+        }
+      ]
+    },
+    {
+      "question_id": "mastalgia",
+      "field": "rule_inputs.symptom_mastalgia",
+      "module": "female",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？",
+      "title_en": "During the past 6 months, have you had breast pain or tenderness?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
         }
       ]
     },

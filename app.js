@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-09-04-v19.7-phase1",
+  questionnaire_version: "questionnaire/2026-09-07-v19.8-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -398,7 +398,14 @@ Object.assign(symptomOptionTranslations, Object.fromEntries(
 // followUpsAfterSymptomGroup (below) can place each one right after its
 // trigger group instead -- content/appliesIf logic is unchanged.
 const stoolLooseOrFrequentQuestion = { id: "stool_loose_or_frequent", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？", titleEn: "During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?", note: "此題只在您勾選排便習慣改變後出現。", noteEn: "This question appears only after you report a change in bowel habits.", field: "rule_inputs.symptom_stool_loose_or_frequent", ruleField: "symptom_stool_loose_or_frequent", options: ["是", "否", "不確定"], appliesIf: () => isRuleParentPositive("symptom_bowel_habit_change") };
-const mastalgiaQuestion = { id: "mastalgia", module: "symptoms", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
+// Asked in the female-health section, right after the menstrual/menopause
+// items, rather than as a breast-symptom follow-up: mastalgia is commonly
+// cyclical, so menstrual status is the context a respondent needs in order to
+// answer it. Its condition has always been sex alone -- it was never gated on
+// having reported a breast symptom -- so it is listed in `questions` directly
+// instead of in symptomFollowUps, and carries module "female" so the section
+// indicator does not flip back to 近期症狀 for this one question.
+const mastalgiaQuestion = { id: "mastalgia", module: "female", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
 const testicularPainPatternQuestion = { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") };
 
 // New 2026-08-19 course/duration follow-ups for lymphadenopathy, head/neck/
@@ -522,7 +529,7 @@ const followUpsAfterSymptomGroup = {
   symptoms_bowel_abdominal: [stoolLooseOrFrequentQuestion, ...ruleRepeatQuestionsByParent.symptom_hematochezia],
   symptoms_hepatobiliary: [...ruleRepeatQuestionsByParent.symptom_jaundice],
   symptoms_respiratory: [...ruleRepeatQuestionsByParent.symptom_shortness_of_breath],
-  symptoms_breast: [symptomBreastLumpCourseQuestion, symptomBreastLumpDurationBandQuestion, mastalgiaQuestion],
+  symptoms_breast: [symptomBreastLumpCourseQuestion, symptomBreastLumpDurationBandQuestion],
   symptoms_male_reproductive: [symptomTesticularLumpCourseQuestion, symptomTesticularLumpDurationBandQuestion, testicularPainPatternQuestion],
   symptoms_gynecological: [...ruleRepeatQuestionsByParent.symptom_pelvic_discomfort_or_increased_girth],
   symptoms_oral_throat: [
@@ -573,6 +580,7 @@ const questions = [
 
   { id: "menarche_age", module: "female", type: "single", required: true, title: "初經（第一次月經）來潮年齡", note: "若不確定，可使用下方不確定選項。", field: "female_health.menarche_age", options: ["12 歲以前（含 12 歲）", "13 歲以後（含 13 歲）"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "menopause_status", module: "female", type: "single", required: true, title: "目前停經（更年期）狀態", note: "請選擇最接近目前狀況的選項。", field: "female_health.menopause_status", options: ["尚未停經（仍有月經）", "已停經（55 歲或以前停經）", "已停經（55 歲或以後停經）", "已切除子宮或卵巢"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
+  mastalgiaQuestion,
   { id: "first_pregnancy_age", module: "female", type: "single", required: false, title: "第一胎懷孕年齡", note: "若未曾懷孕可選從未懷孕。", field: "female_health.first_pregnancy_age", options: ["從未懷孕", "20 歲以下", "20-30 歲", "31-35 歲", "36 歲以上"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "breastfeeding", module: "female", type: "single", required: true, title: "產後是否曾哺餵母乳？若有，哺乳時間多長？", note: "若尚未生產，此題請選不適用。", field: "female_health.breastfeeding_history", options: ["從未哺乳", "有哺乳，但少於 6 個月", "有哺乳，超過 6 個月（含 6 個月）", "尚未生產，此題不適用"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "pap_smear", module: "female", type: "single", required: true, title: "是否曾做過子宮頸抹片檢查？結果如何？", note: "此題用於子宮頸相關風險因子整理。", field: "female_health.pap_smear_history", options: ["是，歷次結果均正常", "是，曾有異常報告（如 CIN、HPV 陽性等）", "否，從未做過"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },

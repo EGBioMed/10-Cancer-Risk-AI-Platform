@@ -55,7 +55,7 @@ const conditionByQuestion = {
   symptoms_male_reproductive: "僅性別選擇「男性」時顯示。",
   symptoms_gynecological: "僅性別選擇「女性」時顯示。",
   stool_loose_or_frequent: "僅在「腸道與下腹部症狀」勾選「排便習慣改變」時顯示。",
-  mastalgia: "僅性別選擇「女性」時顯示，不以是否勾選其他乳房症狀為條件。",
+  mastalgia: "僅性別選擇「女性」時顯示；不以是否勾選乳房症狀題組為條件（本題自 v19.8 起改於女性相關資訊段落、緊接停經狀態之後詢問）。",
   testicular_pain_pattern: "僅性別為男性，且在「男性生殖系統症狀」勾選「睾丸疼痛或沉重感」時顯示。",
   menarche_age: "僅性別選擇「女性」時顯示。",
   menopause_status: "僅性別選擇「女性」時顯示。",
