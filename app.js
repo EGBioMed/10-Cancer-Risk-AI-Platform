@@ -2438,6 +2438,13 @@ const AI_API_COUNTRY_CODES = {
   "馬來西亞": "TW"
 };
 
+// ai_api_feature_row 是唯一容許超出所屬 columns 清單的向量：這些欄位不是模型特徵，
+// 但必須待在這個物件裡，因為 Power Automate 的 HTTP action 是把它原封不動當 API body
+// 送出。validateSubmissionBeforeSend() 與 lib/transitional-contract.js 的形狀檢查都要
+// 讀這份清單，否則 71 欄的 optimized_feature_columns 對不上 72 個鍵，每一筆送件都會被
+// 自己的合約檢查擋掉——2026-09-07 就是這樣壞的。
+const AI_API_REPORT_ONLY_FIELDS = ["country"];
+
 function buildAiApiFeatureRow(optimizedFeatureRow) {
   return {
     ...optimizedFeatureRow,
@@ -2556,7 +2563,12 @@ function validateSubmissionBeforeSend(submission) {
     const columns = submission[columnsName] || [];
     const row = submission[rowName];
     const rowKeys = row && typeof row === "object" ? Object.keys(row) : [];
-    if (rowKeys.length !== columns.length || columns.some((column) => !(column in (row || {})))) {
+    // 只有 ai_api_feature_row 可以多帶欄位，且僅限 AI_API_REPORT_ONLY_FIELDS 這幾個。
+    // 「允許但不強制」是刻意的：瀏覽器還握著上一版 app.js 的舊分頁不該被整批拒收，
+    // 少了 country 只會讓報告退回台灣基準（並在報告上明寫分母），比擋掉送件溫和得多。
+    const allowedExtras = rowName === "ai_api_feature_row" ? AI_API_REPORT_ONLY_FIELDS : [];
+    if (columns.some((column) => !(column in (row || {})))
+        || rowKeys.some((key) => !columns.includes(key) && !allowedExtras.includes(key))) {
       errors.push(`${rowName} does not match ${columnsName}`);
     }
   });
