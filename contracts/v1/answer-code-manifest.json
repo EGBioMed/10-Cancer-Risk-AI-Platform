@@ -93,63 +93,6 @@
       }
     },
     {
-      "question_id": "weight_change",
-      "field": "demographics.weight_change_over_5_percent",
-      "module": "basic",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "近半年內，您的體重是否明顯「下降」？（超過體重5%）",
-      "title_en": "In the past six months, has your weight decreased significantly (more than 5%)?",
-      "options": [
-        {
-          "code": "yes",
-          "label_zh": "是",
-          "label_en": "Yes"
-        },
-        {
-          "code": "no",
-          "label_zh": "否",
-          "label_en": "No"
-        },
-        {
-          "code": "unknown",
-          "label_zh": "不確定",
-          "label_en": "Not sure"
-        }
-      ]
-    },
-    {
-      "question_id": "exercise_time",
-      "field": "lifestyle.weekly_exercise_time",
-      "module": "basic",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "每週運動時間",
-      "title_en": "Weekly exercise time",
-      "options": [
-        {
-          "code": "exercise_time.option_01",
-          "label_zh": "幾乎不運動",
-          "label_en": "Almost no exercise"
-        },
-        {
-          "code": "exercise_time.option_02",
-          "label_zh": "30-60 分鐘",
-          "label_en": "30-60 minutes"
-        },
-        {
-          "code": "exercise_time.option_03",
-          "label_zh": "1-2 小時",
-          "label_en": "1-2 hours"
-        },
-        {
-          "code": "exercise_time.option_04",
-          "label_zh": "多於 2 小時",
-          "label_en": "More than 2 hours"
-        }
-      ]
-    },
-    {
       "question_id": "sex",
       "field": "demographics.sex",
       "module": "basic",
@@ -213,6 +156,63 @@
           "code": "country.option_07",
           "label_zh": "馬來西亞",
           "label_en": "Malaysia"
+        }
+      ]
+    },
+    {
+      "question_id": "weight_change",
+      "field": "demographics.weight_change_over_5_percent",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "近半年內，您的體重是否明顯「下降」？（超過體重5%）",
+      "title_en": "In the past six months, has your weight decreased significantly (more than 5%)?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "exercise_time",
+      "field": "lifestyle.weekly_exercise_time",
+      "module": "basic",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "每週運動時間",
+      "title_en": "Weekly exercise time",
+      "options": [
+        {
+          "code": "exercise_time.option_01",
+          "label_zh": "幾乎不運動",
+          "label_en": "Almost no exercise"
+        },
+        {
+          "code": "exercise_time.option_02",
+          "label_zh": "30-60 分鐘",
+          "label_en": "30-60 minutes"
+        },
+        {
+          "code": "exercise_time.option_03",
+          "label_zh": "1-2 小時",
+          "label_en": "1-2 hours"
+        },
+        {
+          "code": "exercise_time.option_04",
+          "label_zh": "多於 2 小時",
+          "label_en": "More than 2 hours"
         }
       ]
     },

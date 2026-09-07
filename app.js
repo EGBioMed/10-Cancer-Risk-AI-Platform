@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-09-04-v19.6-phase1",
+  questionnaire_version: "questionnaire/2026-09-04-v19.7-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -561,11 +561,11 @@ const questions = [
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
+  { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
+  { id: "country", module: "basic", type: "single", renderAs: "dropdown", required: true, title: "您目前居住的國家／地區？", titleEn: "Which country/region do you currently live in?", note: "請選擇最符合您目前居住地的選項。", noteEn: "Select the option that best matches where you currently live.", field: "demographics.country", options: ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"] },
+  { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
   { id: "weight_change", module: "basic", type: "single", required: true, title: "近半年內，您的體重是否明顯「下降」？（超過體重5%）", note: "若不確定，請選不確定。", field: "demographics.weight_change_over_5_percent", options: ["是", "否", "不確定"] },
   { id: "exercise_time", module: "basic", type: "single", required: true, title: "每週運動時間", note: "請選擇最接近您一般狀況的選項。", field: "lifestyle.weekly_exercise_time", options: ["幾乎不運動", "30-60 分鐘", "1-2 小時", "多於 2 小時"] },
-  { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
-  { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
-  { id: "country", module: "basic", type: "single", renderAs: "dropdown", required: true, title: "您目前居住的國家／地區？", titleEn: "Which country/region do you currently live in?", note: "請選擇最符合您目前居住地的選項。", noteEn: "Select the option that best matches where you currently live.", field: "demographics.country", options: ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"] },
 
   ...symptomQuestionsWithInlineFollowUps,
 

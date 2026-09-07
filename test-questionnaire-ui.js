@@ -121,6 +121,17 @@ test("country question is a canonical dropdown with the requested bilingual choi
   assert(manifest.questions.some((question) => question.question_id === "country"));
 });
 
+test("basic-info identity questions (sex, country, race) are asked as a block before weight-change/exercise", () => {
+  const basicOrder = questions
+    .filter((question) => question.module === "basic")
+    .map((question) => question.id);
+  const idIndex = (id) => basicOrder.indexOf(id);
+  assert(idIndex("sex") < idIndex("country"));
+  assert(idIndex("country") < idIndex("race"));
+  assert(idIndex("race") < idIndex("weight_change"));
+  assert(idIndex("weight_change") < idIndex("exercise_time"));
+});
+
 test("local-only acceptance does not falsely claim that a report was emailed", () => {
   assert(source.includes('submitResult.report_status === "pending_model_migration"'));
   assert(source.includes("地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。"));
