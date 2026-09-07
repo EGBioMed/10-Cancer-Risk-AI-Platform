@@ -1,29 +1,128 @@
 # 問卷逐題審核文字與邏輯規格
 
-問卷版本：`questionnaire/2026-08-05-v19.4-phase1`  
+問卷版本：`questionnaire/2026-09-04-v19.7-phase1`  
 答案代碼版本：`question-answer-codes/1.0.0`  
-審核範圍：排除知情同意後的 77 個題目定義。
+知情同意版本：`consent/2026-08-26`  
+審核範圍：受試者實際會被詢問的 82 個題目定義（含知情同意、姓名與人種題）。
+其中 78 題納入正式資料契約（answer_code_rows）；其餘 4 題分別為知情同意紀錄、聯絡用途（姓名、Email）與刻意排除於契約外的人種題，皆不進入模型特徵或規則引擎運算。各題「資料處理方式」欄已個別註明。
 
 ## 共通規則
 
 1. 題序依本文件排列；條件題不符合時會從畫面題序移除，因此使用者實際題數會動態變動。
 2. 單選題點選後直接前往下一題；複選與數字題需按「儲存並繼續」。
 3. 複選題的「以上皆無」與「不確定」會排除其他選項，兩者也不可同時選擇。
-4. 除 Email 外，使用者可使用「不確定怎麼回答」；該題記為 unknown/null，不得當成「否」或 0。
+4. 除知情同意、姓名與 Email 外，使用者可使用「不確定怎麼回答」；該題記為 unknown/null，不得當成「否」或 0。
 5. 因條件不符合而未顯示的題目記為 not_applicable/null，不得當成「否」或 0。
 6. 返回修改前題後，系統會重新計算後續題目是否適用。
 7. 最後會顯示全部已作答題目與答案；必須按「我已確認所有答案，現在送出」才會傳送資料。
+8. 全部題目均在受試者完成知情同意（第 1 題三項確認）後才會顯示。
+
+## 知情同意告知事項全文
+
+以下為受試者在第 1 題勾選三項確認之前，畫面上必須完整捲動閱讀的告知事項原文（中英文各一份，直接取自 `app.js` 之同意畫面）。
+
+### 資料使用與隱私告知事項
+
+- **由誰處理資料**：愛立基生醫股份有限公司（EG BioMed Co. Ltd.）。
+- **為什麼收集**：用來整理個人化癌症相關健康風險因子、製作您的健康資訊報告，以及進行模型訓練與驗證。
+- **會收集哪些資料**：年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及辨識受試者與寄送報告所需的姓名及 Email。
+- **如何保護您的身分**：問卷與健康資料皆已去識別化處理，並以代碼編號取代姓名與 Email。姓名、Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。姓名與 Email 只用來辨識受試者、製作及寄送結果報告，不會作為模型特徵，也不會納入研究分析。
+- **資料存放在哪裡**：Microsoft 位於美國的雲端伺服器，符合 GDPR 與 SOC 2 Type II 安全標準。
+- **保存多久**：研究資料與聯絡資料會分開保存，自填寫日起保存 5 年。期滿後會刪除聯絡資料及可將代碼連回個人的對應關係；研究資料則會銷毀，或僅以無法再連回您的形式保留。
+- **誰可以使用**：只有愛立基生醫內部經授權、負責研究與模型驗證的工作人員可以使用去識別化資料。我們不會販售您的資料，也不會提供其他公司作廣告、行銷或與本服務無關的商業用途。
+- **資料會傳到國外嗎**：資料會傳送至 Microsoft 位於美國的伺服器儲存及處理。
+- **有問題或想行使權利**：在 5 年保存期間內，經授權的個資管理人員可透過分開保存的代碼對應資料找到您的紀錄，並協助辦理查閱、更正或刪除。請聯繫 egbiomedai@eg-bio.com，我們預計於 15 個工作日內回覆。保存期滿並刪除代碼對應關係後，我們將無法再確認哪一筆研究資料屬於您。
+
+**模型與填答說明**
+
+- 請依照實際狀況填答。自行填寫的資料若不完整或不正確，可能影響個人化整理結果。
+- 本服務使用內部概念驗證階段的模型，結果會受研究資料與方法限制影響，並仍需持續驗證。報告提供健康風險因子整理與健康教育資訊，不是診斷或篩檢結果。
+
+### Data Use and Privacy Notice
+
+- **Who handles the data**: EG BioMed Co. Ltd.
+- **Why we collect it**: To organize personalized cancer-related health risk factors, produce your health information report, and support model training and validation.
+- **What we collect**: Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and the participant name and email address for identification and report delivery.
+- **How we protect your identity**: All questionnaire and health data are de-identified, with a coded record ID used in place of the participant name and email address. The name, email, and code mapping are stored separately in a restricted contact record. The name and email are used only to identify the participant and prepare or deliver the report; they are not used as model features or included in research analysis.
+- **Where it is stored**: Microsoft cloud servers in the United States, which meet GDPR and SOC 2 Type II security standards.
+- **How long it is kept**: Research and contact records are kept separately for 5 years from the date of completion. At the end of this period, the contact record and the mapping between your identity and coded record ID will be deleted. The research record will either be destroyed or retained only in a form that can no longer be linked back to you.
+- **Who may use it**: Only authorized EG BioMed staff responsible for research and model validation may use the de-identified data. We will not sell your data or provide it to other companies for advertising, marketing, or unrelated commercial use.
+- **Overseas processing**: Your data are transmitted to and processed on Microsoft servers in the United States.
+- **Questions and your rights**: During the 5-year retention period, authorized privacy staff can use the separately stored code mapping to locate your record and assist with a request to access, correct, or delete it. Contact egbiomedai@eg-bio.com; we aim to respond within 15 business days. After the retention period ends and the code mapping has been deleted, we will no longer be able to identify a specific record as yours.
+
+**Model and response information**
+
+- Please answer according to your actual situation. Incomplete or inaccurate self-reported information may affect the personalized summary.
+- This service uses models at an internal proof-of-concept stage. Results may be affected by research data and methodological limitations and require continued validation. The report provides health risk factor organization and health education information, not a diagnosis or screening result.
 
 ## 逐題審核
 
-## 1. 您的出生年（西元）
+## 1. 在開始填寫前，請確認您已閱讀並同意以下事項
 
-- **原始總題序**：2（含知情同意）
+- **段落**：知情同意
+- **question_id**：`consent_acknowledgement`
+- **資料欄位**：`consent.acknowledgement`
+- **中文題目**：在開始填寫前，請確認您已閱讀並同意以下事項
+- **English**：Before starting, please confirm that you have read and agree to the following items
+- **資料處理方式**：不作為研究資料欄位；以版本化同意紀錄（consent_record）保存勾選項目與同意時間。
+- **題型**：複選
+- **必填性**：必填，且不可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以 consent_record 保存已勾選項目 ID、同意時間與同意版本，不進入答案代碼列。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `data_use` | 我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。 | I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name and email address to identify the participant and deliver the result report. |
+| `model_limitations` | 我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。 | I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer. |
+| `non_medical_use` | 我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。 | I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination. |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 2. 請填寫受試者姓名
+
+- **段落**：基本資料
+- **question_id**：`full_name`
+- **資料欄位**：`contact.full_name`
+- **中文題目**：請填寫受試者姓名
+- **English**：Please enter the participant's full name
+- **資料處理方式**：**直接識別資料**。僅存於權限受限的聯絡資料表，用於辨識受試者與製作報告；與醫療資料分開存放，不作為模型特徵，也不納入研究分析。
+- **題型**：文字格式輸入
+- **必填性**：必填，且不可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以純文字保存於受限權限聯絡資料表，不進入答案代碼列、模型或研究 feature row。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 3. 您的出生年（西元）
+
 - **段落**：基本資料
 - **question_id**：`birth_year`
 - **資料欄位**：`demographics.birth_year`
 - **中文題目**：您的出生年（西元）
 - **English**：Year of birth
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：數字輸入
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -42,14 +141,14 @@
 
 ---
 
-## 2. 身高（公分）
+## 4. 身高（公分）
 
-- **原始總題序**：3（含知情同意）
 - **段落**：基本資料
 - **question_id**：`height_cm`
 - **資料欄位**：`demographics.height_cm`
 - **中文題目**：身高（公分）
 - **English**：Height (cm)
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：數字輸入
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -68,14 +167,14 @@
 
 ---
 
-## 3. 體重（公斤）
+## 5. 體重（公斤）
 
-- **原始總題序**：4（含知情同意）
 - **段落**：基本資料
 - **question_id**：`weight_kg`
 - **資料欄位**：`demographics.weight_kg`
 - **中文題目**：體重（公斤）
 - **English**：Weight (kg)
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：數字輸入
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -94,14 +193,118 @@
 
 ---
 
-## 4. 近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？
+## 6. 您的性別？
 
-- **原始總題序**：5（含知情同意）
+- **段落**：基本資料
+- **question_id**：`sex`
+- **資料欄位**：`demographics.sex`
+- **中文題目**：您的性別？
+- **English**：What is your sex?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：用於顯示生理性別適用的題目與模型欄位。
+- **後續追問／影響**：決定乳房、婦科、男性生殖系統、女性健康、睾丸病史與 PSA 題的顯示。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `sex.option_01` | 男性 | Male |
+| `sex.option_02` | 女性 | Female |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 7. 您目前居住的國家／地區？
+
+- **段落**：基本資料
+- **question_id**：`country`
+- **資料欄位**：`demographics.country`
+- **中文題目**：您目前居住的國家／地區？
+- **English**：Which country/region do you currently live in?
+- **資料處理方式**：納入正式資料契約與原始作答紀錄，用於記錄受試者作答所在地區（未來報告在地化之依據）；目前不作為模型特徵或規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `country.option_01` | 臺灣 | Taiwan |
+| `country.option_02` | 香港 | Hong Kong |
+| `country.option_03` | 中國 | China |
+| `country.option_04` | 美國 | United States |
+| `country.option_05` | 日本 | Japan |
+| `country.option_06` | 加拿大 | Canada |
+| `country.option_07` | 馬來西亞 | Malaysia |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 8. 您認為自己屬於哪一個人種？
+
+- **段落**：基本資料
+- **question_id**：`race`
+- **資料欄位**：`demographics.race`
+- **中文題目**：您認為自己屬於哪一個人種？
+- **English**：Which racial group do you identify with?
+- **資料處理方式**：有詢問並保留於原始作答紀錄供研究參考，但**刻意排除於正式資料契約之外**，不進入答案代碼列、模型特徵或規則引擎；自述人種不作為本系統任何風險運算的輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：僅保留於原始作答紀錄（rows）供研究參考，不產生固定答案代碼，也不進入模型或規則引擎輸入。
+
+**選項（本題不產生正式答案代碼）**
+
+| 中文選項 | English |
+|---|---|
+| 亞洲裔 | Asian |
+| 白人 | White |
+| 黑人或非洲裔 | Black or of African descent |
+| 其他族群 | Another racial group |
+| 選擇不回答 | Prefer not to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 9. 近半年內，您的體重是否明顯「下降」？（超過體重5%）
+
 - **段落**：基本資料
 - **question_id**：`weight_change`
 - **資料欄位**：`demographics.weight_change_over_5_percent`
-- **中文題目**：近半年內，您的體重是否有明顯增加或減少（超過體重 5%）？
-- **English**：In the past six months, has your weight increased or decreased significantly (more than 5%)?
+- **中文題目**：近半年內，您的體重是否明顯「下降」？（超過體重5%）
+- **English**：In the past six months, has your weight decreased significantly (more than 5%)?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -127,14 +330,14 @@
 
 ---
 
-## 5. 每週運動時間
+## 10. 每週運動時間
 
-- **原始總題序**：6（含知情同意）
 - **段落**：基本資料
 - **question_id**：`exercise_time`
 - **資料欄位**：`lifestyle.weekly_exercise_time`
 - **中文題目**：每週運動時間
 - **English**：Weekly exercise time
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -161,46 +364,14 @@
 
 ---
 
-## 6. 您的性別？
+## 11. 全身性症狀
 
-- **原始總題序**：7（含知情同意）
-- **段落**：基本資料
-- **question_id**：`sex`
-- **資料欄位**：`demographics.sex`
-- **中文題目**：您的性別？
-- **English**：What is your sex?
-- **題型**：單選
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：無額外條件，依題序顯示。
-- **作答文字規則**：用於顯示生理性別適用的題目與模型欄位。
-- **後續追問／影響**：決定乳房、婦科、男性生殖系統、女性健康、睾丸病史與 PSA 題的顯示。
-- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
-
-**選項與固定代碼**
-
-| code | 中文選項 | English |
-|---|---|---|
-| `sex.option_01` | 男性 | Male |
-| `sex.option_02` | 女性 | Female |
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 7. 全身性症狀
-
-- **原始總題序**：8（含知情同意）
 - **段落**：近期症狀
 - **question_id**：`symptoms_general`
 - **資料欄位**：`symptoms.general`
 - **中文題目**：全身性症狀
 - **English**：General Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -232,14 +403,14 @@
 
 ---
 
-## 8. 上消化道症狀
+## 12. 上消化道症狀
 
-- **原始總題序**：9（含知情同意）
 - **段落**：近期症狀
 - **question_id**：`symptoms_upper_digestive`
 - **資料欄位**：`symptoms.upper_digestive`
 - **中文題目**：上消化道症狀
 - **English**：Upper Digestive Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -273,14 +444,14 @@
 
 ---
 
-## 9. 腸道與下腹部症狀
+## 13. 腸道與下腹部症狀
 
-- **原始總題序**：10（含知情同意）
 - **段落**：近期症狀
 - **question_id**：`symptoms_bowel_abdominal`
 - **資料欄位**：`symptoms.bowel_abdominal`
 - **中文題目**：腸道與下腹部症狀
 - **English**：Bowel and Lower Abdominal Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -299,6 +470,7 @@
 | `symptom_melena` | 黑便（柏油狀、黑色糞便） | Black, tarry stools |
 | `symptom_tenesmus` | 頻繁想排便但感覺排不乾淨（裡急後重） | Frequent urge to have a bowel movement with incomplete emptying |
 | `symptom_abnormal_fobt` | 糞便潛血檢查曾發現異常 | Previous abnormal fecal occult blood test |
+| `symptoms_bowel_abdominal.option_08` | 便秘（排便困難或排便次數減少） | Constipation (difficulty passing stool or fewer bowel movements) |
 | `none` | 以上皆無 | None of the above |
 | `unknown` | 不確定 | Not sure |
 
@@ -312,14 +484,72 @@
 
 ---
 
-## 10. 肝膽胰症狀
+## 14. 最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？
 
-- **原始總題序**：11（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`stool_loose_or_frequent`
+- **資料欄位**：`rule_inputs.symptom_stool_loose_or_frequent`
+- **中文題目**：最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？
+- **English**：During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在「腸道與下腹部症狀」勾選「排便習慣改變」時顯示。
+- **作答文字規則**：回想最近 6 個月。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `yes` | 是 | Yes |
+| `no` | 否 | No |
+| `unknown` | 不確定 | Not sure |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 15. 最近 6 個月內，鮮紅色血便總共出現過幾次？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_hematochezia_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_hematochezia_repeat_count`
+- **中文題目**：最近 6 個月內，鮮紅色血便總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience bright red blood in the stool?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「鮮紅色血便」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 16. 肝膽胰症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_hepatobiliary`
 - **資料欄位**：`symptoms.hepatobiliary`
 - **中文題目**：肝膽胰症狀
 - **English**：Liver, Biliary, and Pancreatic Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -351,14 +581,39 @@
 
 ---
 
-## 11. 呼吸系統症狀
+## 17. 最近 6 個月內，黃疸總共出現過幾次？
 
-- **原始總題序**：12（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_jaundice_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_jaundice_repeat_count`
+- **中文題目**：最近 6 個月內，黃疸總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience jaundice?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「黃疸」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 18. 呼吸系統症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_respiratory`
 - **資料欄位**：`symptoms.respiratory`
 - **中文題目**：呼吸系統症狀
 - **English**：Respiratory Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -388,14 +643,39 @@
 
 ---
 
-## 12. 乳房症狀
+## 19. 最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？
 
-- **原始總題序**：13（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_shortness_of_breath_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_shortness_of_breath_repeat_count`
+- **中文題目**：最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience shortness of breath?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「呼吸喘、呼吸急促或更容易喘」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 20. 乳房症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_breast`
 - **資料欄位**：`symptoms.breast`
 - **中文題目**：乳房症狀
 - **English**：Breast Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -424,14 +704,116 @@
 
 ---
 
-## 13. 泌尿系統症狀
+## 21. 這個乳房腫塊，情況比較接近哪一種？
 
-- **原始總題序**：14（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_breast_lump_course`
+- **資料欄位**：`rule_inputs.symptom_breast_lump_course`
+- **中文題目**：這個乳房腫塊，情況比較接近哪一種？
+- **English**：Since you first noticed the breast lump, which of the following best describes what happened?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_breast_lump_course.option_01` | 一直都在，沒有消掉過 | It has stayed present the whole time and never went away |
+| `symptom_breast_lump_course.option_02` | 消掉過，但後來又出現 | It went away but came back later |
+| `symptom_breast_lump_course.option_03` | 消掉之後就沒有再出現 | It went away and has not come back |
+| `symptom_breast_lump_course.option_04` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 22. 這個乳房腫塊，到現在（或第一次到最近一次）大概經過多久？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_breast_lump_duration_band`
+- **資料欄位**：`rule_inputs.symptom_breast_lump_duration_band`
+- **中文題目**：這個乳房腫塊，到現在（或第一次到最近一次）大概經過多久？
+- **English**：Roughly how much time has passed for the breast lump, either from onset until now or between the first and most recent occurrence?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_breast_lump_duration_band.option_01` | 不到2週 | Less than 2 weeks |
+| `symptom_breast_lump_duration_band.option_02` | 2週到不滿6週 | 2 to less than 6 weeks |
+| `symptom_breast_lump_duration_band.option_03` | 6週到不滿6個月 | 6 weeks to less than 6 months |
+| `symptom_breast_lump_duration_band.option_04` | 6個月以上 | 6 months or more |
+| `symptom_breast_lump_duration_band.option_05` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 23. 最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
+
+- **段落**：近期症狀
+- **question_id**：`mastalgia`
+- **資料欄位**：`rule_inputs.symptom_mastalgia`
+- **中文題目**：最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
+- **English**：During the past 6 months, have you had breast pain or tenderness?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅性別選擇「女性」時顯示，不以是否勾選其他乳房症狀為條件。
+- **作答文字規則**：回想最近 6 個月；乳房疼痛本身不代表癌症。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `yes` | 是 | Yes |
+| `no` | 否 | No |
+| `unknown` | 不確定 | Not sure |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 24. 泌尿系統症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_urinary`
 - **資料欄位**：`symptoms.urinary`
 - **中文題目**：泌尿系統症狀
 - **English**：Urinary Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -464,14 +846,14 @@
 
 ---
 
-## 14. 男性生殖系統症狀
+## 25. 男性生殖系統症狀
 
-- **原始總題序**：15（含知情同意）
 - **段落**：近期症狀
 - **question_id**：`symptoms_male_reproductive`
 - **資料欄位**：`symptoms.male_reproductive`
 - **中文題目**：男性生殖系統症狀
 - **English**：Male Reproductive Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「男性」時顯示。
@@ -503,14 +885,117 @@
 
 ---
 
-## 15. 婦科相關症狀
+## 26. 這個睪丸腫塊，情況比較接近哪一種？
 
-- **原始總題序**：16（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_testicular_lump_course`
+- **資料欄位**：`rule_inputs.symptom_testicular_lump_course`
+- **中文題目**：這個睪丸腫塊，情況比較接近哪一種？
+- **English**：Since you first noticed the testicular lump, which of the following best describes what happened?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_testicular_lump_course.option_01` | 一直都在，沒有消掉過 | It has stayed present the whole time and never went away |
+| `symptom_testicular_lump_course.option_02` | 消掉過，但後來又出現 | It went away but came back later |
+| `symptom_testicular_lump_course.option_03` | 消掉之後就沒有再出現 | It went away and has not come back |
+| `symptom_testicular_lump_course.option_04` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 27. 這個睪丸腫塊，到現在（或第一次到最近一次）大概經過多久？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_testicular_lump_duration_band`
+- **資料欄位**：`rule_inputs.symptom_testicular_lump_duration_band`
+- **中文題目**：這個睪丸腫塊，到現在（或第一次到最近一次）大概經過多久？
+- **English**：Roughly how much time has passed for the testicular lump, either from onset until now or between the first and most recent occurrence?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_testicular_lump_duration_band.option_01` | 不到2週 | Less than 2 weeks |
+| `symptom_testicular_lump_duration_band.option_02` | 2週到不滿6週 | 2 to less than 6 weeks |
+| `symptom_testicular_lump_duration_band.option_03` | 6週到不滿6個月 | 6 weeks to less than 6 months |
+| `symptom_testicular_lump_duration_band.option_04` | 6個月以上 | 6 months or more |
+| `symptom_testicular_lump_duration_band.option_05` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 28. 睪丸疼痛發生的情況
+
+- **段落**：近期症狀
+- **question_id**：`testicular_pain_pattern`
+- **資料欄位**：`symptoms.follow_up.testicular_pain_pattern`
+- **中文題目**：睪丸疼痛發生的情況
+- **English**：Pattern of testicular pain
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅性別為男性，且在「男性生殖系統症狀」勾選「睾丸疼痛或沉重感」時顯示。
+- **作答文字規則**：另存發生型態，主症狀欄位仍僅記錄有／無。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `testicular_pain_pattern.option_01` | 僅發生 1 次 | Occurred once |
+| `testicular_pain_pattern.option_02` | 反覆發生 2 次以上 | Occurred 2 or more times |
+| `testicular_pain_pattern.option_03` | 持續存在 | Persisted continuously |
+| `unknown` | 不確定 | Not sure |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 29. 婦科相關症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_gynecological`
 - **資料欄位**：`symptoms.gynecological`
 - **中文題目**：婦科相關症狀
 - **English**：Gynecological Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -543,14 +1028,39 @@
 
 ---
 
-## 16. 口腔與喉嚨症狀
+## 30. 最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？
 
-- **原始總題序**：17（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_pelvic_discomfort_or_increased_girth_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_pelvic_discomfort_or_increased_girth_repeat_count`
+- **中文題目**：最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience pelvic discomfort or increased abdominal girth?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「骨盆腔不適或腹圍明顯增加」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 31. 口腔與喉嚨症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_oral_throat`
 - **資料欄位**：`symptoms.oral_throat`
 - **中文題目**：口腔與喉嚨症狀
 - **English**：Oral and Throat Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -580,14 +1090,139 @@
 
 ---
 
-## 17. 頭頸與鼻部症狀
+## 32. 最近 6 個月內，口腔潰瘍總共出現過幾次？
 
-- **原始總題序**：18（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_oral_ulcer_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_oral_ulcer_repeat_count`
+- **中文題目**：最近 6 個月內，口腔潰瘍總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience an oral ulcer?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「口腔潰痑超過 2 週未癒合」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：若回答 2 次以上，追問最短間隔天數。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 33. 最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_oral_ulcer_interval_days`
+- **資料欄位**：`rule_inputs.symptom_oral_ulcer_interval_days`
+- **中文題目**：最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？
+- **English**：During the past 6 months, what was the shortest interval in days between two episodes of an oral ulcer?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅對應次數題 `symptom_oral_ulcer_repeat_count` 為 2 次以上時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 34. 最近 6 個月內，喉嚨痛總共出現過幾次？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_sore_throat_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_sore_throat_repeat_count`
+- **中文題目**：最近 6 個月內，喉嚨痛總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience sore throat?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「持續或反覆喉嚨痛」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 35. 最近 6 個月內，上述口腔症狀總共出現過幾次？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_mouth_symptoms_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_mouth_symptoms_repeat_count`
+- **中文題目**：最近 6 個月內，上述口腔症狀總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience the oral symptoms selected above?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在勾選「口腔潰痑」或「口腔白斑／紅斑」任一項時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：若回答 2 次以上，追問口腔症狀組合的最短間隔天數。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 36. 最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_mouth_symptoms_interval_days`
+- **資料欄位**：`rule_inputs.symptom_mouth_symptoms_interval_days`
+- **中文題目**：最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？
+- **English**：During the past 6 months, what was the shortest interval in days between two episodes of the oral symptoms selected above?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅對應次數題 `symptom_mouth_symptoms_repeat_count` 為 2 次以上時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 37. 頭頸與鼻部症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_head_neck_nasal`
 - **資料欄位**：`symptoms.head_neck_nasal`
 - **中文題目**：頭頸與鼻部症狀
 - **English**：Head, Neck, and Nasal Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -616,14 +1251,166 @@
 
 ---
 
-## 18. 神經系統症狀
+## 38. 你剛才提到不只一處腫塊，接下來想請你針對其中一個回答，請問是哪一個？
 
-- **原始總題序**：19（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_hn_lump_site`
+- **資料欄位**：`rule_inputs.symptom_hn_lump_site`
+- **中文題目**：你剛才提到不只一處腫塊，接下來想請你針對其中一個回答，請問是哪一個？
+- **English**：You mentioned more than one lump earlier. We would like you to answer the next questions about just one of them -- which one?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_hn_lump_site.option_01` | 頸部腫塊 | Neck lump |
+| `symptom_hn_lump_site.option_02` | 頭臉頸腫塊 | Head/face/neck lump |
+| `symptom_hn_lump_site.option_03` | 鼻部腫塊 | Nasal lump |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 39. 這個腫塊，情況比較接近哪一種？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_hn_lump_course`
+- **資料欄位**：`rule_inputs.symptom_hn_lump_course`
+- **中文題目**：這個腫塊，情況比較接近哪一種？
+- **English**：Since you first noticed the lump, which of the following best describes what happened?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_hn_lump_course.option_01` | 一直都在，沒有消掉過 | It has stayed present the whole time and never went away |
+| `symptom_hn_lump_course.option_02` | 消掉過，但後來又出現 | It went away but came back later |
+| `symptom_hn_lump_course.option_03` | 消掉之後就沒有再出現 | It went away and has not come back |
+| `symptom_hn_lump_course.option_04` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 40. 這個腫塊，到現在（或第一次到最近一次）大概經過多久？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_hn_lump_duration_band`
+- **資料欄位**：`rule_inputs.symptom_hn_lump_duration_band`
+- **中文題目**：這個腫塊，到現在（或第一次到最近一次）大概經過多久？
+- **English**：Roughly how much time has passed for the lump, either from onset until now or between the first and most recent occurrence?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_hn_lump_duration_band.option_01` | 不到2週 | Less than 2 weeks |
+| `symptom_hn_lump_duration_band.option_02` | 2週到不滿6週 | 2 to less than 6 weeks |
+| `symptom_hn_lump_duration_band.option_03` | 6週到不滿6個月 | 6 weeks to less than 6 months |
+| `symptom_hn_lump_duration_band.option_04` | 6個月以上 | 6 months or more |
+| `symptom_hn_lump_duration_band.option_05` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 41. 最近 6 個月內，原因不明的腫塊總共出現過幾次？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_mass_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_mass_repeat_count`
+- **中文題目**：最近 6 個月內，原因不明的腫塊總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience an unexplained lump?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅在任一腫塊母項為陽性：全身不明腫塊、頸部腫塊、頭臉頸腫塊、鼻部腫塊、乳房腫塊或睾丸腫塊時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
+- **後續追問／影響**：若回答 2 次以上，追問兩次之間最短間隔天數。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 42. 最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？
+
+- **段落**：近期症狀
+- **question_id**：`symptom_mass_interval_days`
+- **資料欄位**：`rule_inputs.symptom_mass_interval_days`
+- **中文題目**：最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？
+- **English**：During the past 6 months, what was the shortest interval in days between two episodes of an unexplained lump?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅對應次數題 `symptom_mass_repeat_count` 為 2 次以上時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 43. 神經系統症狀
+
 - **段落**：近期症狀
 - **question_id**：`symptoms_neurological`
 - **資料欄位**：`symptoms.neurological`
 - **中文題目**：神經系統症狀
 - **English**：Neurological Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -653,14 +1440,14 @@
 
 ---
 
-## 19. 骨骼、血液與淋巴症狀
+## 44. 骨骼、血液與淋巴症狀
 
-- **原始總題序**：20（含知情同意）
 - **段落**：近期症狀
 - **question_id**：`symptoms_bone_hematologic`
 - **資料欄位**：`symptoms.bone_hematologic`
 - **中文題目**：骨骼、血液與淋巴症狀
 - **English**：Bone, Blood, and Lymphatic Symptoms
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -693,28 +1480,20 @@
 
 ---
 
-## 20. 最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？
+## 45. 最近 6 個月內，背痛總共出現過幾次？
 
-- **原始總題序**：21（含知情同意）
 - **段落**：近期症狀
-- **question_id**：`stool_loose_or_frequent`
-- **資料欄位**：`rule_inputs.symptom_stool_loose_or_frequent`
-- **中文題目**：最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？
-- **English**：During the past 6 months, when your bowel habits changed, did you mainly have looser stools or more frequent bowel movements?
-- **題型**：單選
+- **question_id**：`symptom_back_pain_repeat_count`
+- **資料欄位**：`rule_inputs.symptom_back_pain_repeat_count`
+- **中文題目**：最近 6 個月內，背痛總共出現過幾次？
+- **English**：During the past 6 months, how many times did you experience back pain?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：數字輸入
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在「腸道與下腹部症狀」勾選「排便習慣改變」時顯示。
-- **作答文字規則**：回想最近 6 個月。
+- **出現條件**：僅在勾選「持續背痛」時顯示。
+- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
 - **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
-
-**選項與固定代碼**
-
-| code | 中文選項 | English |
-|---|---|---|
-| `yes` | 是 | Yes |
-| `no` | 否 | No |
-| `unknown` | 不確定 | Not sure |
+- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
 
 **審核結果**
 
@@ -726,18 +1505,18 @@
 
 ---
 
-## 21. 最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
+## 46. 這個腫起來的淋巴結，情況比較接近哪一種？
 
-- **原始總題序**：22（含知情同意）
 - **段落**：近期症狀
-- **question_id**：`mastalgia`
-- **資料欄位**：`rule_inputs.symptom_mastalgia`
-- **中文題目**：最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
-- **English**：During the past 6 months, have you had breast pain or tenderness?
+- **question_id**：`symptom_lymphadenopathy_course`
+- **資料欄位**：`rule_inputs.symptom_lymphadenopathy_course`
+- **中文題目**：這個腫起來的淋巴結，情況比較接近哪一種？
+- **English**：Since you first noticed the enlarged lymph node, which of the following best describes what happened?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅性別選擇「女性」時顯示，不以是否勾選其他乳房症狀為條件。
-- **作答文字規則**：回想最近 6 個月；乳房疼痛本身不代表癌症。
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
 - **後續追問／影響**：無直接觸發的額外畫面追問。
 - **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
 
@@ -745,9 +1524,10 @@
 
 | code | 中文選項 | English |
 |---|---|---|
-| `yes` | 是 | Yes |
-| `no` | 否 | No |
-| `unknown` | 不確定 | Not sure |
+| `symptom_lymphadenopathy_course.option_01` | 一直都在，沒有消掉過 | It has stayed present the whole time and never went away |
+| `symptom_lymphadenopathy_course.option_02` | 消掉過，但後來又出現 | It went away but came back later |
+| `symptom_lymphadenopathy_course.option_03` | 消掉之後就沒有再出現 | It went away and has not come back |
+| `symptom_lymphadenopathy_course.option_04` | 不確定怎麼回答 | Not sure how to answer |
 
 **審核結果**
 
@@ -759,14 +1539,49 @@
 
 ---
 
-## 22. 最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？
+## 47. 這個腫起來的淋巴結，到現在（或第一次到最近一次）大概經過多久？
 
-- **原始總題序**：23（含知情同意）
+- **段落**：近期症狀
+- **question_id**：`symptom_lymphadenopathy_duration_band`
+- **資料欄位**：`rule_inputs.symptom_lymphadenopathy_duration_band`
+- **中文題目**：這個腫起來的淋巴結，到現在（或第一次到最近一次）大概經過多久？
+- **English**：Roughly how much time has passed for the enlarged lymph node, either from onset until now or between the first and most recent occurrence?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `symptom_lymphadenopathy_duration_band.option_01` | 不到2週 | Less than 2 weeks |
+| `symptom_lymphadenopathy_duration_band.option_02` | 2週到不滿6週 | 2 to less than 6 weeks |
+| `symptom_lymphadenopathy_duration_band.option_03` | 6週到不滿6個月 | 6 weeks to less than 6 months |
+| `symptom_lymphadenopathy_duration_band.option_04` | 6個月以上 | 6 months or more |
+| `symptom_lymphadenopathy_duration_band.option_05` | 不確定怎麼回答 | Not sure how to answer |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 48. 最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？
+
 - **段落**：近期症狀
 - **question_id**：`constipation`
 - **資料欄位**：`rule_inputs.symptom_constipation`
 - **中文題目**：最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？
 - **English**：During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -792,568 +1607,14 @@
 
 ---
 
-## 23. 最近 6 個月內，黃疸總共出現過幾次？
+## 49. 初經（第一次月經）來潮年齡
 
-- **原始總題序**：24（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_jaundice_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_jaundice_repeat_count`
-- **中文題目**：最近 6 個月內，黃疸總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience jaundice?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「黃疸」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 24. 最近 6 個月內，原因不明的腫塊總共出現過幾次？
-
-- **原始總題序**：25（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_mass_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_mass_repeat_count`
-- **中文題目**：最近 6 個月內，原因不明的腫塊總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience an unexplained lump?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在任一腫塊母項為陽性：全身不明腫塊、頸部腫塊、頭臉頸腫塊、鼻部腫塊、乳房腫塊或睾丸腫塊時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：若回答 2 次以上，追問兩次之間最短間隔天數。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 25. 最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？
-
-- **原始總題序**：26（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_mass_interval_days`
-- **資料欄位**：`rule_inputs.symptom_mass_interval_days`
-- **中文題目**：最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？
-- **English**：During the past 6 months, what was the shortest interval in days between two episodes of an unexplained lump?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅對應次數題 `symptom_mass_repeat_count` 為 2 次以上時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=180、integer=true、unit=days
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 26. 最近 6 個月內，喉嚨痛總共出現過幾次？
-
-- **原始總題序**：27（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_sore_throat_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_sore_throat_repeat_count`
-- **中文題目**：最近 6 個月內，喉嚨痛總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience sore throat?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「持續或反覆喉嚨痛」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 27. 最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？
-
-- **原始總題序**：28（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_shortness_of_breath_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_shortness_of_breath_repeat_count`
-- **中文題目**：最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience shortness of breath?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「呼吸喘、呼吸急促或更容易喘」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 28. 最近 6 個月內，吞嚥困難、吞嚥疼痛或卡住感總共出現過幾次？
-
-- **原始總題序**：29（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_dysphagia_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_dysphagia_repeat_count`
-- **中文題目**：最近 6 個月內，吞嚥困難、吞嚥疼痛或卡住感總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience difficulty or pain when swallowing?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「吞嚥困難、吞嚥疼痛或食物卡住感」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 29. 最近 6 個月內，鮮紅色血便總共出現過幾次？
-
-- **原始總題序**：30（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_hematochezia_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_hematochezia_repeat_count`
-- **中文題目**：最近 6 個月內，鮮紅色血便總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience bright red blood in the stool?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「鮮紅色血便」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 30. 最近 6 個月內，腹部疼痛總共出現過幾次？
-
-- **原始總題序**：31（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_abdominal_pain_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_abdominal_pain_repeat_count`
-- **中文題目**：最近 6 個月內，腹部疼痛總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience abdominal pain?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在任一腹痛母項為陽性：持續腹痛、上腹痛、上腹不適或右上腹不適時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 31. 最近 6 個月內，背痛總共出現過幾次？
-
-- **原始總題序**：32（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_back_pain_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_back_pain_repeat_count`
-- **中文題目**：最近 6 個月內，背痛總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience back pain?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「持續背痛」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 32. 最近 6 個月內，排便習慣改變總共出現過幾次？
-
-- **原始總題序**：33（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_bowel_habit_change_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_bowel_habit_change_repeat_count`
-- **中文題目**：最近 6 個月內，排便習慣改變總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience a change in bowel habits?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「排便習慣改變」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 33. 最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？
-
-- **原始總題序**：34（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_pelvic_discomfort_or_increased_girth_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_pelvic_discomfort_or_increased_girth_repeat_count`
-- **中文題目**：最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience pelvic discomfort or increased abdominal girth?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「骨盆腔不適或腹圍明顯增加」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 34. 最近 6 個月內，肉眼可見血尿總共出現過幾次？
-
-- **原始總題序**：35（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_hematuria_visible_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_hematuria_visible_repeat_count`
-- **中文題目**：最近 6 個月內，肉眼可見血尿總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience visible blood in the urine?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「肉眼可見血尿」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 35. 最近 6 個月內，夜尿增加總共出現過幾次？
-
-- **原始總題序**：36（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_nocturia_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_nocturia_repeat_count`
-- **中文題目**：最近 6 個月內，夜尿增加總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience increased nighttime urination?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「夜尿增加」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 36. 最近 6 個月內，頻尿總共出現過幾次？
-
-- **原始總題序**：37（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_urinary_frequency_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_urinary_frequency_repeat_count`
-- **中文題目**：最近 6 個月內，頻尿總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience frequent urination?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「頻尿」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 37. 最近 6 個月內，口腔潰瘍總共出現過幾次？
-
-- **原始總題序**：38（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_oral_ulcer_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_oral_ulcer_repeat_count`
-- **中文題目**：最近 6 個月內，口腔潰瘍總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience an oral ulcer?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「口腔潰痑超過 2 週未癒合」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：若回答 2 次以上，追問最短間隔天數。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 38. 最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？
-
-- **原始總題序**：39（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_oral_ulcer_interval_days`
-- **資料欄位**：`rule_inputs.symptom_oral_ulcer_interval_days`
-- **中文題目**：最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？
-- **English**：During the past 6 months, what was the shortest interval in days between two episodes of an oral ulcer?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅對應次數題 `symptom_oral_ulcer_repeat_count` 為 2 次以上時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=180、integer=true、unit=days
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 39. 最近 6 個月內，口腔白斑或紅斑總共出現過幾次？
-
-- **原始總題序**：40（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_oral_white_red_patch_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_oral_white_red_patch_repeat_count`
-- **中文題目**：最近 6 個月內，口腔白斑或紅斑總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience a white or red patch in the mouth?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「口腔白斑或紅斑」時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：若回答 2 次以上，追問最短間隔天數。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 40. 最近 6 個月內，兩次口腔白斑或紅斑之間最短相隔幾天？
-
-- **原始總題序**：41（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_oral_white_red_patch_interval_days`
-- **資料欄位**：`rule_inputs.symptom_oral_white_red_patch_interval_days`
-- **中文題目**：最近 6 個月內，兩次口腔白斑或紅斑之間最短相隔幾天？
-- **English**：During the past 6 months, what was the shortest interval in days between two episodes of a white or red patch in the mouth?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅對應次數題 `symptom_oral_white_red_patch_repeat_count` 為 2 次以上時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=180、integer=true、unit=days
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 41. 最近 6 個月內，上述口腔症狀總共出現過幾次？
-
-- **原始總題序**：42（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_mouth_symptoms_repeat_count`
-- **資料欄位**：`rule_inputs.symptom_mouth_symptoms_repeat_count`
-- **中文題目**：最近 6 個月內，上述口腔症狀總共出現過幾次？
-- **English**：During the past 6 months, how many times did you experience the oral symptoms selected above?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅在勾選「口腔潰痑」或「口腔白斑／紅斑」任一項時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入 1–9 的整數，9 代表 9 次以上；無法確認可使用「不確定怎麼回答」。
-- **後續追問／影響**：若回答 2 次以上，追問口腔症狀組合的最短間隔天數。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=9、integer=true
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 42. 最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？
-
-- **原始總題序**：43（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`symptom_mouth_symptoms_interval_days`
-- **資料欄位**：`rule_inputs.symptom_mouth_symptoms_interval_days`
-- **中文題目**：最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？
-- **English**：During the past 6 months, what was the shortest interval in days between two episodes of the oral symptoms selected above?
-- **題型**：數字輸入
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅對應次數題 `symptom_mouth_symptoms_repeat_count` 為 2 次以上時顯示。
-- **作答文字規則**：回想最近 6 個月；輸入兩次可分開辨識的發生狀況之間最短間隔，範圍 1–180 天。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：有回答時儲存為數值；不確定為 null；條件不適用為 null。
-- **數值限制**：minimum=1、maximum=180、integer=true、unit=days
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 43. 睪丸疼痛發生的情況
-
-- **原始總題序**：44（含知情同意）
-- **段落**：近期症狀
-- **question_id**：`testicular_pain_pattern`
-- **資料欄位**：`symptoms.follow_up.testicular_pain_pattern`
-- **中文題目**：睪丸疼痛發生的情況
-- **English**：Pattern of testicular pain
-- **題型**：單選
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅性別為男性，且在「男性生殖系統症狀」勾選「睾丸疼痛或沉重感」時顯示。
-- **作答文字規則**：另存發生型態，主症狀欄位仍僅記錄有／無。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
-
-**選項與固定代碼**
-
-| code | 中文選項 | English |
-|---|---|---|
-| `testicular_pain_pattern.option_01` | 僅發生 1 次 | Occurred once |
-| `testicular_pain_pattern.option_02` | 反覆發生 2 次以上 | Occurred 2 or more times |
-| `testicular_pain_pattern.option_03` | 持續存在 | Persisted continuously |
-| `unknown` | 不確定 | Not sure |
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 44. 初經（第一次月經）來潮年齡
-
-- **原始總題序**：45（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`menarche_age`
 - **資料欄位**：`female_health.menarche_age`
 - **中文題目**：初經（第一次月經）來潮年齡
 - **English**：Age at first menstruation
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1378,14 +1639,14 @@
 
 ---
 
-## 45. 目前停經（更年期）狀態
+## 50. 目前停經（更年期）狀態
 
-- **原始總題序**：46（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`menopause_status`
 - **資料欄位**：`female_health.menopause_status`
 - **中文題目**：目前停經（更年期）狀態
 - **English**：Current menopause status
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1412,14 +1673,14 @@
 
 ---
 
-## 46. 第一胎懷孕年齡
+## 51. 第一胎懷孕年齡
 
-- **原始總題序**：47（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`first_pregnancy_age`
 - **資料欄位**：`female_health.first_pregnancy_age`
 - **中文題目**：第一胎懷孕年齡
 - **English**：Age at first pregnancy
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：選填
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1447,14 +1708,14 @@
 
 ---
 
-## 47. 產後是否曾哺餵母乳？若有，哺乳時間多長？
+## 52. 產後是否曾哺餵母乳？若有，哺乳時間多長？
 
-- **原始總題序**：48（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`breastfeeding`
 - **資料欄位**：`female_health.breastfeeding_history`
 - **中文題目**：產後是否曾哺餵母乳？若有，哺乳時間多長？
 - **English**：Have you breastfed after childbirth? If yes, for how long?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1481,14 +1742,14 @@
 
 ---
 
-## 48. 是否曾做過子宮頸抹片檢查？結果如何？
+## 53. 是否曾做過子宮頸抹片檢查？結果如何？
 
-- **原始總題序**：49（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`pap_smear`
 - **資料欄位**：`female_health.pap_smear_history`
 - **中文題目**：是否曾做過子宮頸抹片檢查？結果如何？
 - **English**：Have you ever had a Pap smear? What was the result?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1514,14 +1775,14 @@
 
 ---
 
-## 49. 您最近一次子宮頸抹片檢查是在什麼時候？
+## 54. 您最近一次子宮頸抹片檢查是在什麼時候？
 
-- **原始總題序**：50（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`pap_smear_timing`
 - **資料欄位**：`rule_inputs.screen_pap_overdue_or_out_of_range`
 - **中文題目**：您最近一次子宮頸抹片檢查是在什麼時候？
 - **English**：When was your most recent Pap smear?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別為女性，且由出生年推算年齡滿 18 歲時顯示。
@@ -1548,14 +1809,14 @@
 
 ---
 
-## 50. 過去是否曾使用賀爾蒙藥物？
+## 55. 過去是否曾使用賀爾蒙藥物？
 
-- **原始總題序**：51（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`hormone_medication`
 - **資料欄位**：`female_health.hormone_medication`
 - **中文題目**：過去是否曾使用賀爾蒙藥物？
 - **English**：Have you ever used hormone medication?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1581,14 +1842,14 @@
 
 ---
 
-## 51. 醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？
+## 56. 醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？
 
-- **原始總題序**：52（含知情同意）
 - **段落**：女性相關資訊
 - **question_id**：`benign_gynae_disease`
 - **資料欄位**：`rule_inputs.hx_benign_gynae_disease`
 - **中文題目**：醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？
 - **English**：Has a clinician ever diagnosed you with uterine fibroids, an ovarian cyst, endometriosis, or another benign gynecological condition?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「女性」時顯示。
@@ -1614,14 +1875,14 @@
 
 ---
 
-## 52. 是否有抽菸習慣（現在或過去）？
+## 57. 是否有抽菸習慣（現在或過去）？
 
-- **原始總題序**：53（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`smoking_ever`
 - **資料欄位**：`exposure.smoking_ever`
 - **中文題目**：是否有抽菸習慣（現在或過去）？
 - **English**：Have you ever had a smoking habit (currently or in the past)?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1646,14 +1907,14 @@
 
 ---
 
-## 53. 若有抽菸習慣，是否已戒菸？
+## 58. 若有抽菸習慣，是否已戒菸？
 
-- **原始總題序**：54（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`smoking_quit`
 - **資料欄位**：`exposure.smoking_quit_status`
 - **中文題目**：若有抽菸習慣，是否已戒菸？
 - **English**：If you have smoked, have you quit?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：選填
 - **出現條件**：僅前題「是否有抽菸習慣」回答「是」時顯示。
@@ -1678,14 +1939,14 @@
 
 ---
 
-## 54. 是否長期處在二手菸的生活或工作環境？
+## 59. 是否長期處在二手菸的生活或工作環境？
 
-- **原始總題序**：55（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`secondhand_smoke`
 - **資料欄位**：`exposure.secondhand_smoke`
 - **中文題目**：是否長期處在二手菸的生活或工作環境？
 - **English**：Have you been in a long-term secondhand smoke environment at home or work?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1710,14 +1971,14 @@
 
 ---
 
-## 55. 是否有嚼檳榔習慣（現在或過去）？
+## 60. 是否有嚼檳榔習慣（現在或過去）？
 
-- **原始總題序**：56（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`betel_nut`
 - **資料欄位**：`exposure.betel_nut_ever`
 - **中文題目**：是否有嚼檳榔習慣（現在或過去）？
 - **English**：Have you ever had a betel nut chewing habit (currently or in the past)?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1742,14 +2003,14 @@
 
 ---
 
-## 56. 工作或生活環境是否經常接觸油煙？
+## 61. 工作或生活環境是否經常接觸油煙？
 
-- **原始總題序**：57（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`cooking_fume`
 - **資料欄位**：`exposure.cooking_fume`
 - **中文題目**：工作或生活環境是否經常接觸油煙？
 - **English**：Are you often exposed to cooking fumes at work or in daily life?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1774,14 +2035,14 @@
 
 ---
 
-## 57. 每週平均烹調次數
+## 62. 每週平均烹調次數
 
-- **原始總題序**：58（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`cooking_frequency`
 - **資料欄位**：`exposure.weekly_cooking_frequency`
 - **中文題目**：每週平均烹調次數
 - **English**：Average weekly cooking frequency
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：選填
 - **出現條件**：無額外條件，依題序顯示。
@@ -1808,14 +2069,14 @@
 
 ---
 
-## 58. 工作或生活是否長期暴露在空氣污染環境？
+## 63. 工作或生活是否長期暴露在空氣污染環境？
 
-- **原始總題序**：59（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`air_pollution`
 - **資料欄位**：`exposure.air_pollution`
 - **中文題目**：工作或生活是否長期暴露在空氣污染環境？
 - **English**：Are you chronically exposed to air pollution at work or in daily life?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1840,14 +2101,14 @@
 
 ---
 
-## 59. 工作或生活是否常接觸輻射？
+## 64. 工作或生活是否常接觸輻射？
 
-- **原始總題序**：60（含知情同意）
 - **段落**：菸草與環境暴露
 - **question_id**：`radiation`
 - **資料欄位**：`exposure.radiation_exposure`
 - **中文題目**：工作或生活是否常接觸輻射？
 - **English**：Are you often exposed to radiation at work or in daily life?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1872,14 +2133,14 @@
 
 ---
 
-## 60. 過去一個月，每週感到緊張或焦慮的頻率
+## 65. 過去一個月，每週感到緊張或焦慮的頻率
 
-- **原始總題序**：61（含知情同意）
 - **段落**：心理健康
 - **question_id**：`stress`
 - **資料欄位**：`mental_health.weekly_stress_frequency`
 - **中文題目**：過去一個月，每週感到緊張或焦慮的頻率
 - **English**：In the past month, how often did you feel tense or anxious each week?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1906,14 +2167,14 @@
 
 ---
 
-## 61. 過去一個月，每週睡不好或失眠的頻率
+## 66. 過去一個月，每週睡不好或失眠的頻率
 
-- **原始總題序**：62（含知情同意）
 - **段落**：心理健康
 - **question_id**：`sleep_problem`
 - **資料欄位**：`mental_health.weekly_sleep_problem_frequency`
 - **中文題目**：過去一個月，每週睡不好或失眠的頻率
 - **English**：In the past month, how often did you sleep poorly or have insomnia each week?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1940,14 +2201,14 @@
 
 ---
 
-## 62. 過去一個月，每週情緒低落或憂鬱的頻率
+## 67. 過去一個月，每週情緒低落或憂鬱的頻率
 
-- **原始總題序**：63（含知情同意）
 - **段落**：心理健康
 - **question_id**：`low_mood`
 - **資料欄位**：`mental_health.weekly_low_mood_frequency`
 - **中文題目**：過去一個月，每週情緒低落或憂鬱的頻率
 - **English**：In the past month, how often did you feel low or depressed each week?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -1974,14 +2235,14 @@
 
 ---
 
-## 63. 以下哪一項最接近您平常的飲食方式？
+## 68. 以下哪一項最接近您平常的飲食方式？
 
-- **原始總題序**：64（含知情同意）
 - **段落**：飲食習慣
 - **question_id**：`diet_type`
 - **資料欄位**：`diet.current_diet_type`
 - **中文題目**：以下哪一項最接近您平常的飲食方式？
 - **English**：Which option best describes your usual dietary pattern?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2009,14 +2270,14 @@
 
 ---
 
-## 64. 肉類、加工及高溫烹調食物
+## 69. 肉類、加工及高溫烹調食物
 
-- **原始總題序**：65（含知情同意）
 - **段落**：飲食習慣
 - **question_id**：`meat_processed_foods`
 - **資料欄位**：`diet.meat_processed_foods`
 - **中文題目**：肉類、加工及高溫烹調食物
 - **English**：Meat, processed foods, and high-temperature cooking
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2044,14 +2305,14 @@
 
 ---
 
-## 65. 高糖與高脂食物
+## 70. 高糖與高脂食物
 
-- **原始總題序**：66（含知情同意）
 - **段落**：飲食習慣
 - **question_id**：`sugar_fat_foods`
 - **資料欄位**：`diet.sugar_fat_foods`
 - **中文題目**：高糖與高脂食物
 - **English**：High-sugar and high-fat foods
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2078,14 +2339,14 @@
 
 ---
 
-## 66. 蔬果、豆類與乳製品
+## 71. 蔬果、豆類與乳製品
 
-- **原始總題序**：67（含知情同意）
 - **段落**：飲食習慣
 - **question_id**：`plant_dairy_habits`
 - **資料欄位**：`diet.plant_dairy_habits`
 - **中文題目**：蔬果、豆類與乳製品
 - **English**：Fruit, vegetables, soy, and dairy
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2114,14 +2375,14 @@
 
 ---
 
-## 67. 飲品習慣
+## 72. 飲品習慣
 
-- **原始總題序**：68（含知情同意）
 - **段落**：飲食習慣
 - **question_id**：`beverage_habits`
 - **資料欄位**：`diet.beverage_habits`
 - **中文題目**：飲品習慣
 - **English**：Beverage habits
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2148,14 +2409,14 @@
 
 ---
 
-## 68. 您目前是否正在罹患癌症，或過去曾被診斷為癌症？
+## 73. 您目前是否正在罹患癌症，或過去曾被診斷為癌症？
 
-- **原始總題序**：69（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`personal_cancer`
 - **資料欄位**：`medical_history.personal_cancer_history`
 - **中文題目**：您目前是否正在罹患癌症，或過去曾被診斷為癌症？
 - **English**：Are you currently living with cancer, or have you ever been diagnosed with cancer in the past?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2181,14 +2442,14 @@
 
 ---
 
-## 69. 目前或過去曾被診斷的癌別為何？
+## 74. 目前或過去曾被診斷的癌別為何？
 
-- **原始總題序**：70（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`personal_cancer_types`
 - **資料欄位**：`medical_history.personal_cancer_types`
 - **中文題目**：目前或過去曾被診斷的癌別為何？
 - **English**：What type of cancer are you currently living with, or have you been diagnosed with in the past?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅「目前正在治療或追蹤」或「過去曾被診斷」時顯示。
@@ -2223,14 +2484,14 @@
 
 ---
 
-## 70. 是否有以下慢性疾病？
+## 75. 是否有以下慢性疾病？
 
-- **原始總題序**：71（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`chronic_conditions`
 - **資料欄位**：`medical_history.chronic_conditions`
 - **中文題目**：是否有以下慢性疾病？
 - **English**：Do you have any of the following chronic diseases?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2269,14 +2530,14 @@
 
 ---
 
-## 71. 您曾被診斷的肝病種類為何？
+## 76. 您曾被診斷的肝病種類為何？
 
-- **原始總題序**：72（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`liver_disease_etiology`
 - **資料欄位**：`medical_history.liver_disease_etiology`
 - **中文題目**：您曾被診斷的肝病種類為何？
 - **English**：Which liver condition were you diagnosed with?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅「慢性疾病」勾選肝病時顯示。
@@ -2306,14 +2567,14 @@
 
 ---
 
-## 72. 是否曾有以下經醫療人員確認的病史或事件？
+## 77. 是否曾有以下經醫療人員確認的病史或事件？
 
-- **原始總題序**：73（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`vnext_diagnosed_conditions`
 - **資料欄位**：`medical_history.vnext_diagnosed_conditions`
 - **中文題目**：是否曾有以下經醫療人員確認的病史或事件？
 - **English**：Have you had any of the following clinician-confirmed conditions or events?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2329,6 +2590,7 @@
 | `vnext_diagnosed_conditions.option_02` | 曾由醫師診斷深層靜脈栓塞或肺栓塞（DVT／PE） | A clinician-diagnosed deep vein thrombosis or pulmonary embolism (DVT/PE) |
 | `vnext_diagnosed_conditions.option_03` | 曾由牙醫或醫師診斷口腔黏膜下纖維化 | Oral submucous fibrosis diagnosed by a dentist or physician |
 | `vnext_diagnosed_conditions.option_04` | 曾由醫師診斷慢性胰臟炎 | Chronic pancreatitis diagnosed by a clinician |
+| `vnext_diagnosed_conditions.option_05` | 曾由醫師診斷膽結石或膽道結石 | Gallstones or bile duct stones diagnosed by a clinician |
 | `none` | 以上皆無 | None of the above |
 | `unknown` | 不確定 | Not sure |
 
@@ -2342,14 +2604,14 @@
 
 ---
 
-## 73. 醫師是否曾診斷您有睪丸炎或副睪炎？
+## 78. 醫師是否曾診斷您有睪丸炎或副睪炎？
 
-- **原始總題序**：74（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`orchitis_epididymitis`
 - **資料欄位**：`rule_inputs.dx_orchitis_epididymitis`
 - **中文題目**：醫師是否曾診斷您有睪丸炎或副睪炎？
 - **English**：Has a clinician ever diagnosed you with orchitis or epididymitis?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別選擇「男性」時顯示。
@@ -2375,14 +2637,14 @@
 
 ---
 
-## 74. 您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？
+## 79. 您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？
 
-- **原始總題序**：75（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`psa_history`
 - **資料欄位**：`rule_inputs.screen_psa_elevated`
 - **中文題目**：您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？
 - **English**：Have you previously had a PSA (prostate-specific antigen) test, and were you told that the result was elevated?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：僅性別為男性，且由出生年推算年齡滿 50 歲時顯示。
@@ -2409,14 +2671,14 @@
 
 ---
 
-## 75. 家族成員（一等親內）是否有癌症史？
+## 80. 家族成員（一等親內）是否有癌症史？
 
-- **原始總題序**：76（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`family_cancer`
 - **資料欄位**：`family_history.has_cancer_history`
 - **中文題目**：家族成員（一等親內）是否有癌症史？
 - **English**：Has any first-degree family member had cancer?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。
@@ -2442,14 +2704,14 @@
 
 ---
 
-## 76. 承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？
+## 81. 承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？
 
-- **原始總題序**：77（含知情同意）
 - **段落**：病史與家族史
 - **question_id**：`family_self_types`
 - **資料欄位**：`family_history.cancer_types_self_side`
 - **中文題目**：承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？
 - **English**：If yes, what type of cancer did your first-degree family member have?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：複選
 - **必填性**：選填
 - **出現條件**：僅「一等親內是否有癌症史」回答「是」時顯示。
@@ -2484,14 +2746,14 @@
 
 ---
 
-## 77. 請填寫您的 Email
+## 82. 請填寫您的 Email
 
-- **原始總題序**：78（含知情同意）
 - **段落**：聯絡資料
 - **question_id**：`email`
 - **資料欄位**：`contact.email`
 - **中文題目**：請填寫您的 Email
 - **English**：Please enter your email
+- **資料處理方式**：**直接識別資料**。僅存於權限受限的聯絡資料表，用於寄送報告；不作為模型特徵，也不納入研究分析。
 - **題型**：文字格式輸入
 - **必填性**：必填，且不可使用「不確定怎麼回答」
 - **出現條件**：無額外條件，依題序顯示。

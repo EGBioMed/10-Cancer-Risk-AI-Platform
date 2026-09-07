@@ -10,6 +10,8 @@
     "validate:contract": "node --test test-contract.js",
     "generate:answer-codes": "node scripts/generate-answer-code-manifest.js",
     "generate:power-automate-trigger-schema": "node scripts/generate-power-automate-trigger-schema.js",
+    "generate:questionnaire-review": "node scripts/generate-questionnaire-review.js",
+    "generate:questionnaire-review-docx": "node scripts/build-questionnaire-review-docx.js",
     "backup:local": "node scripts/backup-postgres.js",
     "export:research": "node scripts/export-postgres-data.js --dataset research --output local-exports/research.csv",
     "export:contacts": "node scripts/export-postgres-data.js --dataset contacts --output local-exports/contacts.csv",
@@ -23,5 +25,8 @@
   },
   "dependencies": {
     "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "docx": "^9.7.1"
   }
 }

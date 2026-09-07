@@ -1,11 +1,45 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
+const answerCodeApi = require("../answer-codes");
+const { getOptionCode } = answerCodeApi;
 
 const root = path.resolve(__dirname, "..");
-const manifest = require(path.join(root, "contracts/v1/answer-code-manifest.json"));
 const outputPath = path.join(root, "QUESTIONNAIRE_ITEM_BY_ITEM_REVIEW.md");
 
+// Reads the questionnaire definitions straight out of app.js (same VM-sandbox
+// approach as scripts/generate-answer-code-manifest.js) rather than out of
+// contracts/v1/answer-code-manifest.json. The manifest is deliberately scoped
+// to the *research data contract*, so it omits `consent_acknowledgement`,
+// `full_name`, and `race`. Those three are still put in front of every
+// participant, and an ethics/IRB reviewer is reviewing what participants are
+// asked -- not what survives into the dataset -- so this document has to cover
+// them, and state each question's data-handling status explicitly instead.
+const appSource = fs.readFileSync(path.join(root, "app.js"), "utf8");
+const cutoff = appSource.indexOf("const answers = {};");
+if (cutoff < 0) throw new Error("Could not locate the questionnaire definition boundary in app.js.");
+
+const sandbox = { EGAnswerCodes: answerCodeApi };
+vm.createContext(sandbox);
+vm.runInContext(`${appSource.slice(0, cutoff)}
+globalThis.__reviewSource = {
+  questions,
+  versions: SUBMISSION_VERSIONS,
+  symptomOptionTranslations,
+  englishOptions: i18n.en.options || {},
+  englishQuestions: i18n.en.questions || {}
+};`, sandbox);
+
+const {
+  questions: appQuestions,
+  versions,
+  symptomOptionTranslations,
+  englishOptions,
+  englishQuestions
+} = sandbox.__reviewSource;
+
 const moduleNames = {
+  consent: "知情同意",
   basic: "基本資料",
   symptoms: "近期症狀",
   female: "女性相關資訊",
@@ -158,86 +192,268 @@ function typeLabel(answerType) {
   }[answerType] || answerType;
 }
 
+// Mirrors app.js's `cannotSkip` rule (consent, name and email hide/disable the
+// "不確定怎麼回答" button). Whether a participant can decline an item is an
+// ethics question in its own right, so this must not be approximated.
+const cannotSkipIds = new Set(["consent_acknowledgement", "full_name", "email"]);
+
+function requiredLabel(question) {
+  if (cannotSkipIds.has(question.question_id)) return "必填，且不可使用「不確定怎麼回答」";
+  if (question.required_when_applicable) return "適用時必填，但可使用「不確定怎麼回答」";
+  return "選填";
+}
+
+// Kept identical to scripts/generate-answer-code-manifest.js's table so the
+// numeric bounds shown to reviewers are the same ones the contract enforces.
+const numberConstraints = {
+  birth_year: { minimum: 1906, maximum: 2026, integer: true, review: "Update the upper and lower year bounds at runtime from the receipt year." },
+  height_cm: { minimum: 100, maximum: 250, unit: "cm" },
+  weight_kg: { minimum: 20, maximum: 300, unit: "kg" }
+};
+
 function storageRule(question) {
+  if (question.question_id === "consent_acknowledgement") {
+    return "以 consent_record 保存已勾選項目 ID、同意時間與同意版本，不進入答案代碼列。";
+  }
+  if (question.question_id === "full_name") return "以純文字保存於受限權限聯絡資料表，不進入答案代碼列、模型或研究 feature row。";
   if (question.question_id === "email") return "保存於受限權限聯絡資料，不應進入模型或研究 feature row。";
+  if (question.excluded_from_contract) {
+    return "僅保留於原始作答紀錄（rows）供研究參考，不產生固定答案代碼，也不進入模型或規則引擎輸入。";
+  }
   if (question.answer_type === "code_array") return "已回答時：勾選選項=1、未勾選選項=0；整題不確定或不適用時保留 null。";
   if (question.answer_type === "number") return "有回答時儲存為數值；不確定為 null；條件不適用為 null。";
   return "以固定答案代碼儲存；不確定為 null；條件不適用為 null。";
 }
 
-const reviewQuestions = manifest.questions.filter((question) => question.question_id !== "consent_acknowledgement");
-const lines = [
-  "# 問卷逐題審核文字與邏輯規格",
-  "",
-  `問卷版本：\`${manifest.questionnaire_version}\`  `,
-  `答案代碼版本：\`${manifest.schema_version}\`  `,
-  `審核範圍：排除知情同意後的 ${reviewQuestions.length} 個題目定義。`,
-  "",
-  "## 共通規則",
-  "",
-  "1. 題序依本文件排列；條件題不符合時會從畫面題序移除，因此使用者實際題數會動態變動。",
-  "2. 單選題點選後直接前往下一題；複選與數字題需按「儲存並繼續」。",
-  "3. 複選題的「以上皆無」與「不確定」會排除其他選項，兩者也不可同時選擇。",
-  "4. 除 Email 外，使用者可使用「不確定怎麼回答」；該題記為 unknown/null，不得當成「否」或 0。",
-  "5. 因條件不符合而未顯示的題目記為 not_applicable/null，不得當成「否」或 0。",
-  "6. 返回修改前題後，系統會重新計算後續題目是否適用。",
-  "7. 最後會顯示全部已作答題目與答案；必須按「我已確認所有答案，現在送出」才會傳送資料。",
-  "",
-  "## 逐題審核",
-  ""
+// The single most IRB-relevant line per item: where does this answer actually
+// end up? Stated per question so a reviewer never has to infer it from the
+// data contract documents.
+function dataHandling(question) {
+  if (question.question_id === "consent_acknowledgement") {
+    return "不作為研究資料欄位；以版本化同意紀錄（consent_record）保存勾選項目與同意時間。";
+  }
+  if (question.question_id === "full_name") {
+    return "**直接識別資料**。僅存於權限受限的聯絡資料表，用於辨識受試者與製作報告；與醫療資料分開存放，不作為模型特徵，也不納入研究分析。";
+  }
+  if (question.question_id === "email") {
+    return "**直接識別資料**。僅存於權限受限的聯絡資料表，用於寄送報告；不作為模型特徵，也不納入研究分析。";
+  }
+  if (question.question_id === "race") {
+    return "有詢問並保留於原始作答紀錄供研究參考，但**刻意排除於正式資料契約之外**，不進入答案代碼列、模型特徵或規則引擎；自述人種不作為本系統任何風險運算的輸入。";
+  }
+  if (question.question_id === "country") {
+    return "納入正式資料契約與原始作答紀錄，用於記錄受試者作答所在地區（未來報告在地化之依據）；目前不作為模型特徵或規則引擎輸入。";
+  }
+  return "去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。";
+}
+
+// Mirrors scripts/generate-answer-code-manifest.js's shape so the rest of this
+// script is unchanged, but keeps every question app.js actually asks.
+const reviewQuestions = appQuestions
+  .filter((question) => !question.isComposite)
+  .map((question) => {
+    const item = {
+      question_id: question.id,
+      field: question.field,
+      module: question.module,
+      answer_type: question.type === "number" ? "number"
+        : question.type === "email" || question.type === "text" || question.type === "name" ? "string"
+          : question.type === "multi" ? "code_array" : "code",
+      required_when_applicable: question.required === true,
+      title_zh: question.title,
+      title_en: englishQuestions[question.id]?.[0] || question.titleEn || question.title,
+      excluded_from_contract: question.excludeFromCanonicalContract === true
+    };
+    if (Array.isArray(question.options)) {
+      item.options = question.options.map((option) => ({
+        code: getOptionCode(question, option),
+        label_zh: option,
+        label_en: symptomOptionTranslations[option] || englishOptions[option] || option
+      }));
+    }
+    if (numberConstraints[question.id]) item.number_constraints = numberConstraints[question.id];
+    return item;
+  });
+
+// Same predicate as canonicalAnswerQuestions in app.js, so the headline count
+// here can never drift from the count the contract actually enforces.
+const contractCount = reviewQuestions.filter((question) => !question.excluded_from_contract
+  && !["consent_acknowledgement", "email"].includes(question.question_id)).length;
+const summaryLines = [
+  `問卷版本：${versions.questionnaire_version}`,
+  `答案代碼版本：${versions.answer_code_schema_version}`,
+  `知情同意版本：${versions.consent_version}`,
+  `審核範圍：受試者實際會被詢問的 ${reviewQuestions.length} 個題目定義（含知情同意、姓名與人種題）。`,
+  `其中 ${contractCount} 題納入正式資料契約（answer_code_rows）；其餘 ${reviewQuestions.length - contractCount} 題分別為知情同意紀錄、聯絡用途（姓名、Email）與刻意排除於契約外的人種題，皆不進入模型特徵或規則引擎運算。各題「資料處理方式」欄已個別註明。`
 ];
 
-reviewQuestions.forEach((question, index) => {
-  const number = index + 1;
-  lines.push(
-    `## ${number}. ${question.title_zh}`,
-    "",
-    `- **原始總題序**：${manifest.questions.indexOf(question) + 1}（含知情同意）`,
-    `- **段落**：${moduleNames[question.module] || question.module}`,
-    `- **question_id**：\`${question.question_id}\``,
-    `- **資料欄位**：\`${question.field}\``,
-    `- **中文題目**：${question.title_zh}`,
-    `- **English**：${question.title_en}`,
-    `- **題型**：${typeLabel(question.answer_type)}`,
-    `- **必填性**：${question.question_id === "email"
-      ? "必填，且不可使用「不確定怎麼回答」"
-      : question.required_when_applicable
-        ? "適用時必填，但可使用「不確定怎麼回答」"
-        : "選填"}`,
-    `- **出現條件**：${conditionByQuestion[question.question_id] || "無額外條件，依題序顯示。"}`,
-    `- **作答文字規則**：${noteByQuestion[question.question_id] || defaultNote(question)}`,
-    `- **後續追問／影響**：${followUpsByQuestion[question.question_id] || "無直接觸發的額外畫面追問。"}`,
-    `- **儲存規則**：${storageRule(question)}`
-  );
+const commonRules = [
+  "題序依本文件排列；條件題不符合時會從畫面題序移除，因此使用者實際題數會動態變動。",
+  "單選題點選後直接前往下一題；複選與數字題需按「儲存並繼續」。",
+  "複選題的「以上皆無」與「不確定」會排除其他選項，兩者也不可同時選擇。",
+  "除知情同意、姓名與 Email 外，使用者可使用「不確定怎麼回答」；該題記為 unknown/null，不得當成「否」或 0。",
+  "因條件不符合而未顯示的題目記為 not_applicable/null，不得當成「否」或 0。",
+  "返回修改前題後，系統會重新計算後續題目是否適用。",
+  "最後會顯示全部已作答題目與答案；必須按「我已確認所有答案，現在送出」才會傳送資料。",
+  "全部題目均在受試者完成知情同意（第 1 題三項確認）後才會顯示。"
+];
 
+// Each item's review fields, in display order, shared by the Markdown and
+// .docx renderers so the two documents can never disagree.
+function reviewFields(question) {
+  const fields = [
+    ["段落", moduleNames[question.module] || question.module],
+    ["question_id", question.question_id],
+    ["資料欄位", question.field],
+    ["中文題目", question.title_zh],
+    ["English", question.title_en],
+    ["資料處理方式", dataHandling(question)],
+    ["題型", typeLabel(question.answer_type)],
+    ["必填性", requiredLabel(question)],
+    ["出現條件", conditionByQuestion[question.question_id] || "無額外條件，依題序顯示。"],
+    ["作答文字規則", noteByQuestion[question.question_id] || defaultNote(question)],
+    ["後續追問／影響", followUpsByQuestion[question.question_id] || "無直接觸發的額外畫面追問。"],
+    ["儲存規則", storageRule(question)]
+  ];
   if (question.number_constraints) {
-    const constraints = Object.entries(question.number_constraints)
+    fields.push(["數值限制", Object.entries(question.number_constraints)
       .map(([key, value]) => `${key}=${value}`)
-      .join("、");
-    lines.push(`- **數值限制**：${constraints}`);
+      .join("、")]);
   }
+  return fields;
+}
 
-  if (question.options?.length) {
-    lines.push("", "**選項與固定代碼**", "", "| code | 中文選項 | English |", "|---|---|---|");
-    question.options.forEach((option) => {
-      lines.push(`| \`${option.code}\` | ${option.label_zh.replaceAll("|", "\\|")} | ${option.label_en.replaceAll("|", "\\|")} |`);
-    });
-  }
+const reviewChecklist = ["保留", "修改", "刪除", "待臨床／模型／法規確認"];
+
+// The informed-consent notice shown above the three confirmation checkboxes is
+// rendered as markup inside app.js's consent screen, not as an entry in the
+// `questions` array -- so it would otherwise be absent from a document meant
+// for ethics review, where it is the single most scrutinised text. Scraped
+// verbatim out of the same source of truth (both language variants) rather
+// than transcribed by hand, so it cannot drift from what participants read.
+function extractConsentNotice(headingText) {
+  const headingIndex = appSource.indexOf(`>${headingText}</h3>`);
+  if (headingIndex < 0) throw new Error(`Consent notice heading not found: ${headingText}`);
+  const endIndex = appSource.indexOf("consent-read-dock", headingIndex);
+  const region = appSource.slice(headingIndex, endIndex < 0 ? undefined : endIndex);
+
+  const items = [...region.matchAll(/<dt>([\s\S]*?)<\/dt>\s*<dd>([\s\S]*?)<\/dd>/g)]
+    .map(([, term, definition]) => [stripMarkup(term), stripMarkup(definition)]);
+
+  // The trailing warning block carries the "not a diagnosis" statements.
+  const warningHeading = region.match(/consent-notice__section--warning">\s*<h3>([\s\S]*?)<\/h3>/);
+  const warningRegion = warningHeading ? region.slice(region.indexOf(warningHeading[0])) : "";
+  const warningParagraphs = [...warningRegion.matchAll(/<p>([\s\S]*?)<\/p>/g)]
+    .map(([, paragraph]) => stripMarkup(paragraph))
+    .filter(Boolean);
+
+  return {
+    heading: headingText,
+    // Chinese copy takes the full-width colon, English copy the ASCII one.
+    separator: /[一-鿿]/.test(headingText) ? "：" : ": ",
+    items,
+    warningHeading: warningHeading ? stripMarkup(warningHeading[1]) : null,
+    warningParagraphs
+  };
+}
+
+function stripMarkup(html) {
+  return html
+    .replace(/<[^>]*>/g, "")
+    .replace(/\$\{[^}]*\}/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const consentNotices = [
+  extractConsentNotice("資料使用與隱私告知事項"),
+  extractConsentNotice("Data Use and Privacy Notice")
+];
+
+module.exports = {
+  versions,
+  reviewQuestions,
+  contractCount,
+  summaryLines,
+  commonRules,
+  reviewFields,
+  reviewChecklist,
+  consentNotices,
+  documentTitle: "問卷逐題審核文字與邏輯規格"
+};
+
+function buildMarkdown() {
+  const lines = [
+    `# ${module.exports.documentTitle}`,
+    "",
+    ...summaryLines.map((line, index) => (index < 3 ? `${line.replace(/：(.*)$/, "：`$1`")}  ` : line)),
+    "",
+    "## 共通規則",
+    "",
+    ...commonRules.map((rule, index) => `${index + 1}. ${rule}`),
+    ""
+  ];
 
   lines.push(
+    "## 知情同意告知事項全文",
     "",
-    "**審核結果**",
-    "",
-    "- [ ] 保留",
-    "- [ ] 修改",
-    "- [ ] 刪除",
-    "- [ ] 待臨床／模型／法規確認",
-    "- 修改說明：",
-    "",
-    "---",
+    "以下為受試者在第 1 題勾選三項確認之前，畫面上必須完整捲動閱讀的告知事項原文（中英文各一份，直接取自 `app.js` 之同意畫面）。",
     ""
   );
-});
+  consentNotices.forEach((notice) => {
+    lines.push(`### ${notice.heading}`, "");
+    notice.items.forEach(([term, definition]) => {
+      lines.push(`- **${term}**${notice.separator}${definition}`);
+    });
+    if (notice.warningHeading) {
+      lines.push("", `**${notice.warningHeading}**`, "");
+      notice.warningParagraphs.forEach((paragraph) => lines.push(`- ${paragraph}`));
+    }
+    lines.push("");
+  });
 
-fs.writeFileSync(outputPath, `${lines.join("\n")}\n`);
-console.log(outputPath);
+  lines.push("## 逐題審核", "");
+
+  reviewQuestions.forEach((question, index) => {
+    lines.push(`## ${index + 1}. ${question.title_zh}`, "");
+    reviewFields(question).forEach(([label, value]) => {
+      const inlineCode = ["question_id", "資料欄位"].includes(label);
+      lines.push(`- **${label}**：${inlineCode ? `\`${value}\`` : value}`);
+    });
+
+    if (question.options?.length) {
+      // Excluded questions never get a canonical answer code, so their option
+      // list is shown without one rather than implying a contract code exists.
+      const escape = (text) => text.replaceAll("|", "\\|");
+      if (question.excluded_from_contract) {
+        lines.push("", "**選項（本題不產生正式答案代碼）**", "", "| 中文選項 | English |", "|---|---|");
+        question.options.forEach((option) => {
+          lines.push(`| ${escape(option.label_zh)} | ${escape(option.label_en)} |`);
+        });
+      } else {
+        lines.push("", "**選項與固定代碼**", "", "| code | 中文選項 | English |", "|---|---|---|");
+        question.options.forEach((option) => {
+          lines.push(`| \`${option.code}\` | ${escape(option.label_zh)} | ${escape(option.label_en)} |`);
+        });
+      }
+    }
+
+    lines.push(
+      "",
+      "**審核結果**",
+      "",
+      ...reviewChecklist.map((item) => `- [ ] ${item}`),
+      "- 修改說明：",
+      "",
+      "---",
+      ""
+    );
+  });
+
+  return lines;
+}
+
+if (require.main === module) {
+  fs.writeFileSync(outputPath, `${buildMarkdown().join("\n")}\n`);
+  console.log(outputPath);
+}
