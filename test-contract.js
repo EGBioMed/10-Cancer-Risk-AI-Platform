@@ -2,8 +2,10 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { execFileSync } = require("node:child_process");
 const {
+  AI_API_REPORT_ONLY_FIELDS,
   EXPECTED_VERSIONS,
   answerCodeManifest,
   fieldManifest,
@@ -289,6 +291,116 @@ test("rejects a missing vector field", () => {
   delete submission.rule_input_row.symptom_constipation;
   const errors = validateTransitionalSubmission(submission);
   assert(errors.some((error) => error.path === "$.rule_input_row" && error.code === "row_shape_mismatch"));
+});
+
+// ---------------------------------------------------------------------------
+// ai_api_feature_row is the only vector allowed to carry keys that are not in
+// its columns list, because the Power Automate HTTP action posts that object
+// verbatim as the API body, so a report-only field like country has nowhere
+// else to live. The tests below exist because that exemption was added to both
+// validators only after production broke: on 2026-09-07 a 72-key
+// ai_api_feature_row was compared against the frozen 71-column list and every
+// submission was rejected before it was even sent, regardless of country --
+// while all 15 tests in this file passed. They passed because nothing ever
+// executed a validator against a row carrying country: buildValidSubmission()
+// above still builds ai_api_feature_row as a bare copy of optimized, and
+// test-questionnaire-ui.js only greps app.js as text. So these tests run the
+// real client function and the real server validator on a row that has one.
+function loadClientSubmissionValidator() {
+  const source = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+  const line = (header) => {
+    const start = source.indexOf(header);
+    assert(start >= 0, `Could not locate ${header} in app.js`);
+    return source.slice(start, source.indexOf("\n", start));
+  };
+  const topLevelFunction = (header) => {
+    const start = source.indexOf(header);
+    assert(start >= 0, `Could not locate ${header} in app.js`);
+    const end = source.indexOf("\n}\n", start);
+    assert(end > start, `Could not find the end of ${header} in app.js`);
+    return source.slice(start, end + 2);
+  };
+
+  // The prelude holds SUBMISSION_VERSIONS, the question list,
+  // canonicalAnswerQuestions and frozenSubmissionVectorCounts, i.e. everything
+  // validateSubmissionBeforeSend reads besides the exemption list itself.
+  const sandbox = { EGAnswerCodes: require("./answer-codes") };
+  vm.createContext(sandbox);
+  vm.runInContext([
+    source.slice(0, source.indexOf("const answers = {};")),
+    line("const AI_API_REPORT_ONLY_FIELDS = ["),
+    topLevelFunction("function validateSubmissionBeforeSend(submission) {"),
+    "globalThis.__submissionValidator = { validateSubmissionBeforeSend, AI_API_REPORT_ONLY_FIELDS };"
+  ].join("\n"), sandbox);
+  return sandbox.__submissionValidator;
+}
+
+const clientValidator = loadClientSubmissionValidator();
+
+function submissionWithCountry(code = "US") {
+  const submission = buildValidSubmission();
+  submission.ai_api_feature_row.country = code;
+  return submission;
+}
+
+test("the report-only exemption list is identical in app.js and lib/transitional-contract.js", () => {
+  // Two separate declarations validate the same object on the two sides of the
+  // wire; a field added to one only would be accepted by the browser and then
+  // rejected by the server. (.join because vm-realm arrays fail deepEqual.)
+  assert.equal(
+    clientValidator.AI_API_REPORT_ONLY_FIELDS.join(","),
+    AI_API_REPORT_ONLY_FIELDS.join(",")
+  );
+  assert.equal(AI_API_REPORT_ONLY_FIELDS.join(","), "country");
+});
+
+test("both validators accept a submission whose ai_api_feature_row carries country", () => {
+  const submission = submissionWithCountry();
+  clientValidator.validateSubmissionBeforeSend(submission);
+  assert.deepEqual(validateTransitionalSubmission(submission), []);
+});
+
+test("both validators still accept a cached client that omits country", () => {
+  // Allow but do not require: a browser holding an older app.js must not have
+  // its submissions rejected outright. Missing country only makes the report
+  // fall back to the Taiwan baseline, which the report states inline.
+  const submission = buildValidSubmission();
+  assert(!("country" in submission.ai_api_feature_row));
+  clientValidator.validateSubmissionBeforeSend(submission);
+  assert.deepEqual(validateTransitionalSubmission(submission), []);
+});
+
+test("both validators reject an unlisted extra key in ai_api_feature_row", () => {
+  const submission = submissionWithCountry();
+  submission.ai_api_feature_row.unexpected_field = 1;
+  assert.throws(
+    () => clientValidator.validateSubmissionBeforeSend(submission),
+    /ai_api_feature_row does not match optimized_feature_columns/
+  );
+  const errors = validateTransitionalSubmission(submission);
+  assert(errors.some((error) => error.path === "$.ai_api_feature_row" && error.code === "row_shape_mismatch"));
+});
+
+test("the exemption does not leak to the other vectors", () => {
+  const submission = submissionWithCountry();
+  submission.optimized_feature_row.country = "US";
+  assert.throws(
+    () => clientValidator.validateSubmissionBeforeSend(submission),
+    /optimized_feature_row does not match optimized_feature_columns/
+  );
+  const errors = validateTransitionalSubmission(submission);
+  assert(errors.some((error) => error.path === "$.optimized_feature_row" && error.code === "row_shape_mismatch"));
+});
+
+test("both validators still reject a missing model feature even when country is present", () => {
+  const submission = submissionWithCountry();
+  delete submission.ai_api_feature_row.age;
+  assert.throws(
+    () => clientValidator.validateSubmissionBeforeSend(submission),
+    /ai_api_feature_row does not match optimized_feature_columns/
+  );
+  const errors = validateTransitionalSubmission(submission);
+  assert(errors.some((error) => error.path === "$.ai_api_feature_row" && error.code === "row_shape_mismatch"));
 });
 
 test("rejects email leakage into the research row", () => {
