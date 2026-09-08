@@ -214,8 +214,14 @@
     </main>
 
   <!--GATE:SCRIPTS_START-->
-  <script src="answer-codes.js?v=20260805-answer-codes-v1"></script>
-  <script src="app.js?v=20260826-participant-name"></script>
+  <!--
+    下面兩個 ?v= 只是本機直接開檔用的預設值：server.js 送出 HTML 時會用
+    lib/asset-version.js 把它們換成該檔案內容的 sha256 前 12 碼，所以不需要（也
+    請不要）手動維護。這裡曾經是手寫日期字串，2026-09-07 因此讓已修好並部署的
+    app.js 被瀏覽器快取擋在門外一小時，見 lib/asset-version.js 的說明。
+  -->
+  <script src="answer-codes.js?v=local"></script>
+  <script src="app.js?v=local"></script>
   <!--GATE:SCRIPTS_END-->
   </body>
 </html>

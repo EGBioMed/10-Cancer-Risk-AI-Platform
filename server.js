@@ -26,6 +26,7 @@ const {
 } = require("./lib/access-gate");
 const { createFixedWindowLimiter } = require("./lib/rate-limiter");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
+const { createAppAssetVersioner } = require("./lib/asset-version");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -89,6 +90,7 @@ if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
 }
 
 const PUBLIC_DIR = __dirname;
+const appAssets = createAppAssetVersioner(PUBLIC_DIR);
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -468,6 +470,12 @@ function serveStatic(req, res) {
       "Content-Type": MIME_TYPES[ext] || "application/octet-stream",
       "Cache-Control": ext === ".html" ? "no-store" : "public, max-age=3600"
     });
+    // HTML 是 no-store，所以每次都重新讀，也每次都把 app.js 的 v= 換成內容雜湊。
+    // 只有這樣，剛部署好的 app.js 才會真的被下載——見 lib/asset-version.js 的說明。
+    if (ext === ".html") {
+      res.end(appAssets.applyTo(fs.readFileSync(filePath, "utf8")));
+      return;
+    }
     fs.createReadStream(filePath).pipe(res);
   });
 }
@@ -476,7 +484,7 @@ let cachedGatedIndexHtml = null;
 function buildGatedIndexHtml() {
   if (cachedGatedIndexHtml) return cachedGatedIndexHtml;
   const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
-  cachedGatedIndexHtml = renderGatedIndexHtml(indexHtml);
+  cachedGatedIndexHtml = renderGatedIndexHtml(appAssets.applyTo(indexHtml));
   return cachedGatedIndexHtml;
 }
 
