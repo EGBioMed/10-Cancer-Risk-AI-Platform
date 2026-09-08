@@ -46,6 +46,57 @@ test("constipation is presented in the bowel group while retaining its rule fiel
   assert.equal(byId("constipation").displayInComposite, true);
 });
 
+test("breast pain is presented in the breast group while retaining its rule field", () => {
+  const breastGroup = symptomGroups.find((group) => group.id === "symptoms_breast");
+  const mastalgiaLabel = "乳房疼痛或脹痛";
+  assert(breastGroup.extraOptions.some(([label]) => label === mastalgiaLabel));
+  assert.equal(symptomOptionTranslations[mastalgiaLabel], "Breast pain or tenderness");
+  assert.equal(byId("mastalgia").field, "rule_inputs.symptom_mastalgia");
+  assert.equal(byId("mastalgia").ruleField, "symptom_mastalgia");
+  assert.equal(byId("mastalgia").displayInComposite, true);
+
+  // The point of extraOptions rather than a fifth entry in options: an
+  // ordinary group option becomes one of the 84 symptom feature columns,
+  // which would move symptom_mastalgia out of the 30 rule input columns the
+  // rule engine reads. symptomDefinitions must stay the four real options.
+  assert.equal(breastGroup.options.length, 4);
+  assert(!breastGroup.options.some(([label]) => label === mastalgiaLabel));
+  const rendered = questions.find((question) => question.id === "symptoms_breast");
+  assert.equal(rendered.symptomDefinitions.length, 4);
+  assert(rendered.options.includes(mastalgiaLabel));
+
+  const fieldManifest = JSON.parse(fs.readFileSync(
+    path.join(__dirname, "contracts", "power-automate", "transitional-field-manifest.json"),
+    "utf8"
+  ));
+  assert(fieldManifest.rule_input_columns.includes("symptom_mastalgia"));
+  assert(!fieldManifest.symptom_feature_columns.includes("symptom_mastalgia"));
+});
+
+test("symptom groups write their extraOption answers back to the standalone questions", () => {
+  // saveAnswer resolves these through symptomGroupExtraOptionQuestions; every
+  // pairing must name a real group, a label that group actually offers, and a
+  // question that exists, or the answer silently never reaches its rule field.
+  const table = source.match(/const symptomGroupExtraOptionQuestions = \{[\s\S]*?\n\};/);
+  assert(table, "symptomGroupExtraOptionQuestions not found");
+  const pairs = vm.runInNewContext(`(${table[0].replace(/^const symptomGroupExtraOptionQuestions = /, "").replace(/;$/, "")})`);
+
+  for (const [groupId, entries] of Object.entries(pairs)) {
+    const group = symptomGroups.find((item) => item.id === groupId);
+    assert(group, `unknown symptom group ${groupId}`);
+    for (const [label, questionId] of entries) {
+      assert(
+        (group.extraOptions || []).some(([extraLabel]) => extraLabel === label),
+        `${groupId} does not offer "${label}"`
+      );
+      assert(byId(questionId), `unknown question ${questionId}`);
+      assert.equal(byId(questionId).displayInComposite, true);
+    }
+  }
+
+  assert.deepEqual(Object.keys(pairs).sort(), ["symptoms_bowel_abdominal", "symptoms_breast"]);
+});
+
 test("race question provides the requested bilingual choices", () => {
   const race = byId("race");
   assert.deepEqual([...race.options], ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"]);

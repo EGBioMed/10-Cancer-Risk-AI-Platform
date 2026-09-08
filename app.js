@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-09-07-v19.8-phase1",
+  questionnaire_version: "questionnaire/2026-09-08-v19.9-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -135,6 +135,15 @@ const symptomGroups = [
     titleEn: "Breast Symptoms",
     field: "symptoms.breast",
     femaleOnly: true,
+    // Shown as a checkbox in this group but kept as its own question, the
+    // same arrangement constipation has in the bowel group. extraOptions do
+    // not enter symptomDefinitions, so this stays out of the 84 symptom
+    // feature columns and symptom_mastalgia remains one of the 30 rule input
+    // columns the rule engine reads -- turning it into an ordinary group
+    // option would have moved it between those two vectors.
+    extraOptions: [
+      ["乳房疼痛或脹痛", "Breast pain or tenderness"]
+    ],
     options: [
       ["乳房腫塊或局部硬塊", "A breast lump or localized hard area", "symptom_breast_lump"],
       ["新發生的乳頭凹陷（非天生）", "New nipple retraction that was not present from birth", "symptom_nipple_retraction"],
@@ -264,6 +273,17 @@ const symptomOptionTranslations = symptomGroups.reduce((translations, group) => 
   });
   return translations;
 }, {});
+
+// group id -> [[the group's extraOption label, the standalone question it
+// answers]]. These questions are displayed as a checkbox inside the group
+// (displayInComposite) but stay separate rule-input questions, so saveAnswer
+// has to write the group's answer back to each one. Keeping the pairing in
+// one table means adding another such question is a single line here rather
+// than another near-identical branch in saveAnswer.
+const symptomGroupExtraOptionQuestions = {
+  symptoms_bowel_abdominal: [["便秘（排便困難或排便次數減少）", "constipation"]],
+  symptoms_breast: [["乳房疼痛或脹痛", "mastalgia"]]
+};
 
 const symptomQuestions = symptomGroups.map((group) => ({
   id: group.id,
@@ -405,7 +425,7 @@ const stoolLooseOrFrequentQuestion = { id: "stool_loose_or_frequent", module: "s
 // having reported a breast symptom -- so it is listed in `questions` directly
 // instead of in symptomFollowUps, and carries module "female" so the section
 // indicator does not flip back to 近期症狀 for this one question.
-const mastalgiaQuestion = { id: "mastalgia", module: "female", type: "single", required: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "請依實際情況回答；乳房疼痛本身不代表癌症。", noteEn: "Answer based on your experience. Breast pain by itself does not mean cancer.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
+const mastalgiaQuestion = { id: "mastalgia", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？", titleEn: "During the past 6 months, have you had breast pain or tenderness?", note: "已併入乳房症狀題組。", noteEn: "This item is included in the breast symptom group.", field: "rule_inputs.symptom_mastalgia", ruleField: "symptom_mastalgia", options: ["是", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "女性" };
 const testicularPainPatternQuestion = { id: "testicular_pain_pattern", module: "symptoms", type: "single", required: true, title: "睪丸疼痛發生的情況", titleEn: "Pattern of testicular pain", note: "此追問會另外保存頻率；主要症狀欄位仍只記錄是否曾出現。", noteEn: "This follow-up stores the pattern separately. The main symptom field remains a yes/no indicator.", field: "symptoms.follow_up.testicular_pain_pattern", options: ["僅發生 1 次", "反覆發生 2 次以上", "持續存在", "不確定"], appliesIf: () => hasSelected("symptoms.male_reproductive", "睪丸疼痛") };
 
 // New 2026-08-19 course/duration follow-ups for lymphadenopathy, head/neck/
@@ -577,10 +597,12 @@ const questions = [
   ...symptomQuestionsWithInlineFollowUps,
 
   { id: "constipation", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
+  // Sits with constipation, the other question answered through a symptom
+  // group's extraOptions rather than on its own screen.
+  mastalgiaQuestion,
 
   { id: "menarche_age", module: "female", type: "single", required: true, title: "初經（第一次月經）來潮年齡", note: "若不確定，可使用下方不確定選項。", field: "female_health.menarche_age", options: ["12 歲以前（含 12 歲）", "13 歲以後（含 13 歲）"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "menopause_status", module: "female", type: "single", required: true, title: "目前停經（更年期）狀態", note: "請選擇最接近目前狀況的選項。", field: "female_health.menopause_status", options: ["尚未停經（仍有月經）", "已停經（55 歲或以前停經）", "已停經（55 歲或以後停經）", "已切除子宮或卵巢"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
-  mastalgiaQuestion,
   { id: "first_pregnancy_age", module: "female", type: "single", required: false, title: "第一胎懷孕年齡", note: "若未曾懷孕可選從未懷孕。", field: "female_health.first_pregnancy_age", options: ["從未懷孕", "20 歲以下", "20-30 歲", "31-35 歲", "36 歲以上"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "breastfeeding", module: "female", type: "single", required: true, title: "產後是否曾哺餵母乳？若有，哺乳時間多長？", note: "若尚未生產，此題請選不適用。", field: "female_health.breastfeeding_history", options: ["從未哺乳", "有哺乳，但少於 6 個月", "有哺乳，超過 6 個月（含 6 個月）", "尚未生產，此題不適用"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
   { id: "pap_smear", module: "female", type: "single", required: true, title: "是否曾做過子宮頸抹片檢查？結果如何？", note: "此題用於子宮頸相關風險因子整理。", field: "female_health.pap_smear_history", options: ["是，歷次結果均正常", "是，曾有異常報告（如 CIN、HPV 陽性等）", "否，從未做過"], appliesIf: (answers) => getAnswerValue(answers, "demographics.sex") === "女性" },
@@ -1835,13 +1857,22 @@ function saveAnswer(value, source, structured = null) {
   if (question.id === "consent_acknowledgement") entry.accepted_at = new Date().toISOString();
   if (structured) entry.structured = structured;
   answers[question.field] = entry;
-  if (question.id === "symptoms_bowel_abdominal") {
-    const constipationQuestion = questions.find((item) => item.id === "constipation");
+  // Questions shown as a checkbox inside a symptom group (the group's
+  // extraOptions) but kept as separate rule-input questions: the group's
+  // answer is what the participant actually gives, so it is translated back
+  // into the standalone question's yes/no/unsure field here. A table rather
+  // than a branch per group -- there are two of these now, and the mapping
+  // is the kind of thing that silently rots when it is copy-pasted.
+  const compositeExtraOptions = symptomGroupExtraOptionQuestions[question.id];
+  if (compositeExtraOptions) {
     const selected = Array.isArray(value) ? value : [];
-    const constipationValue = source === "uncertain" || selected.includes(symptomUnknownOption)
-      ? "不確定"
-      : selected.includes("便秘（排便困難或排便次數減少）") ? "是" : "否";
-    answers[constipationQuestion.field] = makeAnswerEntry(constipationQuestion, constipationValue, source === "uncertain" ? "uncertain" : "symptom_group_choice");
+    const groupIsUnknown = source === "uncertain" || selected.includes(symptomUnknownOption);
+    compositeExtraOptions.forEach(([optionLabel, questionId]) => {
+      const target = questions.find((item) => item.id === questionId);
+      if (!target) return;
+      const answer = groupIsUnknown ? "不確定" : selected.includes(optionLabel) ? "是" : "否";
+      answers[target.field] = makeAnswerEntry(target, answer, groupIsUnknown ? "uncertain" : "symptom_group_choice");
+    });
   }
   currentIndex += 1;
   const nextQuestion = getCurrentQuestion();

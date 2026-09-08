@@ -1,6 +1,6 @@
 # 問卷逐題審核文字與邏輯規格
 
-問卷版本：`questionnaire/2026-09-07-v19.8-phase1`  
+問卷版本：`questionnaire/2026-09-08-v19.9-phase1`  
 答案代碼版本：`question-answer-codes/1.0.0`  
 知情同意版本：`consent/2026-08-26`  
 審核範圍：受試者實際會被詢問的 82 個題目定義（含知情同意、姓名與人種題）。
@@ -691,6 +691,7 @@
 | `symptom_nipple_retraction` | 新發生的乳頭凹陷（非天生） | New nipple retraction that was not present from birth |
 | `symptom_nipple_discharge` | 乳頭異常分泌物（尤其是血性分泌物） | Abnormal nipple discharge, especially bloody discharge |
 | `symptom_breast_skin_change` | 乳房皮膚橘皮樣變化或局部凹陷 | Orange-peel-like breast skin changes or localized dimpling |
+| `symptoms_breast.option_05` | 乳房疼痛或脹痛 | Breast pain or tenderness |
 | `none` | 以上皆無 | None of the above |
 | `unknown` | 不確定 | Not sure |
 
@@ -1551,7 +1552,7 @@
 - **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
 - **題型**：單選
 - **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：無額外條件，依題序顯示。
+- **出現條件**：併入「腸道與下腹部症狀」題組，以勾選項呈現，不單獨出現一頁；勾選＝是、未勾選＝否、整組選「不確定」時記為不確定。
 - **作答文字規則**：回想最近 6 個月；包含排便困難或次數減少。
 - **後續追問／影響**：無直接觸發的額外畫面追問。
 - **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
@@ -1574,7 +1575,40 @@
 
 ---
 
-## 48. 初經（第一次月經）來潮年齡
+## 48. 最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
+
+- **段落**：近期症狀
+- **question_id**：`mastalgia`
+- **資料欄位**：`rule_inputs.symptom_mastalgia`
+- **中文題目**：最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
+- **English**：During the past 6 months, have you had breast pain or tenderness?
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：僅性別選擇「女性」時顯示。本題自 v19.9 起併入「乳房症狀」題組，以勾選項呈現，不再單獨出現一頁；勾選＝是、未勾選＝否、整組選「不確定」時記為不確定。
+- **作答文字規則**：回想最近 6 個月；乳房疼痛本身不代表癌症。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `yes` | 是 | Yes |
+| `no` | 否 | No |
+| `unknown` | 不確定 | Not sure |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 49. 初經（第一次月經）來潮年齡
 
 - **段落**：女性相關資訊
 - **question_id**：`menarche_age`
@@ -1606,7 +1640,7 @@
 
 ---
 
-## 49. 目前停經（更年期）狀態
+## 50. 目前停經（更年期）狀態
 
 - **段落**：女性相關資訊
 - **question_id**：`menopause_status`
@@ -1629,39 +1663,6 @@
 | `menopause_status.option_02` | 已停經（55 歲或以前停經） | Menopause at age 55 or earlier |
 | `menopause_status.option_03` | 已停經（55 歲或以後停經） | Menopause after age 55 |
 | `menopause_status.option_04` | 已切除子宮或卵巢 | Uterus or ovaries removed |
-
-**審核結果**
-
-- [ ] 保留
-- [ ] 修改
-- [ ] 刪除
-- [ ] 待臨床／模型／法規確認
-- 修改說明：
-
----
-
-## 50. 最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
-
-- **段落**：女性相關資訊
-- **question_id**：`mastalgia`
-- **資料欄位**：`rule_inputs.symptom_mastalgia`
-- **中文題目**：最近 6 個月內，您的乳房是否曾有疼痛或脹痛？
-- **English**：During the past 6 months, have you had breast pain or tenderness?
-- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
-- **題型**：單選
-- **必填性**：適用時必填，但可使用「不確定怎麼回答」
-- **出現條件**：僅性別選擇「女性」時顯示；不以是否勾選乳房症狀題組為條件（本題自 v19.8 起改於女性相關資訊段落、緊接停經狀態之後詢問）。
-- **作答文字規則**：回想最近 6 個月；乳房疼痛本身不代表癌症。
-- **後續追問／影響**：無直接觸發的額外畫面追問。
-- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
-
-**選項與固定代碼**
-
-| code | 中文選項 | English |
-|---|---|---|
-| `yes` | 是 | Yes |
-| `no` | 否 | No |
-| `unknown` | 不確定 | Not sure |
 
 **審核結果**
 
