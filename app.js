@@ -625,8 +625,17 @@ const questions = [
 const i18n = {
   en: {
     ui: {
-      appTitle: "AI Ten-Cancer Health Risk Factor Assessment",
-      heroTitle: "AI Ten-Cancer Health Risk Factor Assessment",
+      // Not a literal rendering of the Chinese title: "AI Ten-Cancer Health
+      // Risk Factor Assessment" does not read as English, and this is the
+      // name the product is already sold under everywhere else the customer
+      // meets it -- the store listing, the ai-cancer-risk.eg-bio.com domain,
+      // and the report PDF. Someone who has just paid for "AI Cancer Risk
+      // Assessment" should not land on a page calling itself something else.
+      // The Chinese title is unchanged; the deliberately hedged "risk factor"
+      // framing still runs through the subtitle, trust badges and disclaimer
+      // directly below this, and through the consent items.
+      appTitle: "AI Cancer Risk Assessment",
+      heroTitle: "AI Cancer Risk Assessment",
       heroSubtitle: "Complete an 8-12 minute guided health exploration to understand your cancer-related risk factor profile.",
       trust1: "Personalized factor summary",
       trust2: "Submit only after review",
