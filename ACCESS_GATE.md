@@ -60,12 +60,18 @@ scripts, which are unrelated to the gate.
 
 ## Status
 
-Payment gateway integration itself is **not implemented yet** (no provider is
-chosen). Today, both links and codes are minted manually via CLI scripts,
-after a staff member confirms payment out-of-band (bank transfer, manual
-gateway dashboard check, a venue's purchase order, etc.). The mechanism is
-designed so that a future payment webhook can mint links the exact same way,
-automatically.
+Codes are minted two ways:
+
+- **Automatically, on an online purchase.** The WooCommerce store calls
+  `POST /api/purchases/access-code` on `egbiomed-ai-data-api` when an order
+  is paid, and quotes the returned code in its purchase email — see
+  [Online purchases](#online-purchases-woocommerce-store).
+- **Manually via the CLI scripts below**, after a staff member confirms
+  payment out-of-band (bank transfer, a venue's purchase order, etc.). This
+  is still how institution/bulk codes and developer test codes are issued.
+
+Personal links (`--type link`) remain manual only; no purchase flow issues
+them.
 
 ## How links work
 
@@ -272,19 +278,92 @@ Top up when a venue buys more:
 npm run access:topup -- --code "SCHB1Q500M5HS7Z" --add-uses 200 --created-by "Jane"
 ```
 
-## Future: real payment gateway webhook
+## Online purchases (WooCommerce store)
 
-Not built yet (no provider chosen). It will be a new route that, after
-verifying the provider's own webhook signature, calls the same
-`createAccessGrant({ paymentProvider, paymentReference,
-createdBy: "webhook:<provider>", ... })` used by `scripts/grant-access.js`
-today (via whichever backend `ACCESS_GATE_BACKEND` selects), then emails the
-resulting link instead of printing it to a console. No schema or repository
-changes are anticipated for that step.
+The assessment is sold at
+`https://mdi.eg-bio.com/product/ai-cancer-risk-assessment/`. When an order is
+paid, the store calls a purpose-built endpoint on `egbiomed-ai-data-api`,
+which mints the code and hands it back for the store's purchase email to
+quote:
+
+```text
+POST /api/purchases/access-code
+x-egbiomed-purchase-key: <PURCHASE_API_KEY>
+Content-Type: application/json
+
+{ "order_reference": "<WooCommerce order id>" }
+```
+
+```json
+{ "ok": true, "reused": false, "access_code": "AI-7K9M4X2Q8P",
+  "grant_id": 41, "max_uses": 1, "expires_at": null }
+```
+
+The grant is an ordinary `credential_type = "code"` row -- redemption,
+denial wording, session cookies and rate limiting all behave exactly as
+described above, so nothing about the gate itself is special-cased for
+purchases. `payment_provider` is `woocommerce` and `payment_reference` is
+the order id, which is also what makes a repeat call idempotent: WooCommerce
+retries, and an order can pass through several paid statuses, so a second
+call returns the code already issued (`reused: true`) rather than minting a
+second redeemable assessment.
+
+Four deliberate choices:
+
+- **The store does not generate the code.** Registering a store-generated
+  code would mean reproducing `normalizeCode`'s trim/lowercase/whitespace
+  rule in PHP before hashing, and any drift there yields a code that reaches
+  the customer but is rejected at the gate, leaving only a
+  `redeem_denied_not_found` audit row to debug. Generating on this side keeps
+  that rule in one place. `test-api.js` in `egbiomed-ai-data-api` pins the
+  rule against the same case table used here.
+- **Its own key** (`PURCHASE_API_KEY`), not `AZURE_ACCESS_GATE_API_KEY`. The
+  caller is WordPress, the most exposed component in this system; this key
+  can only create one single-use code per order, so a leak means minted free
+  assessments (bounded, auditable, revocable by rotating one secret) rather
+  than access to every institution's quota.
+- **`max_uses` comes from the server** (`PURCHASE_CODE_MAX_USES`, default
+  `1`), never from the request body, so a compromised store cannot inflate
+  what it sells.
+- **The call must be request/response, not a fire-and-forget webhook**,
+  because the store needs the returned code for its email. A plain
+  WooCommerce webhook cannot read a response body.
+
+The store side is `contracts/purchase/egbio-access-code.php`, installed on
+`mdi.eg-bio.com` as a plugin (`egbio-access-code`), not as a functions.php
+snippet: the site's snippet tool turned out not to execute PHP at all, which
+cost a long debugging detour. Two things that detour taught, worth keeping:
+
+- **Never let the store generate a code as a fallback.** An earlier version
+  did, and it is worse than sending no code: the customer gets something that
+  looks valid, is rejected at the gate, and leaves nothing behind but a
+  `redeem_denied_not_found` row. The plugin now omits the code block from the
+  email and writes the reason to the order notes instead.
+- **Every early return writes an order note.** Silent skips made "plugin not
+  loaded", "hook never fired" and "order has no matching SKU" look identical
+  from the outside, which is what made the problem hard to locate. The
+  no-matching-SKU path now lists the line items it actually saw.
+
+Verified end to end on 2026-09-07 with WooCommerce order 984: the plugin
+called the endpoint, grant 34 was stored against `payment_reference` 984, and
+the code redeemed at the gate (`use_count` 1/1).
+
+Because a redemption is consumed when the code is *entered* rather than when
+the report is submitted, a customer who abandons the questionnaire and comes
+back after the 30-minute session has lapsed has spent their single use. That
+is a support path, not a bug: `npm run access:topup -- --code <code>
+--add-uses 1 --created-by <name>` restores it, and the order id in
+`payment_reference` is how you confirm they paid.
 
 ## Explicitly deferred
 
-- Real payment gateway integration.
+- Verifying the store's own webhook signature. The purchase endpoint
+  authenticates the *caller* with `PURCHASE_API_KEY` and is idempotent per
+  order id, but it does not independently confirm with WooCommerce that the
+  order was really paid. Anyone holding that key can therefore mint codes
+  without a payment behind them. Acceptable while the only caller is our own
+  store on a host we control; revisit by having the endpoint call the
+  WooCommerce REST API to confirm the order's paid status before minting.
 - A manual-revoke tool (the schema already allows `status = 'revoked'`;
   nothing sets it yet).
 - Per-IP rate limiting on `/access/*` (link redemption) — 256-bit token
