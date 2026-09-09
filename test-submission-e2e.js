@@ -38,6 +38,9 @@ function loadApp() {
 
   const sandbox = {
     EGAnswerCodes: require("./answer-codes"),
+    // index.html 的 <script> 順序在這裡用 require 重現：app.js 在頂層就取用
+    // EGApiSymptoms，少了它整份 app.js 連載入都會 ReferenceError。
+    EGApiSymptoms: require("./api-symptoms"),
     document: {
       querySelector: () => element,
       querySelectorAll: () => [],
@@ -110,6 +113,95 @@ for (const [label, expectedCode] of [
     // 走的（瀏覽器 JSON.stringify 後 POST，伺服器再 parse）。
     const posted = JSON.parse(JSON.stringify(submission));
     assert.deepEqual(validateTransitionalSubmission(sanitizeLegacyDirectIdentifiers(posted)), []);
+  });
+}
+
+// 症狀區塊：2026-09-08 之前 ai_api_feature_row 根本沒有這個鍵，API 的
+// SurveyInput.symptoms 就落到預設 None，to_rule_dict() 只填得出四個 legacy
+// fallback 欄位，於是 40 條硬規則裡只有 A-36 有可能觸發，每份報告都印「未觸發」。
+// 前端這一側能驗的是「送出去的形狀對不對」；「規則層真的因此觸發」由 API 端的
+// test_symptoms_wiring.py 驗（它同時跑對照組，證明差別確實來自 symptoms）。
+const apiSymptoms = require("./api-symptoms");
+
+// 一律經由這個 helper 取值，不要直接 .ai_api_feature_row.symptoms。整個鍵不見時
+// 直接索引會丟 TypeError: Cannot read properties of undefined，下一個讀到紅字的人
+// 看不出病灶在哪；這裡先斷言，訊息會直接指出接線斷了。
+function symptomsOf(countryLabel = "臺灣") {
+  const featureRow = submitAs(countryLabel).ai_api_feature_row;
+  assert(
+    "symptoms" in featureRow,
+    "ai_api_feature_row 沒有 symptoms：規則層會收不到任何症狀，每份報告都會印「未觸發任何硬規則」"
+  );
+  return featureRow.symptoms;
+}
+
+test("the submission carries a symptoms block for the literature high-risk rule layer", () => {
+  const symptoms = symptomsOf();
+  assert.equal(typeof symptoms, "object");
+  assert(symptoms !== null && !Array.isArray(symptoms));
+  // 空物件過不了：{} 到了 API 端會讓每個欄位都退回宣告預設值（大多是 0），規則層
+  // 看起來「有資料」卻全暗，比整個鍵不存在更難察覺。
+  assert(Object.keys(symptoms).length > 50, `symptoms only carried ${Object.keys(symptoms).length} fields`);
+  // 規則層唯一會讀的就是這些欄位；抽三條實際會觸發的硬規則所引用的欄位來釘住。
+  // A-05 胰臟癌 = {jaundice}、A-02 = {jaundice, weight_loss}、A-36 = {weight_loss}。
+  for (const field of ["symptom_jaundice", "symptom_unexplained_weight_loss_6m"]) {
+    assert(field in symptoms, `${field} must reach the rule layer`);
+  }
+});
+
+test("every value in the symptoms block is inside the API's declared range", () => {
+  const symptoms = symptomsOf();
+  for (const [field, value] of Object.entries(symptoms)) {
+    // null 一律不送而是整個欄位省略：省略時 API 用宣告預設值，語意等於「未填」，
+    // 而 null 得靠 API 端的 _null_means_not_applicable 兜，兩層都對才不會 422。
+    assert(value !== null && value !== undefined, `${field} must be omitted rather than sent as null`);
+    assert(Number.isInteger(value), `${field} must be an integer, got ${typeof value}`);
+    if (/_(repeat_count|interval_days)$/.test(field)) {
+      // 次數與間隔天數不是二元欄位，API 那側只宣告 ge=0，9 代表「9 次」而非哨兵值。
+      assert(value >= 0, `${field} must not be negative`);
+      continue;
+    }
+    // 其餘欄位在 API 上都是 Field(0, ge=0, le=1)。問卷端的 9（不適用）與
+    // 1/2/3（選項代碼）必須在 api-symptoms.js 就翻譯完，送到這裡只能是 0 或 1；
+    // 沒翻到的話 API 會 422，整個 symptoms 連帶失效，規則層又回到全暗。
+    assert(value === 0 || value === 1, `${field} must be 0 or 1, got ${value}`);
+  }
+});
+
+test("the symptoms block omits the rule columns the API does not declare", () => {
+  const symptoms = symptomsOf();
+  const ruleInputRow = submitAs("臺灣").rule_input_row;
+  // 這九欄帶的是 1/2/3 病程／持續時間／部位代碼，v19.12 沒有任何規則引用它們，
+  // 而 API 上也沒有對應欄位宣告。要放行必須先在 API 端宣告，不能只是拿掉排除。
+  for (const field of apiSymptoms.EXCLUDED_RULE_INPUTS) {
+    assert(field in ruleInputRow, `${field} should still be collected in rule_input_row`);
+    assert(!(field in symptoms), `${field} must not be sent to the API`);
+  }
+});
+
+// 選項代碼→規則層二元語意的翻譯是這次修正裡最容易靜默錯掉的一段：翻錯不會報錯，
+// 只會讓 B-28（子宮頸癌）與 G-03（攝護腺癌）在錯誤的答案上觸發或不觸發。
+for (const [questionId, answer, field, expected] of [
+  ["pap_smear_timing", "3 年內", "screen_pap_overdue_or_out_of_range", 0],
+  ["pap_smear_timing", "3 年以上", "screen_pap_overdue_or_out_of_range", 1],
+  ["pap_smear_timing", "從未做過", "screen_pap_overdue_or_out_of_range", 1],
+  ["pap_smear_timing", "不記得", "screen_pap_overdue_or_out_of_range", undefined],
+  ["psa_history", "做過且曾被告知偏高", "screen_psa_elevated", 1],
+  ["psa_history", "做過且結果正常", "screen_psa_elevated", 0],
+  ["psa_history", "沒做過", "screen_psa_elevated", 0],
+  ["psa_history", "不記得", "screen_psa_elevated", undefined]
+]) {
+  test(`${questionId} = 「${answer}」 reaches the rule layer as ${field}=${expected}`, () => {
+    const question = app.questions.find((entry) => entry.id === questionId);
+    app.answers[question.field] = app.makeAnswerEntry(question, answer, "contract_test");
+    const symptoms = symptomsOf();
+    if (expected === undefined) {
+      // 「不記得」不是 0：規則層若收到 0 會當成「已排除」，E 節的負向證據可能因此
+      // 誤扣分。不知道就整個欄位不送。
+      assert(!(field in symptoms), `${field} must be omitted when the answer is 不記得`);
+    } else {
+      assert.equal(symptoms[field], expected);
+    }
   });
 }
 

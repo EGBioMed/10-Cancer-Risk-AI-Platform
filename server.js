@@ -27,6 +27,8 @@ const {
 const { createFixedWindowLimiter } = require("./lib/rate-limiter");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 const { createAppAssetVersioner } = require("./lib/asset-version");
+// 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
+const { buildApiSymptoms } = require("./api-symptoms");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
@@ -230,6 +232,10 @@ function buildAiApiFeatureRow(submission) {
   // 這條路徑只在前端沒送 ai_api_feature_row 時才走；不補 country 的話該情境會靜默掉回
   // 台灣基準。country 不是模型特徵，只決定報告分母與篩檢建議依據。
   row.country = AI_API_COUNTRY_CODES[findAnswer(submission.rows, "country")] ?? "TW";
+  // 同理補 symptoms：不補的話這條路徑送出的 body 沒有症狀區塊，規則層會回到
+  // 2026-09-08 之前的狀態（40 條硬規則全暗，每份報告都印「未觸發」）。舊分頁送上來的
+  // submission 仍帶著 symptom_feature_row 與 rule_input_row，所以這裡補得回來。
+  row.symptoms = buildApiSymptoms(submission.symptom_feature_row, submission.rule_input_row);
   return row;
 }
 

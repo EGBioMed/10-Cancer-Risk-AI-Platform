@@ -351,7 +351,10 @@ test("the report-only exemption list is identical in app.js and lib/transitional
     clientValidator.AI_API_REPORT_ONLY_FIELDS.join(","),
     AI_API_REPORT_ONLY_FIELDS.join(",")
   );
-  assert.equal(AI_API_REPORT_ONLY_FIELDS.join(","), "country");
+  // 逐字盯住清單內容，而不是只比兩邊一致：這兩個欄位都是刻意放進
+  // ai_api_feature_row 的例外（country 選報告基準、symptoms 餵規則層），任何第三個
+  // 欄位混進來都必須是有人明確決定過的，不能靠 71/72 欄位檢查以外的地方悄悄放行。
+  assert.equal(AI_API_REPORT_ONLY_FIELDS.join(","), "country,symptoms");
 });
 
 test("both validators accept a submission whose ai_api_feature_row carries country", () => {

@@ -107,8 +107,20 @@
     },
     "ai_api_feature_row": {
       "type": "object",
-      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-06 this is model-features/1.0.0 plus one report-only field, country, which selects the report's population baseline and screening-guidance source and is ignored when scoring. Placing it here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
+      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-08 this is model-features/1.0.0 plus two non-model fields: country, which selects the report's population baseline and screening-guidance source, and symptoms, which is the sole input to the literature high-risk rule layer. Neither is used when scoring the model. Placing both here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
       "properties": {
+        "symptoms": {
+          "type": "object",
+          "description": "Maps to SurveyInput.symptoms on the AI API. Built by api-symptoms.js from symptom_feature_row plus the rule-layer subset of rule_input_row, with questionnaire option codes translated to the rule layer's binary semantics and null/not-applicable fields omitted. Before 2026-09-08 this object was absent, SurveyInput.symptoms defaulted to None, and every report stated that no hard rule had been triggered regardless of what the examinee answered -- the rule layer only ever saw the four legacy fallback fields (weight_change_6m, chronic_diabetes, chronic_asthma_copd, smoking), so A-36 was the one hard rule that could fire.",
+          "additionalProperties": {
+            "type": [
+              "integer",
+              "number",
+              "string",
+              "null"
+            ]
+          }
+        },
         "country": {
           "type": "string",
           "enum": [

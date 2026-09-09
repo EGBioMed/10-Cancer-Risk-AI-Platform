@@ -221,6 +221,8 @@
     app.js 被瀏覽器快取擋在門外一小時，見 lib/asset-version.js 的說明。
   -->
   <script src="answer-codes.js?v=local"></script>
+  <!-- api-symptoms.js 必須在 app.js 之前：app.js 在頂層就取用 EGApiSymptoms。 -->
+  <script src="api-symptoms.js?v=local"></script>
   <script src="app.js?v=local"></script>
   <!--GATE:SCRIPTS_END-->
   </body>

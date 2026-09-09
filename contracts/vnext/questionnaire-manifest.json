@@ -80,10 +80,11 @@
     "question_added_in": "questionnaire/2026-09-04-v19.6-phase1 (question only); ai_api_feature_row.country wiring added afterwards, without which the question had no effect on the report"
   },
   "compatibility": {
-    "ai_api_feature_row": "model-features/1.0.0_plus_report_only_country_field",
+    "ai_api_feature_row": "model-features/1.0.0_plus_report_only_country_field_plus_rule_only_symptoms_object",
     "ai_api_feature_row_note": "Deliberate exception, decided 2026-09-06: country is carried inside ai_api_feature_row rather than at another level of the submission because the Power Automate HTTP action posts that object verbatim as the API body, so this placement needs zero flow changes. The trade-off accepted is that the object is no longer a pure model-features/1.0.0 vector. Every other field in it remains 1.0.0, and the backend ignores country when scoring.",
+    "ai_api_feature_row_symptoms_note": "Same exception applied again, decided 2026-09-08, for the same reason: the nested symptoms object is SurveyInput.symptoms on the AI API and the sole input to the literature high-risk rule layer. Until this was added the object was absent from the body, SurveyInput.symptoms defaulted to None, and to_rule_dict() filled only the four legacy fallback fields (weight_change_6m, chronic_diabetes, chronic_asthma_copd, smoking) -- so A-36 was the only one of the 40 hard rules that could ever fire, and every report printed that no hard rule had been triggered no matter what the examinee answered. Built by api-symptoms.js, which is the single source of truth shared by the browser and server.js; the questionnaire's option codes (1/2/3) and its 9 not-applicable sentinel are translated to the rule layer's binary semantics there, not on the API side.",
     "new_binary_symptoms": "stored_in_symptom_feature_row_and_excel_row",
     "all_32_candidates": "stored_in_vnext_feature_row_and_excel_row",
-    "v19_4_rule_inputs": "stored_in_rule_input_row_and_excel_row_not_sent_to_current_predict"
+    "v19_4_rule_inputs": "stored_in_rule_input_row_and_excel_row_and_since_2026-09-08_also_sent_to_predict_inside_ai_api_feature_row_symptoms"
   }
 }

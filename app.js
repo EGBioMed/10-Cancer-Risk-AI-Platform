@@ -2491,14 +2491,21 @@ const AI_API_COUNTRY_CODES = {
 // 送出。validateSubmissionBeforeSend() 與 lib/transitional-contract.js 的形狀檢查都要
 // 讀這份清單，否則 71 欄的 optimized_feature_columns 對不上 72 個鍵，每一筆送件都會被
 // 自己的合約檢查擋掉——2026-09-07 就是這樣壞的。
-const AI_API_REPORT_ONLY_FIELDS = ["country"];
+const AI_API_REPORT_ONLY_FIELDS = ["country", "symptoms"];
 
-function buildAiApiFeatureRow(optimizedFeatureRow) {
+// 症狀區塊的組法（含代碼翻譯與 9 哨兵值）在 api-symptoms.js，瀏覽器與 server.js 共用
+// 同一份實作，理由見該檔開頭。index.html 必須在 app.js 之前載入它。
+const buildApiSymptoms = EGApiSymptoms.buildApiSymptoms;
+
+function buildAiApiFeatureRow(optimizedFeatureRow, symptomFeatureRow, ruleInputRow) {
   return {
     ...optimizedFeatureRow,
     // AI API schema currently rejects negative quit_smoking values.
     // Keep raw modeling/storage features in optimized_feature_row and excel_row.
     quit_smoking: Math.max(0, normalizeNumber(optimizedFeatureRow.quit_smoking) ?? 0),
+    // 症狀欄位不是模型特徵（原模型的 48 個 pan-cancer 與 10 個 OvR 特徵集完全不含症狀），
+    // 只餵規則層。理由與代價同 country，見上方說明。
+    symptoms: buildApiSymptoms(symptomFeatureRow, ruleInputRow),
     // country 不是模型特徵，模型不吃這一欄；它決定的是報告裡人口尺度風險的分母（該國
     // 年齡標準化發生率）與篩檢建議依據。刻意放進 ai_api_feature_row 而不是併到 submission
     // 的其他層級，因為 Power Automate 的 HTTP action 是把這個物件原封不動當 body 送出，
@@ -2525,13 +2532,14 @@ function storeSubmissionForIntegration() {
   const consentRecord = buildConsentRecord(submittedAt);
   const answerCodeRows = buildAnswerCodeRows();
   const optimizedFeatureRow = buildOptimizedFeatureRow();
-  const aiApiFeatureRow = buildAiApiFeatureRow(optimizedFeatureRow);
   const symptomFeatureRow = buildSymptomFeatureRow();
   const symptomAnswers = buildSymptomAnswers();
   const vnextFeatureRow = buildVnextFeatureRow(symptomFeatureRow);
   const vnextFeatureMetadata = buildVnextFeatureMetadata();
   const researchFeatureRow = buildResearchFeatureRow();
   const ruleInputRow = buildRuleInputRow(symptomFeatureRow);
+  // 必須排在 symptomFeatureRow／ruleInputRow 之後：ai_api_feature_row 現在也帶 symptoms。
+  const aiApiFeatureRow = buildAiApiFeatureRow(optimizedFeatureRow, symptomFeatureRow, ruleInputRow);
   const missingColumns = optimizedFeatureColumns.filter((column) => optimizedFeatureRow[column] === "" && column !== "score");
   const submission = {
     ...SUBMISSION_VERSIONS,
@@ -2613,7 +2621,8 @@ function validateSubmissionBeforeSend(submission) {
     const rowKeys = row && typeof row === "object" ? Object.keys(row) : [];
     // 只有 ai_api_feature_row 可以多帶欄位，且僅限 AI_API_REPORT_ONLY_FIELDS 這幾個。
     // 「允許但不強制」是刻意的：瀏覽器還握著上一版 app.js 的舊分頁不該被整批拒收，
-    // 少了 country 只會讓報告退回台灣基準（並在報告上明寫分母），比擋掉送件溫和得多。
+    // 少了 country 只會讓報告退回台灣基準（並在報告上明寫分母），少了 symptoms 只會讓
+    // 規則層回到 2026-09-08 之前的狀態（一律印「未觸發」），比擋掉送件溫和得多。
     const allowedExtras = rowName === "ai_api_feature_row" ? AI_API_REPORT_ONLY_FIELDS : [];
     if (columns.some((column) => !(column in (row || {})))
         || rowKeys.some((key) => !columns.includes(key) && !allowedExtras.includes(key))) {
