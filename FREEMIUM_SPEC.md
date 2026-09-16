@@ -114,11 +114,36 @@ npm run access:mint -- --code egbio2026 --delivery-mode public --unlimited \
 
 **決定:`max_uses IS NULL` 代表無上限。** 已評估的替代方案是鑄碼時給一個極大的數字（如 1,000,000）——不需動資料庫,但只是把上述靜默失敗往後推,並未消除,且沒有任何監控會在接近上限時示警,故不採用。
 
-#### 3.3.1 資料庫遷移
+#### 3.3.1 資料庫遷移（實作後更正,比原先估計簡單）
 
-本儲存庫**沒有遷移機制**（無 `migrations/` 目錄,`package.json` 也無對應 script),且 `create-schema.js` 使用 `CREATE TABLE IF NOT EXISTS`——改那份檔案只影響全新建立的資料庫,**對正式環境既有的表完全沒有作用**。正式環境需要一次性手動 ALTER。
+規格初版在此處寫錯兩件事,實作時查明並更正如下。
 
-跨欄位約束 `CHECK (use_count >= 0 AND use_count <= max_uses)` 在建表時未命名,由 MySQL 自動命名（通常是 `grants_chk_N`),**必須先查出實際名稱才能卸除**:
+**一、本儲存庫其實有遷移機制。** `create-schema.js` 的 `TABLES` 陣列中每一項都可帶 `checkSql`:先查 `INFORMATION_SCHEMA`,結果為 0 才執行 `sql`。既有先例是 `contact_submissions_full_name`(Azure Database for MySQL 不支援 `ADD COLUMN IF NOT EXISTS`,這個探查就是冪等性的來源)。兩項變更因此都寫成標準遷移項目,重複執行安全,**不需要手動 ALTER**。
+
+**二、兩個 CHECK 約束完全不必動。** 原先寫的「必須先查出自動產生的約束名稱才能卸除」是多餘的:**CHECK 只有在結果為 FALSE 時才算違反,而任何與 NULL 的比較結果是 UNKNOWN,UNKNOWN 滿足 CHECK**。所以 `CHECK (max_uses > 0)` 與 `CHECK (use_count >= 0 AND use_count <= max_uses)` 在 `max_uses IS NULL` 時皆自動通過。
+
+升級因此只是一道 `MODIFY`:
+
+```js
+{
+  name: 'grants_max_uses_nullable',
+  // 探查 IS_NULLABLE 而非欄位是否存在——欄位一直都在,變的是它
+  // 收不收 NULL;用欄位存在與否探查會直接跳過,讓它永遠是 NOT NULL。
+  checkSql: `
+    SELECT COUNT(*) AS existing_count
+    FROM INFORMATION_SCHEMA.COLUMNS
+    WHERE TABLE_SCHEMA = DATABASE()
+      AND TABLE_NAME = 'grants'
+      AND COLUMN_NAME = 'max_uses'
+      AND IS_NULLABLE = 'YES'
+  `,
+  sql: `ALTER TABLE grants MODIFY max_uses INT NULL DEFAULT 1`
+}
+```
+
+保留 `DEFAULT 1` 是刻意的:未指定 `max_uses` 時得到「一次」而非「無上限」,不安全的值永遠不會是預設落點。不改寫兩個 CHECK 表達式,也讓**全新建立的資料庫與升級後的資料庫結構完全一致**。
+
+以下為原先規劃、**現已不需執行**的手動作法,保留供對照:
 
 ```sql
 -- 1. 查出自動產生的約束名稱
@@ -136,8 +161,6 @@ ALTER TABLE grants ADD CONSTRAINT grants_max_uses_positive
 ALTER TABLE grants ADD CONSTRAINT grants_use_count_within_max
   CHECK (use_count >= 0 AND (max_uses IS NULL OR use_count <= max_uses));
 ```
-
-`create-schema.js` 須同步更新,使新建資料庫與正式環境一致。
 
 #### 3.3.2 程式碼必須同步修改的四處
 
