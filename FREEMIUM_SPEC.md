@@ -489,3 +489,7 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | `REPORT_RESULT_API_KEY` | Azure（資料 API）、Power Automate | 模型結果讀寫 |
 | `REPORT_DELIVERY_FLOW_URL` | Azure（資料 API） | 流程 B 的觸發 URL |
 | `EGBIO_REPORT_PRODUCT_ID` | WordPress | 完整報告商品 ID |
+
+**`REPORT_TICKET_SECRET` 必須同時宣告於 [`render.yaml`](render.yaml)（`sync: false`）與 Render dashboard,缺一不可。** 只設在 dashboard 而未宣告於 Blueprint 的變數,會在下一次 Blueprint 同步時被靜默清除——2026-09-09 的 `ACCESS_GATE_SESSION_SECRET` 即為此例,且變數消失的當下不會壞,要等下一次部署重啟才整站掛掉,兩者之間有時間差,難以歸因。詳見 `ACCESS_GATE.md` 的升級警告。
+
+票券密鑰一旦遺失或重新產生,所有**尚未付款的免費信裡的付款連結會全數失效**,且使用者不會收到任何說明。與 session cookie 不同的是,受影響的人無法靠「重新輸入代碼」自救——他們必須重填整份問卷。
