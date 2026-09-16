@@ -205,6 +205,56 @@ for (const [questionId, answer, field, expected] of [
   });
 }
 
+// 上層概念欄位：規則讀 symptom_abdominal_pain，問卷問的是四個細項。app.js 的
+// derivedParents 一直知道怎麼組，但組出來的值只拿去決定要不要追問復發次數，沒送給
+// API，所以 A-01、A-27、B-14 等 12 條引用它的規則在線上永遠讀到 0。這一類錯不會有任何
+// 錯誤訊息——欄位不存在與欄位為 0，在規則引擎裡是同一件事（_num() 兩者都回 0）。
+test("the symptoms block carries the rule layer's parent concept fields", () => {
+  const symptoms = symptomsOf();
+  for (const parent of Object.keys(apiSymptoms.DERIVED_FIELDS)) {
+    assert(parent in symptoms, `${parent} must reach the rule layer`);
+    assert(symptoms[parent] === 0 || symptoms[parent] === 1, `${parent} must be 0 or 1`);
+  }
+});
+
+// 合併語意直接打 buildApiSymptoms()，不繞問卷：要精準控制「某個細項是 null」這種狀態，
+// 從答案層很難構造，而這裡要驗的正是三態的分界。
+for (const [name, children, expected] of [
+  ["任一細項為 1 就是 1", { symptom_persistent_abdominal_pain: 0, symptom_epigastric_pain: 1, symptom_upper_abdominal_discomfort: 0, symptom_right_upper_abdominal_discomfort: null }, 1],
+  ["全部為 0 才是 0", { symptom_persistent_abdominal_pain: 0, symptom_epigastric_pain: 0, symptom_upper_abdominal_discomfort: 0, symptom_right_upper_abdominal_discomfort: 0 }, 0],
+  ["有細項未填且無人為 1 時整欄不送", { symptom_persistent_abdominal_pain: 0, symptom_epigastric_pain: null, symptom_upper_abdominal_discomfort: 0, symptom_right_upper_abdominal_discomfort: 0 }, undefined]
+]) {
+  test(`symptom_abdominal_pain：${name}`, () => {
+    const symptoms = apiSymptoms.buildApiSymptoms(children, {});
+    if (expected === undefined) {
+      // 不送 ≠ 送 0。送 0 在規則層是「已排除」，E 節的陰性證據會據此扣分；
+      // 不知道就不要表態。
+      assert(!("symptom_abdominal_pain" in symptoms), "未填的細項不得被當成 0 併入上層欄位");
+    } else {
+      assert.equal(symptoms.symptom_abdominal_pain, expected);
+    }
+  });
+}
+
+test("2026-09-16 裁示的兩個語意對應確實生效", () => {
+  // 問卷只問噁心、問不到嘔吐；問的是反覆感染、不是一般感染。兩者都比規則的定義嚴格，
+  // 偏保守。對應關係若被誰拿掉，A-08／A-18／B-20／B-21／B-64 與 A-34 會靜默失效。
+  const symptoms = apiSymptoms.buildApiSymptoms(
+    { symptom_nausea: 1, symptom_recurrent_infection: 1 }, {}
+  );
+  assert.equal(symptoms.symptom_nausea_vomiting, 1);
+  assert.equal(symptoms.symptom_infection, 1);
+});
+
+test("兩個 row 若自己帶了同名的上層欄位，不得被衍生值蓋掉", () => {
+  // rule_input_row 的 symptom_mass 就是這種情形（buildRuleInputRow 已用
+  // getRuleParentState 組好）。同樣的狀況日後若發生在其他上層欄位，明確給的值優先。
+  const symptoms = apiSymptoms.buildApiSymptoms(
+    { symptom_persistent_back_pain: 0 }, { symptom_back_pain: 1 }
+  );
+  assert.equal(symptoms.symptom_back_pain, 1);
+});
+
 test("an unanswered country question still submits and falls back to the Taiwan baseline", () => {
   const country = app.questions.find((question) => question.id === "country");
   delete app.answers[country.field];

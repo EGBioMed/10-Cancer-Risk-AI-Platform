@@ -1,14 +1,23 @@
 // 症狀區塊：文獻高風險規則層唯一的資料來源。
 //
-// 2026-09-08 查出的接線缺口：問卷確實收了 symptom_feature_row 與 rule_input_row，但它們
-// 是 submission 的獨立頂層欄位，而 Power Automate 的 HTTP action 只把 ai_api_feature_row
-// 原封不動當 API body 送出。API 端 SurveyInput.symptoms 預設 None，而 to_rule_dict() 的
-// 症狀欄位只從那個區塊填，所以 40 條硬規則在線上等於全暗——規則層實際只看得到
-// weight_change_6m／chronic_diabetes／chronic_asthma_copd／smoking 這 4 個舊欄位的回退值，
-// 唯一還可能命中的是 A-36（50 歲以上男性＋體重變化）。每一份報告的「文獻高風險規則層」
-// 都印「本次問卷未觸發任何硬規則」，與受檢者實際填了什麼無關。
+// 2026-09-08 查出的接線缺口，以及 2026-09-16 對它的更正——兩段都留著，因為誤判本身
+// 是這份檔案存在的理由之一：
 //
-// 修法沿用 country 那次的決定：塞進 ai_api_feature_row，Power Automate 的 flow 不必改。
+// 當初的判斷是「規則層完全收不到症狀」。那是錯的，依據的 POWER_AUTOMATE_FLOW_AUDIT_
+// 2026-08-05.md 已經過期。實地看過 flow 之後確認，HTTP action 的 body 是三層 addProperty，
+// 其中一層自己在塞 symptoms，來源是 symptom_feature_row——那 84 欄的鍵名本來就是規則層
+// 欄位名，所以症狀一直進得了規則層。
+//
+// 真正的缺口比較窄，但確實存在，共三類：
+//   1. rule_input_row 那 30 欄完全沒送（各 _repeat_count、pap／psa 篩檢代碼、裡急後重、
+//      乳房疼痛等），引用它們的規則永遠不觸發。
+//   2. 選項代碼沒翻譯（見下方 CODE_MAPS），送原始碼會讓規則讀到錯的值。
+//   3. 規則層的「上層概念欄位」沒人組（見下方 DERIVED_FIELDS）。app.js 早就有
+//      getRuleParentState() 知道怎麼組，但結果只拿去決定要不要追問復發次數，沒送出去。
+//
+// 修法沿用 country 那次的決定：塞進 ai_api_feature_row。這在當時以為不必改 flow，實際上
+// 撞上了 flow 自己那層 addProperty（addProperty 不允許屬性已存在），線上每一筆送件都失敗，
+// 最後是把 flow 那層拿掉收尾。動這條路徑之前請先讀 PIPELINE_READ_FIRST.md。
 // 本檔採 answer-codes.js 的同一套 UMD 寫法，讓瀏覽器（app.js）與 Node（server.js 的
 // fallback 路徑）共用同一份實作——AI_API_COUNTRY_CODES 當初是複寫兩份再靠測試比對，
 // 但那是一張對照表；這裡是有分支的轉換邏輯，複寫必然分岔。
@@ -44,6 +53,27 @@
   const NOT_APPLICABLE = 9;
   const COUNT_FIELD_PATTERN = /_(repeat_count|interval_days)$/;
 
+  // 規則層的「上層概念欄位」：規則讀的是 symptom_abdominal_pain，問卷問的是上腹不適、
+  // 心窩痛、右上腹不適、持續腹痛四個細項。前四筆逐字沿用 app.js 的 derivedParents
+  // （那張表原本只拿來決定要不要追問復發次數），symptom_mass 不在此處是因為
+  // buildRuleInputRow() 已經用 getRuleParentState() 組好並覆蓋過來。
+  //
+  // 後兩筆是 2026-09-16 經使用者裁示新增的語意對應，不是命名別名：
+  //   symptom_nausea_vomiting ← 問卷只問得到噁心，問不到嘔吐。文獻的 PPV 是用「噁心或
+  //     嘔吐」算的，只拿噁心當輸入會讓觸發率略低於文獻情境——偏保守，不會誤報。
+  //   symptom_infection ← 問卷問的是「一年內反覆感染 3 次以上或久久不癒」，比規則的
+  //     「感染」嚴格。同樣偏保守，考慮到 A-34 是淋巴瘤，寧可難觸發也不要假陽性。
+  const DERIVED_FIELDS = Object.freeze({
+    symptom_abdominal_pain: Object.freeze([
+      "symptom_persistent_abdominal_pain", "symptom_epigastric_pain",
+      "symptom_upper_abdominal_discomfort", "symptom_right_upper_abdominal_discomfort"
+    ]),
+    symptom_back_pain: Object.freeze(["symptom_persistent_back_pain"]),
+    symptom_mouth_symptoms: Object.freeze(["symptom_oral_ulcer", "symptom_oral_white_red_patch"]),
+    symptom_nausea_vomiting: Object.freeze(["symptom_nausea"]),
+    symptom_infection: Object.freeze(["symptom_recurrent_infection"])
+  });
+
   function isBinaryRuleInput(key) {
     return !EXCLUDED_RULE_INPUTS.includes(key)
       && !(key in CODE_MAPS)
@@ -78,12 +108,26 @@
         put(key, isBinaryRuleInput(key) && value === NOT_APPLICABLE ? 0 : value);
       });
     }
+
+    // 上層概念欄位最後組，來源取已經寫進 symptoms 的值（也就是兩個 row 合併後的結果）。
+    // 合併語意與 app.js 的 combineSymptomStates() 一致：任一為 1 就是 1；全部為 0 才是 0；
+    // 其餘（有細項未填）視為不知道，整欄不送——送 0 會讓規則層當成「已排除」，E 節的
+    // 陰性證據可能因此誤扣分。
+    Object.keys(DERIVED_FIELDS).forEach((parent) => {
+      // 兩個 row 若哪天自己長出同名欄位，以它為準，不要在這裡蓋掉別人明確給的值。
+      if (parent in symptoms) return;
+      const states = DERIVED_FIELDS[parent].map((child) => symptoms[child]);
+      if (states.some((state) => state === 1)) put(parent, 1);
+      else if (states.every((state) => state === 0)) put(parent, 0);
+    });
+
     return symptoms;
   }
 
   return Object.freeze({
     buildApiSymptoms,
     CODE_MAPS,
+    DERIVED_FIELDS,
     EXCLUDED_RULE_INPUTS,
     NOT_APPLICABLE
   });

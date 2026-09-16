@@ -5,8 +5,21 @@ services:
     plan: starter
     buildCommand: ""
     startCommand: "npm start"
+    # Every variable here is `sync: false` -- the key is declared, the value is
+    # set in the Render dashboard and never committed. Declaring the key is not
+    # cosmetic: a Blueprint sync prunes dashboard variables this file does not
+    # list, and on 2026-09-09 that took out ACCESS_GATE_SESSION_SECRET, which
+    # server.js requires whenever ACCESS_GATE_MODE is enforced (the default, so
+    # that a deployment which forgets the variable fails closed rather than
+    # serving the questionnaire to anyone). The process threw on startup and
+    # the whole site was down until the value was restored by hand. Anything
+    # this service reads from the environment belongs in this list.
     envVars:
       - key: POWER_AUTOMATE_WEBHOOK_URL
+        sync: false
+      - key: ACCESS_GATE_MODE
+        sync: false
+      - key: ACCESS_GATE_SESSION_SECRET
         sync: false
       - key: ACCESS_GATE_BACKEND
         sync: false

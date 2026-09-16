@@ -176,9 +176,21 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
 
 ## ⚠ Upgrading an existing deployment
 
-Because the code fails closed, **an existing runtime that does not set
-`ACCESS_GATE_MODE`/`ACCESS_GATE_SESSION_SECRET` will refuse to start** after
-this change is deployed. Before restarting the `EGBioMedCancerRisk` Windows
+Because the code fails closed, **a runtime that does not set
+`ACCESS_GATE_MODE`/`ACCESS_GATE_SESSION_SECRET` will refuse to start**. This
+applies to every deployment target, not only the on-premises one.
+
+**Render** (the public site, `ai-cancer-risk.eg-bio.com`): both variables must
+be declared in [`render.yaml`](render.yaml) *and* set in the dashboard.
+Declaring them is what keeps them alive — a Blueprint sync prunes dashboard
+variables the Blueprint does not list, and on 2026-09-09 that removed
+`ACCESS_GATE_SESSION_SECRET` with no warning. Nothing broke until the next
+deploy restarted the process, which then threw on startup, so the site went
+down some time after the change that caused it. Restoring the value by hand
+brings the service back; regenerating it instead invalidates every live
+session cookie, so anyone mid-questionnaire has to redeem their code again.
+
+**On-premises** (`EGBioMedCancerRisk` Windows service): before restarting the
 service, update its runtime env file with one of:
 
 - `ACCESS_GATE_MODE=open` — keeps today's fully-open behavior, no gate.

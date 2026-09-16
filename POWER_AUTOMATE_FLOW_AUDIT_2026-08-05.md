@@ -1,5 +1,16 @@
 # Power Automate Flow Audit
 
+> ## ⚠ 內容已過期，不要據此推斷線上行為
+>
+> 2026-09-16 實地核對後確認，本文件描述的動作圖與 HTTP body 組法都已與線上不符。
+> 最明顯的一處：本文件寫 body 是 `coalesce(ai_api_feature_row, excel_row)`，
+> 而線上實際是三層 `addProperty`，其中一層自己在塞 `symptoms`。
+>
+> 依本文件推斷根因，導致 2026-09-08 的修正在測試全綠的情況下上線後讓每一筆送件
+> 都失敗。經過與現況請見 **[PIPELINE_READ_FIRST.md](PIPELINE_READ_FIRST.md)**。
+>
+> 本文件保留作為 2026-08-05 當時的歷史紀錄，僅此而已。
+
 Audit date: 2026-08-05
 
 Package: `EG_CancerRisk_PoC_2026-08-05_20260805035954.zip`
