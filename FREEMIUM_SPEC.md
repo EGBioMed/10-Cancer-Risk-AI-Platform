@@ -17,7 +17,8 @@
 | | 機構／廠商線 | 免費線（新增） |
 |---|---|---|
 | 對象 | 華康、Numia、Myrostar 等 | 一般大眾 |
-| 進場 | 存取代碼閘門（維持現狀） | 無閘門,直接開填 |
+| 進場 | 機構專屬代碼（維持現狀） | **公開宣傳代碼（免費,但仍須輸入）** |
+| 閘門 | 維持 `enforced`,兩條線都經過同一道閘門 | 同左 |
 | 問卷 | 相同 | 相同 |
 | 寄出 | 信件 + PDF 附件 | 免費信,無附件,附付款連結 |
 | 付款 | 機構已預付,不再收費 | 付款後另寄一封含 PDF 附件的信 |
@@ -42,9 +43,12 @@
 ## 2. 系統架構
 
 ```text
-                      ┌── 有代碼 ──> 閘門驗證 ──┐
-使用者 ── 進入網站 ──┤                          ├──> 問卷（同一份）──> POST /api/submit
-                      └── 無代碼 ──────────────┘
+                      ┌── 機構專屬代碼 ──┐
+使用者 ── 輸入代碼 ──┤                    ├──> 閘門驗證 ──> 問卷（同一份）──> POST /api/submit
+                      └── 公開宣傳代碼 ──┘         │
+                                                   │
+                            代碼所屬的 grant 帶著 delivery_mode,
+                            於兌換時寫入已簽章的 session cookie
                                                         │
                         伺服器端注入 delivery_mode + report_ticket
                                                         │
@@ -70,47 +74,121 @@
 
 ---
 
-## 3. 元件 A:閘門雙線化
+## 3. 元件 A:以代碼本身區分兩條線
 
-**檔案:`10-Cancer-Risk-AI-Platform/server.js`**
+**檔案:`egbiomed-ai-data-api/create-schema.js`、`egbiomed-ai-data-api/server.js`、`10-Cancer-Risk-AI-Platform/server.js`**
 
-### 3.1 新增第三種模式
+### 3.1 進場方式:兩條線都必須輸入代碼
 
-`ACCESS_GATE_MODE` 目前只有 `enforced` / `open` 兩值,且 `server.js:691` 一律擋下所有非豁免路徑。新增 `dual`:
+**`ACCESS_GATE_MODE` 維持 `enforced`,不新增模式,不改動任何路由。** 一般大眾同樣要在閘門輸入一組**公開的宣傳代碼**（免費、可印在文宣與社群貼文上）,機構客戶輸入自己的專屬代碼。畫面、入口與現狀完全相同。
 
-| 模式 | 行為 | 用途 |
+兩條線的差別不在「有沒有代碼」,而在**輸入的是哪一種代碼**。
+
+| | 機構專屬代碼 | 公開宣傳代碼 |
 |---|---|---|
-| `enforced` | 全站需代碼（現狀） | 保留,不移除 |
-| `open` | 全站不擋（現狀） | 本機開發 |
-| `dual` | 有代碼走機構線,無代碼走免費線 | **正式環境新設定** |
+| 範例 | `plq5x6bnb9`、`myroq5efc9a8` | `egbio2026`（可印在文宣上） |
+| 額度 | 依合約,數十至數百次 | 無上限（見 3.3） |
+| 保密 | 只給該機構 | **刻意公開** |
+| 送出後 | 信件含 PDF 附件 | 免費信 + 付款連結 |
 
-### 3.2 `dual` 模式下的路由
+### 3.2 `grants` 資料表新增一欄
 
-| 路徑 | 行為 |
-|---|---|
-| `GET /` | 直接提供問卷（不再是閘門畫面） |
-| `GET /institution` | 提供閘門畫面（`serveGatedIndex`) |
-| `GET /a/<token>` | 維持現狀,兌換連結型憑證 |
-| `POST /api/access/redeem-code` | 維持現狀 |
-| `POST /api/submit` | **有無 session 皆放行** |
-
-`dual` 模式仍要求 `ACCESS_GATE_SESSION_SECRET` 存在（比照 `server.js:85` 對 `enforced` 的檢查),因為機構線仍簽發 session cookie。
-
-### 3.3 `delivery_mode` 必須由伺服器決定
-
-在 `receiveSubmission`（`server.js:297`）中,於契約驗證**之後**、轉送 Power Automate **之前**注入:
-
-```js
-const deliveryMode = sessionPayload ? "institution" : "public";
-submission.delivery_mode = deliveryMode;
-submission.grant_id = sessionPayload ? sessionPayload.grantId : null;
+```sql
+ALTER TABLE grants
+  ADD COLUMN delivery_mode VARCHAR(16) NOT NULL DEFAULT 'institution'
+    CHECK (delivery_mode IN ('institution', 'public'));
 ```
 
-**這個欄位絕對不可由前端傳入。** 若讓客戶端送 `delivery_mode`,任何人把它改成 `institution` 就能免費取得完整 PDF。作法比照 `server.js:324-338` 對 `record_id` 的處理:客戶端送的值一律被伺服器覆寫。
+預設 `institution`,因此**所有既有代碼的行為完全不變**,不需回填。鑄碼工具新增旗標:
 
-### 3.4 session 消耗行為
+```bash
+npm run access:mint -- --code egbio2026 --delivery-mode public --unlimited \
+  --institution PROMO --notes "2026 秋季記者會宣傳代碼"
+```
 
-機構線維持現狀:送出後 session 立即作廢（`consumeSessionAndGetClearHeaders`）。免費線本來就沒有 session,不受影響;免費使用者可重複填寫,此為預期行為。
+### 3.3 無上限額度:`max_uses` 改為可為 NULL（已決策）
+
+現行約束是 `max_uses INT NOT NULL CHECK (max_uses > 0)`,**無法表達「無上限」**。若公開宣傳代碼沿用有限額度,會出現這個失敗情境:
+
+> 行銷活動進行到一半額度用罄 → 民眾被擋在門外 → 而閘門的拒絕訊息是**刻意設計成一律相同的**（「代碼無法辨識」),所以民眾、客服、行銷三方都不會知道發生了什麼事。
+
+**決定:`max_uses IS NULL` 代表無上限。** 已評估的替代方案是鑄碼時給一個極大的數字（如 1,000,000）——不需動資料庫,但只是把上述靜默失敗往後推,並未消除,且沒有任何監控會在接近上限時示警,故不採用。
+
+#### 3.3.1 資料庫遷移
+
+本儲存庫**沒有遷移機制**（無 `migrations/` 目錄,`package.json` 也無對應 script),且 `create-schema.js` 使用 `CREATE TABLE IF NOT EXISTS`——改那份檔案只影響全新建立的資料庫,**對正式環境既有的表完全沒有作用**。正式環境需要一次性手動 ALTER。
+
+跨欄位約束 `CHECK (use_count >= 0 AND use_count <= max_uses)` 在建表時未命名,由 MySQL 自動命名（通常是 `grants_chk_N`),**必須先查出實際名稱才能卸除**:
+
+```sql
+-- 1. 查出自動產生的約束名稱
+SELECT CONSTRAINT_NAME, CHECK_CLAUSE
+FROM information_schema.CHECK_CONSTRAINTS
+WHERE CONSTRAINT_SCHEMA = 'egbiomed_ai_cancer_risk';
+
+-- 2. 卸除舊的跨欄位約束（名稱代入上一步查到的）
+ALTER TABLE grants DROP CHECK grants_chk_N;
+
+-- 3. 放寬欄位並重建兩項約束,這次明確命名
+ALTER TABLE grants MODIFY max_uses INT NULL;
+ALTER TABLE grants ADD CONSTRAINT grants_max_uses_positive
+  CHECK (max_uses IS NULL OR max_uses > 0);
+ALTER TABLE grants ADD CONSTRAINT grants_use_count_within_max
+  CHECK (use_count >= 0 AND (max_uses IS NULL OR use_count <= max_uses));
+```
+
+`create-schema.js` 須同步更新,使新建資料庫與正式環境一致。
+
+#### 3.3.2 程式碼必須同步修改的四處
+
+`null` 在 JavaScript 與 SQL 的比較語意**相反**,這是本項最危險的地方:
+
+```js
+5 >= null   // true  （null 被轉型為 0）
+null + 5    // 5
+```
+
+而在 SQL 中 `x >= NULL` 得到 NULL,不成立。因此同一個 NULL 值在兩邊會得到相反的結果。
+
+| 位置 | 現況 | 不改的後果 |
+|---|---|---|
+| `server.js:559` | `if (grant.use_count >= grant.max_uses)` | **`use_count >= null` 恆為 true,無上限代碼會 100% 被拒絕**,而拒絕訊息與「打錯字」完全相同,無從分辨。這是本項最嚴重的陷阱 |
+| `server.js:633` | `grant.max_uses + add_uses` | `null + 5 = 5`,對無上限代碼執行加值會**把它變成只剩 5 次**。應直接拒絕對無上限代碼加值 |
+| `server.js:467` | `const maxUses = row.max_uses \|\| 1` | 鑄碼路徑,`--unlimited` 須能寫入 NULL 而非被轉成 1 |
+| `server.js:177`、`594` | 額度查詢與列表 | 剩餘額度會顯示 null,應顯示「無上限」 |
+
+`server.js:568` 的 `CASE WHEN use_count + 1 >= max_uses THEN 'redeemed'` 在 SQL 中因 NULL 比較不成立而自動落到 ELSE,**恰好是正確行為**,無須修改——但正因為它「碰巧對了」,更該在測試中明確固定住。
+
+#### 3.3.3 必要測試
+
+- 無上限代碼連續兌換 50 次全部成功,`status` 始終維持 `issued`
+- 對無上限代碼執行加值被拒絕,且 `max_uses` 仍為 NULL
+- 既有的有限額度代碼行為完全不變（額度用罄仍轉為 `redeemed`）
+
+### 3.4 `delivery_mode` 如何傳遞
+
+兌換代碼時,`redeemAccessGrant` 除了回傳 `grantId`,一併回傳該 grant 的 `delivery_mode`,由 `buildAccessSessionCookie`（`server.js:504`）寫進**已簽章**的 session cookie:
+
+```js
+signSessionCookie({ grantId, mode, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+```
+
+`receiveSubmission`（`server.js:297`）於契約驗證**之後**、轉送 Power Automate **之前**注入:
+
+```js
+submission.delivery_mode = sessionPayload.mode;
+submission.grant_id = sessionPayload.grantId;
+```
+
+**三項安全性質:**
+
+1. **前端完全無法影響。** 客戶端送出的任何 `delivery_mode` 一律被伺服器覆寫,作法比照 `server.js:324-338` 對 `record_id` 的處理。若讓客戶端決定,任何人改成 `institution` 就能免費取得完整 PDF。
+2. **cookie 經 HMAC 簽章,改一個字元即失效**,所以把模式放進 cookie 與放在伺服器記憶體同樣安全。
+3. **不增加資料庫查詢。** 模式在兌換當下就決定,送出時直接讀 cookie,無須回查 grant。
+
+### 3.5 session 消耗行為
+
+兩條線都維持現狀:送出報告後 session 立即作廢,要再填一次必須重新輸入代碼（`consumeSessionAndGetClearHeaders`)。公開代碼因額度無上限,民眾重新輸入同一組碼即可再次填寫——此為預期行為。
 
 ---
 
@@ -333,17 +411,25 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 
 ## 9. 風險與必須處理的副作用
 
-### 9.1 `/api/submit` 對外開放
+### 9.1 公開宣傳代碼不是存取控制
 
-目前該端點受閘門保護,`dual` 上線後免費線無閘門,僅剩每 IP 每 10 分鐘 20 次的 `submitLimiter` 在擋。建議:
+宣傳代碼刻意公開,因此它擋不住有心人,也不該被當成防護。它實際提供的是另外三件事:
 
-- 調降免費線的每 IP 額度,機構線維持現值
-- 同一 email 於短時間內重複提交時,僅寄一封信
-- 觀察一個月後再決定是否需要更強的驗證手段
+| 作用 | 說明 |
+|---|---|
+| **行銷歸因** | 每個通路發一組不同的公開代碼（記者會、社群、展覽、通路商),全部標記 `delivery_mode=public`,即可從 `access_events` 看出哪個通路帶進多少人、轉換多少 |
+| **開關** | 撤銷代碼即可立刻關閉免費線,不需改設定、不需重新部署 |
+| **摩擦** | 擋掉隨手亂填的流量,自動化濫用仍須靠速率限制 |
+
+真正的防濫用仍是既有的 `submitLimiter`（每 IP 每 10 分鐘 20 次)與 `codeRedeemLimiter`。建議另加:同一 email 於短時間內重複提交時僅寄一封信。
+
+相較於「免費線完全不設閘門」的作法,本設計讓 `/api/submit` **維持在閘門之後**,風險明顯較低。
 
 ### 9.2 IRB 文件需補件
 
-現行 IRB 逐題審核文件描述的是「付費進場」的受試者來源。免費開放改變了受試者組成與招募方式,且免費線的資料同樣進入研究資料表。**知情同意內容本身不需修改**（現有三項同意已涵蓋資料使用）,但「受試者來源與招募方式」一節必須補件後才可對外開放免費線。
+現行 IRB 逐題審核文件描述的是「付費進場」的受試者來源。改以公開宣傳代碼免費招募,改變了受試者組成與招募方式,且免費線的資料同樣進入研究資料表。**知情同意內容本身不需修改**（現有三項同意已涵蓋資料使用）,但「受試者來源與招募方式」一節必須補件後,才可對外公布宣傳代碼。
+
+保留閘門對此有利:受試者仍須主動輸入一組代碼才能進入,招募路徑是可指認、可追溯、可隨時終止的,而非任何人經搜尋引擎即可進入填答。此點應寫入補件說明。
 
 ### 9.3 付費客戶重新索取報告
 
@@ -364,22 +450,26 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 1 | `report_results` 表 + 兩個端點 + `REPORT_RESULT_API_KEY` | 資料 API 單元測試 |
 | 2 | 流程 A 新增步驟 6（存模型結果） | 實際提交後資料表有值 |
 | 3 | `lib/report-ticket.js` + 單元測試 | 平台測試套件 |
-| 4 | `dual` 模式 + `delivery_mode` 注入 | 平台測試套件（含「客戶端偽造 delivery_mode 被覆寫」的測試） |
-| 5 | 免費信樣板 + 流程 A 條件分支 | 免費提交收到無附件信件 |
-| 6 | 流程 B（交付流程） | 手動以測試 record_id 觸發 |
-| 7 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 |
-| 8 | WooCommerce 商品 + plugin 擴充 | 測試訂單（沿用先前不實際付款的測試方式） |
-| 9 | IRB 補件 | —— |
-| 10 | 正式環境切換 `ACCESS_GATE_MODE=dual` | —— |
+| 4 | `grants.delivery_mode` 欄位 + 額度決策 + 鑄碼旗標 | 資料 API 單元測試;既有代碼行為不變 |
+| 5 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 注入 | 平台測試套件（含「客戶端偽造 delivery_mode 被覆寫」的測試） |
+| 6 | 免費信樣板 + 流程 A 條件分支 | 以測試用 public 代碼提交,收到無附件信件 |
+| 7 | 流程 B（交付流程） | 手動以測試 record_id 觸發 |
+| 8 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 |
+| 9 | WooCommerce 商品 + plugin 擴充 | 測試訂單（沿用先前不實際付款的測試方式） |
+| 10 | IRB 補件 | —— |
+| 11 | 鑄發正式宣傳代碼並對外公布 | —— |
 
-第 10 步之前,機構線的行為完全不變;第 1 至 8 步皆可在 `enforced` 模式下完成並測試。
+**全程不需切換 `ACCESS_GATE_MODE`。** 第 4 步的新欄位預設為 `institution`,既有代碼行為不變;第 1 至 9 步都能在正式環境安全完成,因為在鑄出第一組 `public` 代碼之前,免費線根本沒有入口。第 11 步——公布代碼——才是真正的上線動作,而撤銷該代碼即可立即回退。
 
 ---
 
 ## 11. 驗收條件
 
-- [ ] 持代碼者進場、填答、送出後,收到含 PDF 附件的信,行為與現狀完全一致
-- [ ] 無代碼者可直接填答,送出後收到免費信:含分數、分級、完整驗證摘要、第一名癌別名稱
+- [ ] 持機構代碼者進場、填答、送出後,收到含 PDF 附件的信,行為與現狀完全一致
+- [ ] 既有的每一組機構代碼在加入 `delivery_mode` 欄位後行為不變（預設 `institution`）
+- [ ] 持公開宣傳代碼者進場、填答,送出後收到免費信:含分數、分級、完整驗證摘要、第一名癌別名稱
+- [ ] 未輸入任何代碼者仍無法進入問卷（閘門維持 `enforced`）
+- [ ] 無上限的公開代碼連續兌換多次皆成功,`use_count` 不會觸頂拒絕
 - [ ] 免費信**不含** PDF 附件、完整十癌排序、規則命中細節、個人化建議
 - [ ] 客戶端提交偽造的 `delivery_mode: "institution"` 時被伺服器覆寫為 `public`
 - [ ] 竄改票券任一字元後,`/api/reports/purchase` 回傳失敗且不觸發交付
@@ -395,7 +485,6 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 
 | 變數 | 位置 | 用途 |
 |---|---|---|
-| `ACCESS_GATE_MODE=dual` | Render（平台） | 啟用雙線 |
 | `REPORT_TICKET_SECRET` | Render（平台）、Azure（資料 API） | 票券簽章,兩端必須相同 |
 | `REPORT_RESULT_API_KEY` | Azure（資料 API）、Power Automate | 模型結果讀寫 |
 | `REPORT_DELIVERY_FLOW_URL` | Azure（資料 API） | 流程 B 的觸發 URL |
