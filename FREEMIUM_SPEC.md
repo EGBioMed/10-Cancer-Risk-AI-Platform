@@ -393,6 +393,8 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 
 ### 7.2 流程 B(免費版)— 由 A 複製
 
+> 實際操作步驟見 **[`FLOW_B_RUNBOOK.md`](FLOW_B_RUNBOOK.md)**：逐步設定、可直接複製的運算式、驗收清單與回退方式。以下是設計摘要。
+
 | 步驟 | 內容 |
 |---|---|
 | 1-4 | 沿用 A:觸發、剖析 JSON、執行指令碼（Excel）、`HTTP` → `/predict` |
@@ -564,7 +566,7 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 5 | 複製流程 A 成流程 B;流程 A 自此凍結 | 流程 B 在編輯器中可見且已關閉 | ✅ 2026-09-17 |
 | 6 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 僅注入 public payload | 平台測試套件（含偽造 `delivery_mode` 被覆寫、機構 payload 逐欄不變兩項） | ✅ `4aa5412` |
 | 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | 🔶 檔案已產出 `feb9e55`,待貼進流程 B |
-| 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | ⬜ |
+| 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | 🔶 手冊已備 `FLOW_B_RUNBOOK.md`,待操作 |
 | 9 | 免費信樣板（中英各一） | 同上 | ⬜ |
 | 10 | 由流程 B 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | ⬜ |
 | 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ⬜ |
