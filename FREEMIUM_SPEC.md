@@ -50,22 +50,21 @@
                             代碼所屬的 grant 帶著 delivery_mode,
                             於兌換時寫入已簽章的 session cookie
                                                         │
-                        伺服器端注入 delivery_mode + report_ticket
+              伺服器端依 cookie 裡的 mode 選 webhook;只有 public 這條注入額外欄位
                                                         │
-                                          Power Automate 流程 A（評估）
-                                                        │
-                                     模型推論 ──> 存 report_results
-                                                        │
-                                    ┌───────────────────┴───────────────────┐
-                        delivery_mode = institution          delivery_mode = public
-                                    │                                       │
-                        產 PDF ──> 寄信（含附件）              寄免費信（無附件 + 付款連結）
+                    ┌───────────────────────────────────┴───────────────────┐
+              institution                                                 public
+                    │                                                       │
+        流程 A（廠商推廣版,永不修改）                      流程 B（免費版,由 A 複製）
+        剖析 → Excel → /predict                            剖析 → Excel → /predict
+        → /generate_report → 產 PDF                        → 存 report_results
+        → 寄信（含 PDF 附件）                              → 寄免費信（無附件 + 付款連結）
                                                                             │
                                                              使用者點連結 ──> WooCommerce 付款
                                                                             │
                                                         WordPress plugin ──> 資料 API 驗票
                                                                             │
-                                          Power Automate 流程 B（交付）<────┘
+                                          流程 C（報告交付,由 B 複製）<────┘
                                                                             │
                                           讀 report_results ──> 產 PDF ──> 寄信（含附件）
 ```
@@ -99,12 +98,17 @@ ALTER TABLE grants
     CHECK (delivery_mode IN ('institution', 'public'));
 ```
 
-預設 `institution`,因此**所有既有代碼的行為完全不變**,不需回填。鑄碼工具新增旗標:
+預設 `institution`,因此**所有既有代碼的行為完全不變**,不需回填。
+
+鑄碼工具(`scripts/grant-access.js`,`npm run access:grant`)需新增兩個旗標,目前**尚未實作**——資料 API 與 `access-grant-create.schema.json` 已經收這兩個欄位,缺的只是 CLI 把它們傳出去:
 
 ```bash
-npm run access:mint -- --code egbio2026 --delivery-mode public --unlimited \
-  --institution PROMO --notes "2026 秋季記者會宣傳代碼"
+npm run access:grant -- --type code --code egbio2026 \
+  --delivery-mode public --unlimited \
+  --created-by "abbie" --notes "2026 秋季記者會宣傳代碼"
 ```
+
+在旗標補上之前,`npm run access:grant` 鑄出的一律是 `institution` 且有額度上限的代碼——也就是現狀,所以這個缺口不會造成任何非預期行為,只是還發不出公開代碼。鑄碼請在 **Render Shell** 執行,那裡的閘門金鑰已在環境變數中,不需要複製任何秘密。
 
 ### 3.3 無上限額度:`max_uses` 改為可為 NULL（已決策）
 
@@ -196,12 +200,21 @@ null + 5    // 5
 signSessionCookie({ grantId, mode, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
 ```
 
-`receiveSubmission`（`server.js:297`）於契約驗證**之後**、轉送 Power Automate **之前**注入:
+`receiveSubmission` 於契約驗證**之後**、轉送 Power Automate **之前**注入,而且**只對 public 這條注入**(`applyDeliveryFields()`,理由見 7.6):
 
 ```js
-submission.delivery_mode = sessionPayload.mode;
-submission.grant_id = sessionPayload.grantId;
+const deliveryMode = normalizeDeliveryMode(sessionPayload && sessionPayload.mode);
+applyDeliveryFields(submission, {
+  deliveryMode,
+  grantId: sessionPayload ? sessionPayload.grantId : null,
+  recordId,
+  ticketSecret: REPORT_TICKET_SECRET
+});
+// institution:一個欄位都不加,payload 與改版前逐位元組相同
+// public:加上 delivery_mode / grant_id / report_ticket
 ```
+
+`normalizeDeliveryMode` 只認 `"public"` 這個字串,其餘一律視為 `institution`——包含 Postgres 後端(本機開發)根本不回傳 mode 的情況。這個方向保持現狀行為,而不是把報告送出去。
 
 **三項安全性質:**
 
@@ -547,10 +560,10 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 1 | `report_results` 表 + 兩個端點 + `REPORT_RESULT_API_KEY` | 資料 API 單元測試 | ✅ `734df92` |
 | 2 | `lib/report-ticket.js` + 單元測試 | 平台測試套件 | ✅ `19f893e` |
 | 3 | `grants.delivery_mode` + `max_uses` 可為 NULL + 鑄碼旗標 | 資料 API 單元測試;既有代碼行為不變 | ✅ `734df92` |
-| 4 | 資料 API 部署至 Azure（Kudu）+ 跑 `create-schema.js` | 冒煙測試寫入／讀回 | ⬜ |
-| 5 | 複製流程 A 成流程 B;流程 A 自此凍結 | 流程 B 在編輯器中可見且已關閉 | ⬜ |
-| 6 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 僅注入 public payload | 平台測試套件（含偽造 `delivery_mode` 被覆寫、機構 payload 逐欄不變兩項） | ⬜ |
-| 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | ⬜ |
+| 4 | 資料 API 部署至 Azure（Kudu）+ 跑 `create-schema.js` | 冒煙測試寫入／讀回 | ✅ 2026-09-17 |
+| 5 | 複製流程 A 成流程 B;流程 A 自此凍結 | 流程 B 在編輯器中可見且已關閉 | ✅ 2026-09-17 |
+| 6 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 僅注入 public payload | 平台測試套件（含偽造 `delivery_mode` 被覆寫、機構 payload 逐欄不變兩項） | ✅ `4aa5412` |
+| 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | 🔶 檔案已產出 `feb9e55`,待貼進流程 B |
 | 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | ⬜ |
 | 9 | 免費信樣板（中英各一） | 同上 | ⬜ |
 | 10 | 由流程 B 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | ⬜ |
