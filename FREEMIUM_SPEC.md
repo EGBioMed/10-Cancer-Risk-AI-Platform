@@ -592,8 +592,8 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 4 | 資料 API 部署至 Azure（Kudu）+ 跑 `create-schema.js` | 冒煙測試寫入／讀回 | ✅ 2026-09-17 |
 | 5 | 複製流程 A 成流程 B;流程 A 自此凍結 | 流程 B 在編輯器中可見且已關閉 | ✅ 2026-09-17 |
 | 6 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 僅注入 public payload | 平台測試套件（含偽造 `delivery_mode` 被覆寫、機構 payload 逐欄不變兩項） | ✅ `4aa5412` |
-| 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | 🔶 檔案已產出 `feb9e55`,待貼進流程 B |
-| 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | 🔶 手冊已備 `FLOW_B_RUNBOOK.md`,待操作 |
+| 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | ✅ 2026-09-17 |
+| 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | ✅ 2026-09-17 實測通過 |
 | 9 | 免費信樣板（中英各一） | 同上 | ✅ 2026-09-17 |
 | 10 | 由流程 B 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | ⬜ |
 | 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ⬜ |

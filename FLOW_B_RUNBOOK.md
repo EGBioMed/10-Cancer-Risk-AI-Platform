@@ -118,7 +118,7 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 | `risk_score_pct` | number | `55.6` | **已是 ×100 形式，直接用，不必再乘** |
 | `risk_level` / `risk_label_zh` / `risk_level_display` / `model_risk_level` / `final_risk_level` | string | `中度風險` | 分級（五個欄位同值） |
 | `risk_ratio_vs_healthy` | number | `5.5` | 與同齡健康者的倍數 |
-| `cancer_risks` | **array** | 見下 | **已依 pct 由高到低排序的結構化陣列** |
+| `cancer_risks` | **array** | 見下 | 結構化陣列，依「風險等級 → 可靠性 → pct」排序 |
 | `cancer_risks_text` | string | `🟤 大腸直腸癌：41.8 / 100…` | 信件用的預先排版文字（含 `<br>`） |
 | `recommendation_zh` / `risk_factors_zh` / `all_risk_factors_zh` / `disclaimer_zh` | string | | 信件各段落 |
 | `rule_hard_rule_hits` | array | `[]` | 規則命中（付費內容） |
@@ -128,6 +128,10 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 `cancer_risks` 每個元素：`{cancer, pct, ratio, level, level_display, reliable, n, factors}`。
 
 **因此第一名癌別不需要解析文字**，直接 `first(body('HTTP')?['cancer_risks'])?['cancer']`。
+
+排序**不是**單純的 pct 由高到低——早期的探測剛好兩者一致，讓人誤以為是。2026-09-17 的實際送件裡，頭頸癌 `7.2` 排在乳癌 `12.6` 之前，因為前者是「中度風險」而後者是「低風險」；`reliable: false` 的探索性結果一律墊底。也就是依臨床優先度排序，不是依數字大小。
+
+這正好是我們要的：`first()` 取到的與 `cancer_risks_text` 列在最前面的是同一個，也就是使用者在信裡看到的第一名。兩邊天然一致，不需要另外對齊。
 
 #### 沒有模型版本欄位
 
