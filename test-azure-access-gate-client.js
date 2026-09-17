@@ -69,11 +69,24 @@ test("createAccessGrant sends code only for credentialType 'code', omitting it e
 
 test("createAccessGrant returns camelCase fields from the snake_case wire response", async () => {
   const { client } = makeClient(() =>
-    stubResponse(201, { ok: true, grant_id: 42, expires_at: "2026-02-02T00:00:00.000Z" })
+    stubResponse(201, {
+      ok: true,
+      grant_id: 42,
+      expires_at: "2026-02-02T00:00:00.000Z",
+      // Echoed by the API since the freemium split, so the caller can report
+      // what was actually stored rather than what it asked for.
+      max_uses: 1,
+      delivery_mode: "institution"
+    })
   );
 
   const result = await client.createAccessGrant({ createdBy: "tester" });
-  assert.deepEqual(result, { grantId: 42, expiresAt: "2026-02-02T00:00:00.000Z" });
+  assert.deepEqual(result, {
+    grantId: 42,
+    expiresAt: "2026-02-02T00:00:00.000Z",
+    maxUses: 1,
+    deliveryMode: "institution"
+  });
 });
 
 test("topUpAccessCode throws synchronously for a non-positive-integer addUses without calling fetch", async () => {
@@ -183,4 +196,87 @@ test("every request includes the access-gate API key header, not the ingest key 
   const headers = fetchImpl.calls[0].options.headers;
   assert.equal(headers["x-egbiomed-access-gate-key"], "test-key");
   assert.equal("x-egbiomed-ingest-key" in headers, false);
+});
+
+// A public promotional code is unlimited, and unlimited is carried as an
+// explicit null the whole way down. The two places that most easily turn it
+// back into "1" are a destructuring default and an omit-nulls convention --
+// this client has both, a few lines apart.
+test("createAccessGrant sends an unlimited quota as null, not as a missing field", async () => {
+  const sent = [];
+  const client = createAzureAccessGateClient({
+    baseUrl: "https://example.invalid",
+    apiKey: "k",
+    fetchImpl: async (url, init) => {
+      sent.push(JSON.parse(init.body));
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({ ok: true, grant_id: 1, expires_at: null, max_uses: null, delivery_mode: "public" }),
+        text: async () => ""
+      };
+    }
+  });
+
+  const result = await client.createAccessGrant({
+    tokenHash: "a".repeat(64),
+    createdBy: "cli:test",
+    credentialType: "code",
+    code: "egbio2026",
+    maxUses: null,
+    deliveryMode: "public"
+  });
+
+  assert.equal("max_uses" in sent[0], true, "max_uses must be sent even when null");
+  assert.equal(sent[0].max_uses, null);
+  assert.equal(sent[0].delivery_mode, "public");
+  // Reported back from the response, so an unlimited code and a single-use
+  // one are told apart before anybody tries to redeem one.
+  assert.equal(result.maxUses, null);
+  assert.equal(result.deliveryMode, "public");
+});
+
+test("createAccessGrant defaults to the institution line and a single use", async () => {
+  const sent = [];
+  const client = createAzureAccessGateClient({
+    baseUrl: "https://example.invalid",
+    apiKey: "k",
+    fetchImpl: async (url, init) => {
+      sent.push(JSON.parse(init.body));
+      return {
+        ok: true,
+        status: 201,
+        json: async () => ({ ok: true, grant_id: 2, expires_at: null, max_uses: 1, delivery_mode: "institution" }),
+        text: async () => ""
+      };
+    }
+  });
+
+  // Exactly the call every existing caller already makes.
+  await client.createAccessGrant({
+    tokenHash: "b".repeat(64),
+    createdBy: "cli:test"
+  });
+
+  assert.equal(sent[0].max_uses, 1);
+  assert.equal(sent[0].delivery_mode, "institution");
+});
+
+test("createAccessGrant refuses a delivery mode it does not recognise", async () => {
+  const client = createAzureAccessGateClient({
+    baseUrl: "https://example.invalid",
+    apiKey: "k",
+    fetchImpl: async () => {
+      throw new Error("must not reach the network");
+    }
+  });
+
+  await assert.rejects(
+    () => client.createAccessGrant({
+      tokenHash: "c".repeat(64),
+      createdBy: "cli:test",
+      deliveryMode: "free"
+    }),
+    /deliveryMode/
+  );
 });

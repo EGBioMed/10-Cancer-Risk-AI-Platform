@@ -4,9 +4,16 @@ const { argument, createAccessGateRepository } = require("./cli-helpers");
 
 const USAGE = "Usage: node scripts/grant-access.js --created-by <name> "
   + "[--type link|code] [--provider <name>] [--reference <text>] [--notes <text>] "
-  + "[--ttl-hours <n>] [--max-uses <n>] [--confirm-remote-host]\n"
+  + "[--ttl-hours <n>] [--max-uses <n> | --unlimited] "
+  + "[--delivery-mode institution|public] [--confirm-remote-host]\n"
+  + "  --delivery-mode institution (default): holder receives the PDF report,\n"
+  + "    today's behaviour. --delivery-mode public: holder receives the free\n"
+  + "    email with a payment link instead. Public codes are meant to be\n"
+  + "    published, so pair them with --unlimited; a promotional code that\n"
+  + "    hits a ceiling mid-campaign is refused with the same wording as a\n"
+  + "    typo. Requires ACCESS_GATE_BACKEND=azure_mysql.\n"
   + "  --type link (default): personal one-time link.\n"
-  + "  --type code: shared quota code. Requires --max-uses, and either\n"
+  + "  --type code: shared quota code. Requires --max-uses or --unlimited, and either\n"
   + "    --code <string> (use exactly as given) or --institution <code>\n"
   + "    [--quota-label <code>] (system-composes institutionQuotaLabelQ<maxUses><random>,\n"
   + "    e.g. --institution SCH --quota-label B1 --max-uses 100 -> SCHB1Q100XXXXXX).";
@@ -56,13 +63,42 @@ function prepareLinkGrant() {
 }
 
 function prepareCodeGrant() {
+  // A public promotional code is printed on flyers and social posts, so it
+  // cannot carry a ceiling: one that runs out mid-campaign is refused with
+  // the gate's deliberately generic "not recognized" wording, and neither
+  // the visitor, nor support, nor marketing can tell that from a typo.
+  const unlimited = process.argv.includes("--unlimited");
   const maxUsesArg = argument("--max-uses");
-  if (!maxUsesArg) {
-    throw new Error("--max-uses is required for --type code.");
+
+  if (unlimited && maxUsesArg) {
+    throw new Error("--unlimited and --max-uses are mutually exclusive.");
   }
-  const maxUses = Number(maxUsesArg);
-  if (!Number.isInteger(maxUses) || maxUses <= 0) {
+  if (!unlimited && !maxUsesArg) {
+    throw new Error("--max-uses is required for --type code (or pass --unlimited).");
+  }
+
+  // null is the wire value for unlimited, all the way down to the column.
+  const maxUses = unlimited ? null : Number(maxUsesArg);
+  if (!unlimited && (!Number.isInteger(maxUses) || maxUses <= 0)) {
     throw new Error("--max-uses must be a positive integer.");
+  }
+
+  // Which line the holder is admitted to. Defaults to institution, so every
+  // existing invocation keeps minting exactly what it minted before.
+  const deliveryMode = argument("--delivery-mode") || "institution";
+  if (!["institution", "public"].includes(deliveryMode)) {
+    throw new Error("--delivery-mode must be 'institution' or 'public'.");
+  }
+  // The free line exists only on the Azure backend: the Postgres schema has
+  // no delivery_mode column, so minting a public code against it would
+  // silently produce an institution one, and the mistake would first surface
+  // as a member of the public being handed the full PDF for nothing.
+  const backend = String(process.env.ACCESS_GATE_BACKEND || "postgres").toLowerCase();
+  if (deliveryMode === "public" && backend !== "azure_mysql") {
+    throw new Error(
+      "--delivery-mode public requires ACCESS_GATE_BACKEND=azure_mysql. " +
+      "Mint it from the Render Shell, where that and the gate key are already set."
+    );
   }
 
   let expiresAt = null;
@@ -94,7 +130,9 @@ function prepareCodeGrant() {
     if (!ALPHANUMERIC_ONLY.test(institution) || !ALPHANUMERIC_ONLY.test(quotaLabel)) {
       throw new Error("--institution and --quota-label must be English letters/digits only.");
     }
-    rawCode = `${institution}${quotaLabel}Q${maxUses}${generateRandomSuffix()}`;
+    // "QU" for unlimited, because "Qnull" is what the plain interpolation
+    // would produce and "Q0" would read as a code with no uses left.
+    rawCode = `${institution}${quotaLabel}Q${unlimited ? "U" : maxUses}${generateRandomSuffix()}`;
   } else {
     throw new Error(
       "--type code requires either --code <string> or --institution <code> (optionally with --quota-label <code>)."
@@ -114,14 +152,25 @@ function prepareCodeGrant() {
       expiresAt,
       maxUses,
       credentialType: "code",
-      code: normalized
+      code: normalized,
+      deliveryMode
     },
     printResult(grant) {
       console.log("Access code created:");
       console.log(normalized);
       console.log(`grant_id: ${grant.grantId}`);
-      console.log(`max_uses: ${maxUses}`);
+      // Printed from what came back, not from what was asked for: an
+      // unlimited code and a single-use one look identical until somebody
+      // tries to redeem one, so the confirmation has to reflect the row.
+      const storedMaxUses = grant.maxUses === undefined ? maxUses : grant.maxUses;
+      console.log(`max_uses: ${storedMaxUses === null ? "unlimited" : storedMaxUses}`);
+      console.log(`delivery_mode: ${grant.deliveryMode || deliveryMode}`);
       console.log(`expires_at: ${grant.expiresAt || "never"}`);
+      if ((grant.deliveryMode || deliveryMode) === "public") {
+        console.log("");
+        console.log("This code is for the FREE line: its holders receive the free email");
+        console.log("with a payment link, not the PDF report. It is safe to publish.");
+      }
     }
   };
 }

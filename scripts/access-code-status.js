@@ -28,9 +28,17 @@ async function main() {
     console.log(`code: ${grant.code}`);
     console.log(`credential_type: ${grant.credential_type}`);
     console.log(`status: ${grant.status}`);
-    console.log(`max_uses: ${grant.max_uses}`);
+    // max_uses is NULL for a public promotional code, which has no ceiling.
+    // Subtracting from null prints "remaining: NaN" -- a display bug, but
+    // one that reads as "this code is broken" about the very code most
+    // likely to be on a flyer when somebody thinks to check it.
+    const unlimited = grant.max_uses === null || grant.max_uses === undefined;
+    console.log(`max_uses: ${unlimited ? "unlimited" : grant.max_uses}`);
     console.log(`use_count: ${grant.use_count}`);
-    console.log(`remaining: ${grant.max_uses - grant.use_count}`);
+    console.log(`remaining: ${unlimited ? "unlimited" : grant.max_uses - grant.use_count}`);
+    // Which line the holder is admitted to. Absent on the Postgres backend,
+    // which has no such column -- everything there is the institution line.
+    console.log(`delivery_mode: ${grant.delivery_mode || "institution"}`);
     console.log(`issued_at: ${grant.issued_at}`);
     console.log(`expires_at: ${grant.expires_at || "never"}`);
     console.log(`created_by: ${grant.created_by}`);
