@@ -160,3 +160,25 @@ test("the ticket secret is its own variable, not the session secret", () => {
   // as well as questionnaire access.
   assert.doesNotMatch(serverSource, /REPORT_TICKET_SECRET = .*ACCESS_GATE_SESSION_SECRET/);
 });
+
+// A variable set in the Render dashboard takes effect only at the next
+// restart, and one pruned by a Blueprint sync breaks nothing until the same
+// moment -- the gap that took the site down on 2026-09-09, hours after the
+// change that caused it. Health reports whether each is actually loaded, so
+// "did the configuration land?" has an answer that is not a guess.
+test("health reports whether the free line is configured, without leaking it", () => {
+  const healthStart = serverSource.indexOf('url.pathname === "/api/health"') >= 0
+    ? serverSource.indexOf('url.pathname === "/api/health"')
+    : serverSource.indexOf('pathname === "/api/health"');
+  assert(healthStart >= 0, "health route not found");
+  const health = serverSource.slice(healthStart, serverSource.indexOf("return;", healthStart));
+
+  assert.match(health, /public_webhook_configured: Boolean\(POWER_AUTOMATE_WEBHOOK_URL_PUBLIC\)/);
+  assert.match(health, /report_ticket_secret_configured: Boolean\(REPORT_TICKET_SECRET\)/);
+
+  // Booleans only. A health endpoint is unauthenticated, so reporting the
+  // webhook URL would publish the free line's trigger, and reporting the
+  // secret would let anyone forge a paid report.
+  assert.doesNotMatch(health, /public_webhook: POWER_AUTOMATE_WEBHOOK_URL_PUBLIC/);
+  assert.doesNotMatch(health, /report_ticket_secret: REPORT_TICKET_SECRET/);
+});

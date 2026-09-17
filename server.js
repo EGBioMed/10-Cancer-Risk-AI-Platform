@@ -765,7 +765,18 @@ const server = http.createServer(async (req, res) => {
       database: REQUIRES_POSTGRES ? "postgresql" : undefined,
       database_ready: REQUIRES_POSTGRES ? databaseReady : undefined,
       access_gate_backend: ACCESS_GATE_MODE === "enforced" ? ACCESS_GATE_BACKEND : undefined,
-      access_gate_ready: ACCESS_GATE_MODE === "enforced" ? accessGateReadyNow : undefined
+      access_gate_ready: ACCESS_GATE_MODE === "enforced" ? accessGateReadyNow : undefined,
+      // Whether the free line has somewhere to go, and whether its payment
+      // links can be signed. Booleans, never the values themselves.
+      //
+      // Both are read once at startup, so a variable set in the dashboard
+      // does not take effect until the process restarts -- and a variable
+      // silently pruned by a Blueprint sync does not break anything until
+      // the same moment. That gap is what took the site down on 2026-09-09,
+      // hours after the change that caused it. Exposing them here makes
+      // "did the configuration actually land?" a question with an answer.
+      public_webhook_configured: Boolean(POWER_AUTOMATE_WEBHOOK_URL_PUBLIC),
+      report_ticket_secret_configured: Boolean(REPORT_TICKET_SECRET)
     });
     return;
   }
