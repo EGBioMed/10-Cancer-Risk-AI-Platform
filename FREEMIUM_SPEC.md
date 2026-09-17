@@ -2,9 +2,9 @@
 
 | 項目 | 內容 |
 |---|---|
-| 版本 | freemium/1.0.0（草案） |
-| 狀態 | 待核可,尚未實作 |
-| 撰寫日期 | 2026-09-16 |
+| 版本 | freemium/1.0.0 |
+| 狀態 | 實作中——程式碼部分（第 1～7 步）已完成並部署;Power Automate 與 WooCommerce 部分待辦。進度見第 10 節 |
+| 撰寫日期 | 2026-09-16(2026-09-17 改版:三條流程) |
 | 影響範圍 | `10-Cancer-Risk-AI-Platform`、`egbiomed-ai-data-api`、Power Automate、mdi.eg-bio.com (WooCommerce) |
 | 前端 `app.js` | **不需修改**,問卷版號維持 `questionnaire/2026-09-08-v19.9-phase1` |
 
@@ -100,15 +100,17 @@ ALTER TABLE grants
 
 預設 `institution`,因此**所有既有代碼的行為完全不變**,不需回填。
 
-鑄碼工具(`scripts/grant-access.js`,`npm run access:grant`)需新增兩個旗標,目前**尚未實作**——資料 API 與 `access-grant-create.schema.json` 已經收這兩個欄位,缺的只是 CLI 把它們傳出去:
+鑄碼工具已支援兩個旗標（`a65d85a`）:
 
 ```bash
 npm run access:grant -- --type code --code egbio2026 \
-  --delivery-mode public --unlimited \
+  --unlimited --delivery-mode public \
   --created-by "abbie" --notes "2026 秋季記者會宣傳代碼"
 ```
 
-在旗標補上之前,`npm run access:grant` 鑄出的一律是 `institution` 且有額度上限的代碼——也就是現狀,所以這個缺口不會造成任何非預期行為,只是還發不出公開代碼。鑄碼請在 **Render Shell** 執行,那裡的閘門金鑰已在環境變數中,不需要複製任何秘密。
+兩者皆預設為現狀（`institution`、有額度上限),所以既有的每一道鑄碼指令行為不變。四項防呆:`--unlimited` 與 `--max-uses` 互斥、兩者不可都不給、`--delivery-mode` 值受限、**且 `public` 只在 `ACCESS_GATE_BACKEND=azure_mysql` 時才允許**——Postgres 後端沒有 `delivery_mode` 欄位,在那裡鑄公開代碼會靜默變成機構代碼,而錯誤要等到某個民眾免費拿到完整 PDF 才會浮現。
+
+鑄碼請在 **Render Shell** 執行,那裡的後端設定與閘門金鑰都已在環境變數中,不需要複製任何秘密。
 
 ### 3.3 無上限額度:`max_uses` 改為可為 NULL（已決策）
 
