@@ -25,6 +25,7 @@ const {
   createConsumedSessionStore
 } = require("./lib/access-gate");
 const { createFixedWindowLimiter } = require("./lib/rate-limiter");
+const { signReportTicket } = require("./lib/report-ticket");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 const { createAppAssetVersioner } = require("./lib/asset-version");
 // 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
@@ -32,6 +33,12 @@ const { buildApiSymptoms } = require("./api-symptoms");
 
 const PORT = Number(process.env.PORT || 3000);
 const POWER_AUTOMATE_WEBHOOK_URL = process.env.POWER_AUTOMATE_WEBHOOK_URL || "";
+// The free line's own flow. Deliberately a second flow rather than a branch
+// inside the first: Power Automate has no draft state, so editing the live
+// flow puts every intermediate save in front of paying institutions. Keeping
+// them apart means the institution flow is never edited again. See
+// FREEMIUM_SPEC.md section 7.
+const POWER_AUTOMATE_WEBHOOK_URL_PUBLIC = process.env.POWER_AUTOMATE_WEBHOOK_URL_PUBLIC || "";
 const CONFIGURED_SUBMISSION_MODE = String(
   process.env.SUBMISSION_MODE || (POWER_AUTOMATE_WEBHOOK_URL ? "power-automate" : "postgres")
 ).toLowerCase();
@@ -50,6 +57,13 @@ const ACCESS_GATE_SESSION_TTL_SECONDS = Math.max(
   Math.round(Number(process.env.ACCESS_GATE_SESSION_TTL_HOURS || 0.5) * 3600)
 );
 const ACCESS_GATE_COOKIE_SECURE = String(process.env.ACCESS_GATE_COOKIE_SECURE ?? "true").toLowerCase() !== "false";
+// Signs the ticket in the free email's payment link. Separate from
+// ACCESS_GATE_SESSION_SECRET on purpose: that one, if leaked, forges 30
+// minutes of questionnaire access; sharing it would make the same leak forge
+// paid reports too. Losing this one invalidates the payment link in every
+// free email not yet acted on, and those recipients cannot recover by
+// redeeming a code again -- they have to fill the questionnaire in afresh.
+const REPORT_TICKET_SECRET = process.env.REPORT_TICKET_SECRET || "";
 // Which backend answers gate reads/writes -- "postgres" (default, talks to
 // Supabase directly) or "azure_mysql" (talks to egbiomed-ai-data-api's API,
 // since that MySQL server is VNet-private and unreachable from here
@@ -343,6 +357,19 @@ async function receiveSubmission(req, res, sessionPayload) {
     submission.ai_api_feature_row.record_id = recordId;
   }
 
+  // Which line this submission is on, taken from the grant that was redeemed
+  // and sealed into the signed cookie -- never from the request body. A
+  // client that posts delivery_mode: "institution" has it overwritten here,
+  // exactly as its record_id was just overwritten above; otherwise anyone
+  // could claim the institution line and collect the full PDF for free.
+  const deliveryMode = normalizeDeliveryMode(sessionPayload && sessionPayload.mode);
+  applyDeliveryFields(submission, {
+    deliveryMode,
+    grantId: sessionPayload ? sessionPayload.grantId : null,
+    recordId,
+    ticketSecret: REPORT_TICKET_SECRET
+  });
+
   const validFullName = getValidSubmissionFullName(submission);
   if (!validFullName) {
     sendJson(res, 422, {
@@ -411,14 +438,28 @@ async function receiveSubmission(req, res, sessionPayload) {
     sendJson(res, 503, { ok: false, error: "Unsupported SUBMISSION_MODE configuration." });
     return;
   }
-  if (!POWER_AUTOMATE_WEBHOOK_URL) {
-    sendJson(res, 503, { ok: false, error: "POWER_AUTOMATE_WEBHOOK_URL is not configured." });
+  // Each line has its own flow, so each has its own webhook. A public
+  // submission must never fall back to the institution webhook: that flow
+  // attaches the full PDF, so the fallback would hand the paid report to
+  // someone who used a free promotional code. Refusing outright -- no email
+  // at all -- is the direction that fails closed.
+  const webhookUrl = deliveryMode === "public"
+    ? POWER_AUTOMATE_WEBHOOK_URL_PUBLIC
+    : POWER_AUTOMATE_WEBHOOK_URL;
+
+  if (!webhookUrl) {
+    sendJson(res, 503, {
+      ok: false,
+      error: deliveryMode === "public"
+        ? "POWER_AUTOMATE_WEBHOOK_URL_PUBLIC is not configured."
+        : "POWER_AUTOMATE_WEBHOOK_URL is not configured."
+    });
     return;
   }
 
   try {
     const powerAutomatePayload = buildPowerAutomatePayload(submission);
-    const response = await fetch(POWER_AUTOMATE_WEBHOOK_URL, {
+    const response = await fetch(webhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -507,14 +548,49 @@ function redirectToHome(res) {
   res.end();
 }
 
-function buildAccessSessionCookie(grantId) {
+// Anything other than an explicit "public" is the institution line. The
+// Postgres gate backend does not report a mode at all, so this is also what
+// local development gets -- and it is the direction that preserves today's
+// behaviour exactly rather than the one that gives a report away.
+function normalizeDeliveryMode(rawMode) {
+  return rawMode === "public" ? "public" : "institution";
+}
+
+// Adds the free line's three fields to a public submission, and adds nothing
+// whatsoever to an institution one.
+//
+// The "nothing whatsoever" half is the load-bearing one, and the reason this
+// is a named function rather than an inline branch: the institution flow's
+// HTTP trigger schema is additionalProperties:false, so one extra key makes
+// it reject every institution submission outright -- the
+// TriggerInputSchemaMismatch this project has already been through once,
+// which would take down every vendor code at the same moment. A test can
+// assert that against a real object; it could only guess at an inline block.
+function applyDeliveryFields(submission, { deliveryMode, grantId, recordId, ticketSecret }) {
+  if (deliveryMode !== "public") return submission;
+
+  submission.delivery_mode = "public";
+  submission.grant_id = grantId === undefined ? null : grantId;
+  // A missing secret yields a null ticket rather than an unsigned one, so a
+  // misconfigured deployment produces a free email with no payment link --
+  // visibly wrong, rather than a link anyone could forge.
+  submission.report_ticket = ticketSecret ? signReportTicket(recordId, ticketSecret) : null;
+  return submission;
+}
+
+function buildAccessSessionCookie(grantId, deliveryMode) {
   const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
   // sid identifies this one redemption, not the grant -- a shared
   // institution code hands the same grantId to many independent sessions,
   // and only the specific session that submits should be cut off (see
   // consumeSessionAndGetClearHeaders).
   const sid = crypto.randomBytes(16).toString("hex");
-  const cookieValue = signSessionCookie({ grantId, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+  // The mode is decided once, here, by the grant that was actually redeemed,
+  // and sealed into the signed cookie. The submission handler then reads it
+  // without a second lookup, and cannot be talked out of it by the browser:
+  // forging it means forging the HMAC.
+  const mode = normalizeDeliveryMode(deliveryMode);
+  const cookieValue = signSessionCookie({ grantId, mode, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
     secure: ACCESS_GATE_COOKIE_SECURE
   });
@@ -552,7 +628,7 @@ async function handleAccessRedemption(req, res, rawToken) {
   }
 
   res.writeHead(302, {
-    "Set-Cookie": buildAccessSessionCookie(result.grantId),
+    "Set-Cookie": buildAccessSessionCookie(result.grantId, result.deliveryMode),
     Location: "/"
   });
   res.end();
@@ -610,7 +686,7 @@ async function handleCodeRedemption(req, res) {
     return;
   }
 
-  res.setHeader("Set-Cookie", buildAccessSessionCookie(result.grantId));
+  res.setHeader("Set-Cookie", buildAccessSessionCookie(result.grantId, result.deliveryMode));
   sendJson(res, 200, { ok: true });
 }
 

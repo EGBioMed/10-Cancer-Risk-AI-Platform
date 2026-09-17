@@ -17,6 +17,10 @@ services:
     envVars:
       - key: POWER_AUTOMATE_WEBHOOK_URL
         sync: false
+      - key: POWER_AUTOMATE_WEBHOOK_URL_PUBLIC
+        sync: false
+      - key: REPORT_TICKET_SECRET
+        sync: false
       - key: ACCESS_GATE_MODE
         sync: false
       - key: ACCESS_GATE_SESSION_SECRET
