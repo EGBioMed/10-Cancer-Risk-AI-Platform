@@ -92,19 +92,42 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 - **`prediction` 直接塞整包模型回應**，不挑欄位。資料庫那一欄是 JSON blob，形狀隨模型版本變動，整包存下來最不會漏。注意 `@{body('HTTP')}` **不要加引號**，加了會存成字串。
 - **`model_version` 是唯一需要你實地確認的。** 我沒有模型 API 的原始碼，不能從文件推斷欄位名——那正是 2026-09-08 事故的成因。做法見 3.4。
 
-### 3.4 確認 `/predict` 真正回什麼（必做）
+### 3.4 `/predict` 實際回傳什麼
 
-先讓流程 B 跑一次拿到真實回應：
+信件樣板本身就是證據——現有的 `power-automate-email-zh.html` 直接引用了這些欄位，所以它們一定存在：
 
-1. 流程 A 的執行紀錄裡隨便找一筆成功的執行
-2. 點開 `HTTP`（`/predict`）那個動作，看**「輸出」**的 body
-3. 把那段 JSON 貼出來
+| 欄位 | 用途 | 備註 |
+|---|---|---|
+| `risk_score` | 風險指數 | **0～1 的小數**，信件裡乘以 100 顯示成「61.6 / 100」 |
+| `risk_ratio_vs_healthy` | 與同齡健康者的倍數 | |
+| `recommendation_zh` | 個人化建議 | 付費內容，免費信不用 |
+| `cancer_risks_text` | 十大癌別排序（純文字） | 付費內容；免費信只取第一行 |
+| `cancer_risks_text_en` | 同上英文版 | 英文樣板用 `coalesce` 回退到中文版 |
 
-拿到之後就能補齊四個展示欄位（`risk_score` / `risk_band` / `top_cancer_id` / `top_cancer_label`），讓客服能直接查「我們到底跟這個人說了什麼」。
+**沒有看到 `model_version`。** 這是個問題：付費 PDF「不跨模型版本重新計算」的保證要靠它。
 
-**在補齊之前用 3.3 的最小版本就能運作**——那三個欄位是 API 唯一必填的，而完整回應已經進了 `prediction`，什麼都沒少。
+先做這件事確認：流程 A 的執行紀錄裡找一筆成功的執行 → 點開 `HTTP`（`/predict`）→ 看**「輸出」**的 body。樣板只用到它需要的欄位，回應裡可能還有別的。
 
-若 `/predict` 的回應**根本沒有版本欄位**，那本身是個該修的問題（付費 PDF 的「不跨模型版本重算」保證要靠它）。先回報，不要隨便填一個字串進去。
+- **若真的有版本欄位** → 用它，3.3 的運算式直接可用
+- **若確實沒有** → 暫時填一個標示來源與時間的字串，例如 `"model_version": "predict-api-2026-09"`，並**把「請模型 API 回傳版本號」列為待辦**。這是權宜之計，不是解法：它記錄的是「何時」而不是「哪一版模型」，模型改版而字串沒跟著改就失去保護作用
+
+⚠️ 若讓 `model_version` 空著，`/api/reports/result` 會回 400（該欄位必填），**流程 B 的儲存動作會直接失敗**。
+
+### 3.5 四個展示欄位（可稍後補）
+
+拿到真實回應後可以補上，讓客服能直接查「我們到底跟這個人說了什麼」：
+
+```json
+  "risk_score": @{mul(float(string(body('HTTP')['risk_score'])),100)},
+  "risk_band": "@{if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.5),'high',if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.25),'medium','low'))}",
+  "top_cancer_label": "@{first(split(coalesce(body('HTTP')?['cancer_risks_text'],''), decodeUriComponent('%0A')))}"
+```
+
+- **`risk_score` 乘以 100** 才存，與免費信顯示的數字一致（61.6 而非 0.616）。兩邊不一致的話，客服比對時會對不上
+- `risk_band` 的三段門檻（0.5 / 0.25）**照抄自現有信件樣板**，確保分級說法一致
+- `top_cancer_label` 取 `cancer_risks_text` 的第一行。**這一項務必用真實回應驗證**：若那段文字的第一行是標題而不是癌別名稱，取出來的就是錯的
+
+在補齊之前用 3.3 的最小版本就能運作——那三個欄位是 API 唯一必填的，而完整回應已經進了 `prediction`，什麼都沒少。
 
 ---
 
@@ -132,26 +155,39 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 
 ### 5.2 換信件內容
 
-**這一步目前卡住**：免費信樣板（中英各一）還沒做，那是實作順序的第 9 步。
+樣板已經做好，中英各一：
 
-兩種做法：
+```
+power-automate-email-free-zh.html
+power-automate-email-free-en.html
+```
 
-| 做法 | 說明 |
+把對應語言的**整份內容**貼進「傳送電子郵件 (V2)」的本文（HTML 檢視）。流程 A 原本就有中英分支，流程 B 沿用同一個判斷即可。
+
+與付費版的差異：
+
+| 區塊 | 免費信 |
 |---|---|
-| **先接著做第 9 步** | 我先產出樣板，你一次貼完，只跑一次驗證 |
-| **先放暫時內容** | 隨便放一行純文字把流程串通，之後再換樣板 |
+| 標題 | 「AI 癌症風險評估結果摘要」（**不是**「報告」——報告在付費那端，自稱報告會有問題） |
+| 風險指數、分級、與同齡者倍數 | 完整保留 |
+| 等級說明（低／中／高三段） | 完整保留 |
+| **模型驗證摘要** | **逐位元組與付費版相同**，一個數字都沒藏 |
+| 各癌別排序 | 只顯示第一名，其餘留給付費報告 |
+| 個人化建議 | 移除 |
+| 付款按鈕 | 新增 |
+| 免責聲明 | 完整保留 |
 
-建議第一種，來回比較少。
+### 5.3 付款連結裡的商品 ID
 
-### 5.3 付款連結（樣板做好後）
-
-按鈕的連結會長這樣，`report_ticket` 由平台簽章後隨送件一起送進來：
+樣板裡的連結長這樣：
 
 ```
-https://mdi.eg-bio.com/?add-to-cart=<商品ID>&egbio_ticket=@{triggerBody()?['report_ticket']}
+https://mdi.eg-bio.com/?add-to-cart=REPLACE_WITH_PRODUCT_ID&egbio_ticket=@{triggerBody()?['report_ticket']}
 ```
 
-商品 ID 要等 WooCommerce 那邊上架（第 12 步）才有。
+`REPLACE_WITH_PRODUCT_ID` 要等 WooCommerce 上架（第 12 步）才有值。**佔位符是刻意留得很顯眼的**，避免忘了換就上線。
+
+`report_ticket` 不用管，平台簽好章隨送件一起送進來。
 
 ---
 
@@ -195,11 +231,11 @@ npm run access:status -- --code egbiotest2026
 
 | 缺口 | 影響 | 何時補 |
 |---|---|---|
-| 免費信樣板未做 | 第 5.2 步卡住 | 實作順序第 9 步 |
+| `/predict` 疑似不回傳版本號 | `model_version` 只能填權宜字串，失去跨版本保護 | 見 3.4，需模型 API 端配合 |
 | `report_status` 更新端點未做 | 規格 7.2 第 8 步暫時跳過 | 不影響免費線運作，`report_status` 會停在 `pending` |
-| WooCommerce 商品未上架 | 付款連結沒有商品 ID | 第 12 步 |
+| WooCommerce 商品未上架 | 付款連結是佔位符，按了不會進結帳 | 第 12 步 |
 
-前兩項都不阻擋第 1～4 步。**第 3 步和第 4 步現在就能做。**
+**第 1～5 步現在全部都能做**，第 6 步的完整驗收要等商品上架後才能走完付款那一段——但「收到無附件的免費信」「流程 A 沒有新執行」「廠商代碼照常」這三項現在就驗得了，而那三項才是這一步真正要證明的事。
 
 ---
 
