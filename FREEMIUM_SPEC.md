@@ -360,44 +360,110 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 
 ---
 
-## 7. 元件 E:Power Automate 拆流
+## 7. 元件 E:Power Automate 三條獨立流程
 
-### 7.1 流程 A（現有流程,修改）
+**本節於 2026-09-17 改版。** 初版設計是在現有流程內加一個 `條件 - delivery_mode` 分支。改為三條彼此獨立的流程,理由見 7.4。
 
-| 步驟 | 變更 |
-|---|---|
-| 1-5 | 不變（觸發、剖析、Excel 保存、模型 API、剖析模型結果） |
-| **6（新增）** | `HTTP - 儲存模型結果` → `POST /api/reports/result` |
-| **7（新增）** | `條件 - delivery_mode` |
-| 7a `institution` | 原有步驟全部保留:Compose report_payload → Generate PDF → SharePoint → 取得檔案內容 → 寄信（含附件） |
-| 7b `public` | 寄免費信（**無附件**）,付款按鈕連結由 `report_ticket` 組成;更新 `report_status = free_sent` |
+### 7.0 三條流程的分工
 
-### 7.2 流程 B（新建:報告交付流程）
+| | 流程 | 由誰觸發 | 狀態 |
+|---|---|---|---|
+| **A** | 廠商推廣版（機構線） | 平台,`POWER_AUTOMATE_WEBHOOK_URL` | **現有流程,永不修改** |
+| **B** | 免費版 | 平台,`POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` | 由 A 複製後改寫 |
+| **C** | 報告交付 | 資料 API,驗票成功後 | 由 B 再複製後改寫 |
+
+### 7.1 流程 A(廠商推廣版)— 零修改
+
+保持現狀:剖析 → Excel 保存 → 模型 API → 產 PDF → 寄信（含附件）。
+
+**這條流程從此不再被動,連「儲存模型結果」那一步也不加。** 機構線的 PDF 隨信寄達,不需要事後重建,所以它不需要 `report_results` 的存檔。代價是機構線的評估結果不會進 `report_results`——已知且接受,那張表的用途是讓付費 PDF 與免費信一致,機構線沒有這個時間差。
+
+### 7.2 流程 B(免費版)— 由 A 複製
 
 | 步驟 | 內容 |
 |---|---|
-| 1 | HTTP Trigger（由資料 API 於驗票成功後呼叫） |
+| 1-4 | 沿用 A:觸發、剖析 JSON、執行指令碼（Excel）、`HTTP` → `/predict` |
+| **5（新增）** | `HTTP - 儲存模型結果` → `POST /api/reports/result` |
+| **6（改寫）** | 刪除 `HTTP 1`（`/generate_report`）與 SharePoint、取得檔案內容三步 |
+| **7（改寫）** | 寄免費信（**無附件**),付款按鈕由 `report_ticket` 組成 |
+| **8（新增）** | 更新 `report_status = free_sent` |
+
+### 7.3 流程 C(報告交付)— 由 B 再複製
+
+| 步驟 | 內容 |
+|---|---|
+| 1 | HTTP Trigger（由資料 API 於驗票成功後呼叫,只收 `record_id` 與收件資訊） |
 | 2 | `HTTP - 取得模型結果` → `GET /api/reports/result/{record_id}` |
-| 3 | `Compose - Report Payload`（與流程 A 相同的組裝邏輯） |
-| 4 | `HTTP - Generate PDF` |
+| 3 | 刪除剖析問卷、Excel 保存、`/predict` 三步——結果已存在,**不重跑模型** |
+| 4 | `HTTP 1` → `/generate_report`（保留 A 原本的運算式） |
 | 5 | `建立檔案 - SharePoint`,路徑維持 `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf` |
 | 6 | `取得檔案內容` |
 | 7 | `傳送電子郵件 (V2)`,含 PDF 附件 |
 | 8 | `HTTP - 更新報告狀態` → `delivered` |
 
-流程 B 的組裝與產檔步驟與流程 A 的 7a 相同,實作時應確認兩處使用同一份 report_payload 組裝邏輯,避免日後只改一邊。
+### 7.4 為何改成三條而不是一條加分支
 
-### 7.3 觸發 schema 重貼（必要）
+`PIPELINE_READ_FIRST.md` 記錄的兩次事故都指向同一件事:**flow 不在版本控制裡,而且 Power Automate 沒有草稿狀態——每一次儲存立刻對線上生效**。在現有流程內加分支,等於在服務付費客戶的流程上邊改邊上線,而且沒有「回到已知良好狀態」的機制。
 
-`contracts/power-automate/deployed-flow-trigger.schema.json` 需新增三個由伺服器注入的欄位:
+拆成三條之後:
+
+- **流程 A 再也不必被修改**,機構客戶的爆炸半徑降為零。這消掉了 9.2 原本列為全案最高的風險項
+- 流程 B 出任何問題,影響範圍僅限免費線
+- 回退動作是把 `POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` 清空或指回 A,不需要在流程編輯器裡逐步還原
+
+代價是**重複**:剖析、Excel 保存、`/predict` 的呼叫在 A 與 B 各有一份,`/generate_report` 在 A 與 C 各有一份。模型 API 的介面若變動,必須兩處都改。這是刻意付出的代價——重複會被下一次送件立刻發現,而改壞線上流程不會。
+
+`HTTP` 與 `HTTP 1` 兩個動作名稱極易混淆（檢查表已點名),新增的動作一律具名,例如 `HTTP - 儲存模型結果`。
+
+### 7.5 平台端依 `delivery_mode` 選擇 webhook
+
+`server.js:421` 目前只認一個 `POWER_AUTOMATE_WEBHOOK_URL`。改為:
+
+```js
+const webhookUrl = submission.delivery_mode === "public"
+  ? POWER_AUTOMATE_WEBHOOK_URL_PUBLIC
+  : POWER_AUTOMATE_WEBHOOK_URL;
+```
+
+未設定 `POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` 時,`public` 提交應回 503 並且**不寄任何信**,而非悄悄落回流程 A——落回 A 會讓免費使用者收到完整 PDF 附件。這是 fail-closed 的方向。
+
+由於在鑄出第一組 `public` 代碼之前不會有任何 `public` 提交,這個變數可以留到最後才設,不影響前面每一步的部署。
+
+### 7.6 觸發 schema:機構線的 payload 一個位元組都不能變
+
+`deployed-flow-trigger.schema.json` 的頂層是 **`additionalProperties: false`**（已實地確認)。這代表:
+
+> **只要多送一個欄位給流程 A,每一筆機構線送件都會被觸發程序拒絕**,錯誤即先前遇過的 `TriggerInputSchemaMismatch`。
+
+因此三個注入欄位 **只加進 `public` 的 payload**,機構線送出的物件與今天完全相同:
+
+```js
+// 只有 public 這一條加欄位;institution 的 payload 保持原狀
+if (deliveryMode === "public") {
+  submission.delivery_mode = deliveryMode;
+  submission.grant_id = sessionPayload.grantId;
+  submission.report_ticket = signReportTicket(recordId, REPORT_TICKET_SECRET);
+}
+```
+
+流程 A 因此**連觸發 schema 都不需要重貼**,這是「流程 A 零修改」的最後一塊。
+
+schema 檔案相應拆成兩份:
+
+| 檔案 | 對應流程 | 內容 |
+|---|---|---|
+| `deployed-flow-trigger.schema.json` | A | **不動**,維持現狀 |
+| `deployed-flow-trigger-public.schema.json`（新增） | B | 同上,額外三個欄位 |
 
 ```json
-"delivery_mode": { "type": "string", "enum": ["institution", "public"] },
-"report_ticket": { "type": ["string", "null"] },
+"delivery_mode": { "type": "string", "enum": ["public"] },
+"report_ticket": { "type": "string" },
 "grant_id": { "type": ["integer", "null"] }
 ```
 
-修改後必須**手動貼進 Power Automate 的 HTTP 觸發程序與 Parse JSON 兩個地方**（既有的手動同步流程）。
+`delivery_mode` 的 enum 在 B 只收 `public`:流程 B 若收到機構線的送件,那是路由錯誤,應該當場失敗而不是寄出一封不含 PDF 的信給付費客戶。
+
+`scripts/generate-power-automate-trigger-schema.js` 需改為產出兩份。新增的那份要貼進**流程 B** 的 HTTP 觸發程序與 Parse JSON 兩處。
 
 `contracts/power-automate/transitional-submission.schema.json`（伺服器對 `/api/submit` 的入站驗證）**不需修改**——這三個欄位是驗證通過後才注入的,前端從未送出。
 
@@ -448,17 +514,25 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 
 相較於「免費線完全不設閘門」的作法,本設計讓 `/api/submit` **維持在閘門之後**,風險明顯較低。
 
-### 9.2 IRB 文件需補件
+### 9.2 Power Automate 無版本控制、無自動測試（已大幅降低）
+
+flow 不在版本控制裡,而且 Power Automate **沒有草稿狀態——每一次儲存立刻對線上生效**。`PIPELINE_READ_FIRST.md` 記錄的兩次事故都源於此。程式碼有 100 餘項自動測試把關,這一層完全沒有。
+
+初版規格要在現有流程內加分支,等於在服務付費客戶的流程上邊改邊上線。改成三條獨立流程後（§7.4）,**流程 A 從此不再被編輯**,機構客戶的爆炸半徑降為零,本項從全案最高風險降為僅影響免費線。
+
+殘留風險:流程 B 與 C 仍是手工維護、無測試、無版控。對策是它們只服務免費線,且回退動作是清空一個環境變數。
+
+### 9.3 IRB 文件需補件
 
 現行 IRB 逐題審核文件描述的是「付費進場」的受試者來源。改以公開宣傳代碼免費招募,改變了受試者組成與招募方式,且免費線的資料同樣進入研究資料表。**知情同意內容本身不需修改**（現有三項同意已涵蓋資料使用）,但「受試者來源與招募方式」一節必須補件後,才可對外公布宣傳代碼。
 
 保留閘門對此有利:受試者仍須主動輸入一組代碼才能進入,招募路徑是可指認、可追溯、可隨時終止的,而非任何人經搜尋引擎即可進入填答。此點應寫入補件說明。
 
-### 9.3 付費客戶重新索取報告
+### 9.4 付費客戶重新索取報告
 
 PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可依 `record_id` 重寄。不建立匿名公開連結（維持 `REPORT_SPEC.md` 第 18.1 節的規定）。
 
-### 9.4 模型改版與已寄出的免費信
+### 9.5 模型改版與已寄出的免費信
 
 因 PDF 讀取 `report_results` 的存檔,模型改版不影響已寄出免費信的一致性。但 `report_template_version` 若改版,舊資料重新排版可能失敗——`prediction_json` 已保留原始 `model_version` 與 `report_template_version`,產檔前應比對,不相容時記錄錯誤而非寄出錯誤報告。
 
@@ -468,27 +542,40 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 
 建議依序進行,每一步皆可獨立驗證:
 
-| # | 工作 | 產出可驗證於 |
-|---|---|---|
-| 1 | `report_results` 表 + 兩個端點 + `REPORT_RESULT_API_KEY` | 資料 API 單元測試 |
-| 2 | 流程 A 新增步驟 6（存模型結果） | 實際提交後資料表有值 |
-| 3 | `lib/report-ticket.js` + 單元測試 | 平台測試套件 |
-| 4 | `grants.delivery_mode` 欄位 + 額度決策 + 鑄碼旗標 | 資料 API 單元測試;既有代碼行為不變 |
-| 5 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 注入 | 平台測試套件（含「客戶端偽造 delivery_mode 被覆寫」的測試） |
-| 6 | 免費信樣板 + 流程 A 條件分支 | 以測試用 public 代碼提交,收到無附件信件 |
-| 7 | 流程 B（交付流程） | 手動以測試 record_id 觸發 |
-| 8 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 |
-| 9 | WooCommerce 商品 + plugin 擴充 | 測試訂單（沿用先前不實際付款的測試方式） |
-| 10 | IRB 補件 | —— |
-| 11 | 鑄發正式宣傳代碼並對外公布 | —— |
+| # | 工作 | 產出可驗證於 | 狀態 |
+|---|---|---|---|
+| 1 | `report_results` 表 + 兩個端點 + `REPORT_RESULT_API_KEY` | 資料 API 單元測試 | ✅ `734df92` |
+| 2 | `lib/report-ticket.js` + 單元測試 | 平台測試套件 | ✅ `19f893e` |
+| 3 | `grants.delivery_mode` + `max_uses` 可為 NULL + 鑄碼旗標 | 資料 API 單元測試;既有代碼行為不變 | ✅ `734df92` |
+| 4 | 資料 API 部署至 Azure（Kudu）+ 跑 `create-schema.js` | 冒煙測試寫入／讀回 | ⬜ |
+| 5 | 複製流程 A 成流程 B;流程 A 自此凍結 | 流程 B 在編輯器中可見且已關閉 | ⬜ |
+| 6 | 兌換回傳 mode、寫入 cookie、`delivery_mode` 僅注入 public payload | 平台測試套件（含偽造 `delivery_mode` 被覆寫、機構 payload 逐欄不變兩項） | ⬜ |
+| 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | ⬜ |
+| 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | ⬜ |
+| 9 | 免費信樣板（中英各一） | 同上 | ⬜ |
+| 10 | 由流程 B 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | ⬜ |
+| 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ⬜ |
+| 12 | WooCommerce 商品 + plugin 擴充 | 測試訂單（沿用先前不實際付款的測試方式） | ⬜ |
+| 13 | IRB 補件 | —— | ⬜ |
+| 14 | 鑄發正式宣傳代碼並對外公布 | —— | ⬜ |
 
-**全程不需切換 `ACCESS_GATE_MODE`。** 第 4 步的新欄位預設為 `institution`,既有代碼行為不變;第 1 至 9 步都能在正式環境安全完成,因為在鑄出第一組 `public` 代碼之前,免費線根本沒有入口。第 11 步——公布代碼——才是真正的上線動作,而撤銷該代碼即可立即回退。
+三個「這個專案不會弄壞現況」的保證:
+
+1. **全程不需切換 `ACCESS_GATE_MODE`**,閘門維持 `enforced`。
+2. **流程 A 自第 5 步起凍結**,不再被編輯;機構線的 payload 也逐欄不變（§7.6）。
+3. **在第 14 步鑄出第一組 `public` 代碼之前,免費線沒有任何入口**,所以前 13 步都能在正式環境安全完成。
+
+回退動作依嚴重程度遞增:撤銷宣傳代碼 → 清空 `POWER_AUTOMATE_WEBHOOK_URL_PUBLIC`。兩者都不需要碰流程 A。
 
 ---
 
 ## 11. 驗收條件
 
 - [ ] 持機構代碼者進場、填答、送出後,收到含 PDF 附件的信,行為與現狀完全一致
+- [ ] **機構線送往流程 A 的 payload 與改版前逐欄相同**,不含 `delivery_mode`／`report_ticket`／`grant_id`（觸發 schema 是 `additionalProperties: false`,多一個欄位即全數被拒）
+- [ ] 流程 A 自始至終未被編輯（其觸發 schema、HTTP 動作運算式與改版前一致）
+- [ ] 流程 B 收到 `delivery_mode: "institution"` 的送件時失敗,而非寄出無附件的信
+- [ ] `POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` 未設定時,`public` 送件回 503 且不寄任何信,不落回流程 A
 - [ ] 既有的每一組機構代碼在加入 `delivery_mode` 欄位後行為不變（預設 `institution`）
 - [ ] 持公開宣傳代碼者進場、填答,送出後收到免費信:含分數、分級、完整驗證摘要、第一名癌別名稱
 - [ ] 未輸入任何代碼者仍無法進入問卷（閘門維持 `enforced`）
@@ -509,8 +596,9 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 變數 | 位置 | 用途 |
 |---|---|---|
 | `REPORT_TICKET_SECRET` | Render（平台）、Azure（資料 API） | 票券簽章,兩端必須相同 |
+| `POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` | Render（平台） | 流程 B（免費版）的觸發 URL。未設定時 `public` 送件回 503,**不落回流程 A**——落回會讓免費使用者收到完整 PDF |
 | `REPORT_RESULT_API_KEY` | Azure（資料 API）、Power Automate | 模型結果讀寫 |
-| `REPORT_DELIVERY_FLOW_URL` | Azure（資料 API） | 流程 B 的觸發 URL |
+| `REPORT_DELIVERY_FLOW_URL` | Azure（資料 API） | 流程 C（報告交付）的觸發 URL |
 | `EGBIO_REPORT_PRODUCT_ID` | WordPress | 完整報告商品 ID |
 
 **`REPORT_TICKET_SECRET` 必須同時宣告於 [`render.yaml`](render.yaml)（`sync: false`）與 Render dashboard,缺一不可。** 只設在 dashboard 而未宣告於 Blueprint 的變數,會在下一次 Blueprint 同步時被靜默清除——2026-09-09 的 `ACCESS_GATE_SESSION_SECRET` 即為此例,且變數消失的當下不會壞,要等下一次部署重啟才整站掛掉,兩者之間有時間差,難以歸因。詳見 `ACCESS_GATE.md` 的升級警告。
