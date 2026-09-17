@@ -154,3 +154,49 @@ test("both free templates are well nested", () => {
   assert.deepEqual(balance(FREE.zh), [], "zh free template has unclosed tags");
   assert.deepEqual(balance(FREE.en), [], "en free template has unclosed tags");
 });
+
+// 2026-09-17 decision: the API's final_risk_level is authoritative, and the
+// email must not compute a band of its own. Measurement showed the email's
+// own 0.25 / 0.50 thresholds sat above the model's ~0.40 / ~0.60, so four
+// profiles in eleven were told their risk was worse than the model judged
+// it -- while the same email's footer cited 0.40 as the model's threshold.
+//
+// Reading the label instead of recomputing it also means a change to the
+// model's thresholds reaches the email with no edit at all, which is the
+// maintenance burden this decision was meant to remove.
+const ALL_TEMPLATES = [
+  "power-automate-email-zh.html",
+  "power-automate-email-en.html",
+  "power-automate-email-free-zh.html",
+  "power-automate-email-free-en.html"
+];
+
+test("no email template decides a risk band from a hardcoded threshold", () => {
+  for (const name of ALL_TEMPLATES) {
+    const html = read(name);
+    assert.doesNotMatch(
+      html,
+      /greaterOrEquals\(float\(string\(body\('HTTP'\)\['risk_score'\]\)\),\s*0?\.\d+\)/,
+      `${name} still compares risk_score against a threshold of its own`
+    );
+    // The band and the conditional advice must both come from the API.
+    assert.match(html, /final_risk_level/, `${name} must read the API's band`);
+  }
+});
+
+test("both languages map the API's band from the same Chinese labels", () => {
+  // Only risk_level_display is localised; final_risk_level stays Chinese
+  // whatever lang is sent, so matching on it is what keeps the two
+  // templates in agreement about which band a reader is in.
+  for (const name of ALL_TEMPLATES) {
+    const html = read(name);
+    for (const label of ["高風險", "中度風險", "低風險"]) {
+      assert.match(html, new RegExp(`final_risk_level'\],'${label}'`), `${name} must handle ${label}`);
+    }
+  }
+
+  // An unrecognised band must surface, not silently fall into the lowest
+  // one: a new level added upstream should look wrong, not look safe.
+  assert.match(read("power-automate-email-zh.html"), /,body\('HTTP'\)\?\['final_risk_level'\]\)\)\)\}/);
+  assert.match(read("power-automate-email-en.html"), /,body\('HTTP'\)\?\['risk_level_display'\]\)\)\)\}/);
+});
