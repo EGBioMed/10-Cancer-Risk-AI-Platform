@@ -72,9 +72,15 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 | 欄位 | 值 |
 |---|---|
 | 方法 | `POST` |
-| URI | `https://egbiomed-ai-data-api.azurewebsites.net/api/reports/result` |
+| URI | `<資料 API 網址>/api/reports/result` ← 見下方 ⚠️ |
 | 標頭 1 | `Content-Type` : `application/json` |
 | 標頭 2 | `x-egbiomed-report-result-key` : （你設在 Azure 的 `REPORT_RESULT_API_KEY`） |
+
+> ⚠️ **不要從 App Service 的名稱推斷網址。** Azure 的預設網域通常帶一段後綴（`egbiomed-ai-data-api-<suffix>.azurewebsites.net`，見 [`ACCESS_GATE.md`](ACCESS_GATE.md) 的環境變數表），而 Kudu 儀表板上顯示的是**應用程式名稱**，不是主機名稱。照名稱拼出來的網址會解析失敗，流程回報 `UnresolvableHostName`（2026-09-17 實際踩過）。
+>
+> 正確的值直接取自 Render 的 **`AZURE_ACCESS_GATE_API_BASE_URL`** —— 閘門每天都在用它，確定可通。
+>
+> 這個錯誤沒有更早被發現，是因為第 4 步的冒煙測試是在容器內用 `localhost:$PORT` 跑的，從來沒有走過對外主機名稱。
 
 ### 3.3 本文
 
