@@ -76,58 +76,71 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 | 標頭 1 | `Content-Type` : `application/json` |
 | 標頭 2 | `x-egbiomed-report-result-key` : （你設在 Azure 的 `REPORT_RESULT_API_KEY`） |
 
-### 3.3 本文（先用最小版本）
+### 3.3 本文
+
+每一個欄位都有實測依據（見 3.4），直接用這份：
 
 ```json
 {
   "record_id": "@{body('剖析_JSON')?['contact_row']?['record_id']}",
-  "model_version": "@{body('HTTP')?['model_version']}",
+  "model_version": "rules-@{body('HTTP')?['rule_engine_version']}/features-@{triggerBody()?['feature_schema_version']}",
+  "risk_score": @{body('HTTP')?['risk_score_pct']},
+  "risk_band": "@{body('HTTP')?['final_risk_level']}",
+  "top_cancer_label": "@{first(body('HTTP')?['cancer_risks'])?['cancer']}",
   "prediction": @{body('HTTP')}
 }
 ```
 
-三件事說明：
+逐欄說明：
 
-- **`record_id` 這個運算式是確定的。** `contact_row.record_id` 由平台在覆寫過 `record_id` 之後才組出來，所以它就是那筆評估的正式 UUID（`server.js` 的 `buildContactRow`）。`ai_api_feature_row` 與 `excel_row` 裡的也是同一個值，任選其一都行。
-- **`prediction` 直接塞整包模型回應**，不挑欄位。資料庫那一欄是 JSON blob，形狀隨模型版本變動，整包存下來最不會漏。注意 `@{body('HTTP')}` **不要加引號**，加了會存成字串。
-- **`model_version` 是唯一需要你實地確認的。** 我沒有模型 API 的原始碼，不能從文件推斷欄位名——那正是 2026-09-08 事故的成因。做法見 3.4。
+- **`record_id`** — `contact_row.record_id` 由平台在覆寫過 `record_id` 之後才組出來，所以它就是那筆評估的正式 UUID（`server.js` 的 `buildContactRow`）。實測確認格式如 `327385fd-423b-4e23-a936-e46bcca1962e`。`ai_api_feature_row` 與 `excel_row` 裡是同一個值。
+- **`model_version`** — 複合值，誠實記錄「規則層版本」與「特徵合約版本」這兩個真的拿得到的東西。不寫成單一 `v19.12`，因為那是規則層版本，會讓人誤以為是模型版本。等模型 API 回傳真正的版本號後再簡化（見 3.4）。
+- **`risk_score`** — 用 `risk_score_pct`（`55.6`），**不要**用 `risk_score`（`0.556`）。存的必須是使用者在信裡看到的那個數字，否則客服比對時會對不上。**這一行不加引號**（是數字）。
+- **`risk_band`** — 見 3.4 末尾的已知不一致，那一項要先決定。
+- **`top_cancer_label`** — 從結構化陣列取第一筆，**不必解析文字**。
+- **`prediction`** — 整包回應原樣存入，不挑欄位。資料庫那一欄是 JSON blob，形狀隨模型版本變動，整包存下來最不會漏。**這一行不加引號**（是物件）；加了會存成字串。
 
-### 3.4 `/predict` 實際回傳什麼
+### 3.4 `/predict` 實際回傳什麼（2026-09-17 實測）
 
-信件樣板本身就是證據——現有的 `power-automate-email-zh.html` 直接引用了這些欄位，所以它們一定存在：
+實測方式：以**合成資料**（無任何真人資訊）直接 `POST https://cancer-risk-api.onrender.com/predict`。流程的執行紀錄開了「安全輸出」，看不到回應——那是 `REPORT_SPEC.md` 第 17 節要求的設定，**不要為了查看而把它關掉**。
 
-| 欄位 | 用途 | 備註 |
-|---|---|---|
-| `risk_score` | 風險指數 | **0～1 的小數**，信件裡乘以 100 顯示成「61.6 / 100」 |
-| `risk_ratio_vs_healthy` | 與同齡健康者的倍數 | |
-| `recommendation_zh` | 個人化建議 | 付費內容，免費信不用 |
-| `cancer_risks_text` | 十大癌別排序（純文字） | 付費內容；免費信只取第一行 |
-| `cancer_risks_text_en` | 同上英文版 | 英文樣板用 `coalesce` 回退到中文版 |
+回應頂層欄位：
 
-**沒有看到 `model_version`。** 這是個問題：付費 PDF「不跨模型版本重新計算」的保證要靠它。
+| 欄位 | 型別 | 範例 | 用途 |
+|---|---|---|---|
+| `risk_score` | number | `0.556` | 0～1 |
+| `risk_score_pct` | number | `55.6` | **已是 ×100 形式，直接用，不必再乘** |
+| `risk_level` / `risk_label_zh` / `risk_level_display` / `model_risk_level` / `final_risk_level` | string | `中度風險` | 分級（五個欄位同值） |
+| `risk_ratio_vs_healthy` | number | `5.5` | 與同齡健康者的倍數 |
+| `cancer_risks` | **array** | 見下 | **已依 pct 由高到低排序的結構化陣列** |
+| `cancer_risks_text` | string | `🟤 大腸直腸癌：41.8 / 100…` | 信件用的預先排版文字（含 `<br>`） |
+| `recommendation_zh` / `risk_factors_zh` / `all_risk_factors_zh` / `disclaimer_zh` | string | | 信件各段落 |
+| `rule_hard_rule_hits` | array | `[]` | 規則命中（付費內容） |
+| `rule_detail` / `rule_report_text` / `rule_bonus_score` | | | 同上 |
+| `rule_engine_version` | string | `v19.12` | **規則層**版本 |
 
-先做這件事確認：流程 A 的執行紀錄裡找一筆成功的執行 → 點開 `HTTP`（`/predict`）→ 看**「輸出」**的 body。樣板只用到它需要的欄位，回應裡可能還有別的。
+`cancer_risks` 每個元素：`{cancer, pct, ratio, level, level_display, reliable, n, factors}`。
 
-- **若真的有版本欄位** → 用它，3.3 的運算式直接可用
-- **若確實沒有** → 暫時填一個標示來源與時間的字串，例如 `"model_version": "predict-api-2026-09"`，並**把「請模型 API 回傳版本號」列為待辦**。這是權宜之計，不是解法：它記錄的是「何時」而不是「哪一版模型」，模型改版而字串沒跟著改就失去保護作用
+**因此第一名癌別不需要解析文字**，直接 `first(body('HTTP')?['cancer_risks'])?['cancer']`。
 
-⚠️ 若讓 `model_version` 空著，`/api/reports/result` 會回 400（該欄位必填），**流程 B 的儲存動作會直接失敗**。
+#### 沒有模型版本欄位
 
-### 3.5 四個展示欄位（可稍後補）
+回應裡唯一的版本是 `rule_engine_version`，那是**規則層**的版本，不是模型權重的版本。模型重新訓練而規則層沒動時，這個字串不會變。
 
-拿到真實回應後可以補上，讓客服能直接查「我們到底跟這個人說了什麼」：
+待辦：請模型 API 端加上真正的模型版本。在那之前，`model_version` 存一個由管線自己產生的複合值（見 3.3），比人手打字串好——至少它會隨合約或規則改版而變。
 
-```json
-  "risk_score": @{mul(float(string(body('HTTP')['risk_score'])),100)},
-  "risk_band": "@{if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.5),'high',if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.25),'medium','low'))}",
-  "top_cancer_label": "@{first(split(coalesce(body('HTTP')?['cancer_risks_text'],''), decodeUriComponent('%0A')))}"
-```
+#### ⚠️ 已知不一致：信件的分級與 API 的分級不同
 
-- **`risk_score` 乘以 100** 才存，與免費信顯示的數字一致（61.6 而非 0.616）。兩邊不一致的話，客服比對時會對不上
-- `risk_band` 的三段門檻（0.5 / 0.25）**照抄自現有信件樣板**，確保分級說法一致
-- `top_cancer_label` 取 `cancer_risks_text` 的第一行。**這一項務必用真實回應驗證**：若那段文字的第一行是標題而不是癌別名稱，取出來的就是錯的
+信件樣板**沒有**使用 API 的 `final_risk_level`，而是自己拿 `risk_score` 比 `0.5` / `0.25` 兩個門檻算出「較高／中度／低相對風險」。
 
-在補齊之前用 3.3 的最小版本就能運作——那三個欄位是 API 唯一必填的，而完整回應已經進了 `prediction`，什麼都沒少。
+實測 `risk_score = 0.556` 時：
+
+| 來源 | 說法 |
+|---|---|
+| 信件樣板自算 | **較高**相對風險 |
+| API `final_risk_level` | **中度**風險 |
+
+這是現行線上就存在的落差，與免費版無關。但它直接威脅免費版的核心保證（免費信與付費 PDF 必須一致），**應在免費線上線前決定以哪一邊為準**。在決定之前，`risk_band` 存 API 的 `final_risk_level`（那是模型端的權威值），並在比對時留意這個差異。
 
 ---
 
@@ -228,7 +241,8 @@ npm run access:status -- --code egbiotest2026
 
 | 缺口 | 影響 | 何時補 |
 |---|---|---|
-| `/predict` 疑似不回傳版本號 | `model_version` 只能填權宜字串，失去跨版本保護 | 見 3.4，需模型 API 端配合 |
+| `/predict` 不回傳模型版本（實測確認） | `model_version` 只能存規則層＋特徵合約的複合值 | 需模型 API 端配合，見 3.4 |
+| **信件分級與 API 分級不一致** | 同一筆評估，信說「較高」、API 說「中度」 | **免費線上線前必須決定以哪一邊為準**，見 3.4 |
 | `report_status` 更新端點未做 | 規格 7.2 第 8 步暫時跳過 | 不影響免費線運作，`report_status` 會停在 `pending` |
 | WooCommerce 商品未上架 | 付款連結是佔位符，按了不會進結帳 | 第 12 步 |
 
