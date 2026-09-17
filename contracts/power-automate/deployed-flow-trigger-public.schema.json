@@ -1,0 +1,340 @@
+{
+  "title": "EG BioMed deployed Power Automate Flow trigger, free line (adapted shape)",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "enum": [
+        "assessment-submission/1.0.0"
+      ]
+    },
+    "questionnaire_version": {
+      "type": "string",
+      "enum": [
+        "questionnaire/2026-09-08-v19.9-phase1"
+      ]
+    },
+    "consent_version": {
+      "type": "string"
+    },
+    "feature_schema_version": {
+      "type": "string"
+    },
+    "mapping_version": {
+      "type": "string",
+      "enum": [
+        "answer-to-feature/1.0.0"
+      ]
+    },
+    "vnext_feature_schema_version": {
+      "type": "string"
+    },
+    "vnext_mapping_version": {
+      "type": "string"
+    },
+    "rule_input_schema_version": {
+      "type": "string",
+      "enum": [
+        "high-risk-rules/19.5"
+      ]
+    },
+    "rule_input_mapping_version": {
+      "type": "string",
+      "enum": [
+        "rule-input-mapping/19.5-phase1"
+      ]
+    },
+    "report_template_version": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "full_name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100
+    },
+    "email": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    },
+    "report_language": {
+      "type": "string"
+    },
+    "rows": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": {
+        "type": "object",
+        "properties": {
+          "submitted_at": {
+            "type": "string"
+          },
+          "question_id": {
+            "type": "string"
+          },
+          "question_text": {
+            "type": "string"
+          },
+          "answer": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "submitted_at",
+          "question_id",
+          "question_text",
+          "answer"
+        ]
+      }
+    },
+    "optimized_feature_columns": {
+      "type": "array",
+      "minItems": 71,
+      "maxItems": 71,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "optimized_feature_row": {
+      "type": "object"
+    },
+    "ai_api_feature_row": {
+      "type": "object",
+      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-08 this is model-features/1.0.0 plus two non-model fields: country, which selects the report's population baseline and screening-guidance source, and symptoms, which is the sole input to the literature high-risk rule layer. Neither is used when scoring the model. Placing both here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
+      "properties": {
+        "symptoms": {
+          "type": "object",
+          "description": "Maps to SurveyInput.symptoms on the AI API. Built by api-symptoms.js from symptom_feature_row plus the rule-layer subset of rule_input_row, with questionnaire option codes translated to the rule layer's binary semantics, the rule layer's parent concept fields derived, and null/not-applicable fields omitted entirely rather than sent as 0. Added 2026-09-08 to close three gaps: rule_input_row's 30 columns never reached the API, option codes were never translated, and the parent concept fields were computed in app.js but never emitted. Note that the deployed flow's HTTP action was separately injecting a symptoms object of its own, sourced from the raw symptom_feature_row; that layer was removed on 2026-09-16 so that this object is the single input to the rule layer. See PIPELINE_READ_FIRST.md before changing this path -- the flow is not in version control and has diverged from its audit document before.",
+          "additionalProperties": {
+            "type": [
+              "integer",
+              "number",
+              "string",
+              "null"
+            ]
+          }
+        },
+        "country": {
+          "type": "string",
+          "enum": [
+            "TW",
+            "US",
+            "CA"
+          ],
+          "description": "TW is the value sent for every questionnaire option other than 美國 (US) and 加拿大 (CA) -- that is 臺灣, 香港, 中國, 日本 and 馬來西亞 -- and for an unanswered question. The report then falls back to the Taiwan (HPA) baseline and says so inline, because the backend holds population baselines for the United States and Canada only."
+        }
+      },
+      "x-country-required-from": "Deliberately not in this object's required list yet: a browser holding a cached copy of the previous app.js would otherwise have its submission rejected outright, whereas omitting country only makes the backend fall back to the Taiwan baseline. Promote it to required once the deployed frontend has rolled out."
+    },
+    "symptom_feature_columns": {
+      "type": "array",
+      "minItems": 84,
+      "maxItems": 84,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "symptom_feature_row": {
+      "type": "object"
+    },
+    "symptom_answers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "category_id": {
+            "type": "string"
+          },
+          "category_zh": {
+            "type": "string"
+          },
+          "category_en": {
+            "type": "string"
+          },
+          "answer_status": {
+            "type": "string"
+          },
+          "selected_symptoms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "category_id",
+          "category_zh",
+          "category_en",
+          "answer_status",
+          "selected_symptoms"
+        ]
+      }
+    },
+    "vnext_feature_columns": {
+      "type": "array",
+      "minItems": 33,
+      "maxItems": 33,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "vnext_feature_row": {
+      "type": "object"
+    },
+    "vnext_feature_metadata": {
+      "type": "object"
+    },
+    "research_feature_columns": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "research_feature_row": {
+      "type": "object"
+    },
+    "rule_input_columns": {
+      "type": "array",
+      "minItems": 30,
+      "maxItems": 30,
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "rule_input_row": {
+      "type": "object",
+      "additionalProperties": {
+        "type": [
+          "integer",
+          "number",
+          "null"
+        ]
+      }
+    },
+    "excel_row": {
+      "type": "object"
+    },
+    "contact_row": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "full_name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "email": {
+          "type": "string"
+        },
+        "submitted_at": {
+          "type": "string"
+        },
+        "language": {
+          "type": "string"
+        },
+        "report_language": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "record_id",
+        "full_name",
+        "email",
+        "submitted_at",
+        "language",
+        "report_language"
+      ]
+    },
+    "data_quality": {
+      "type": "object",
+      "properties": {
+        "missing_columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contradiction_warnings": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "missing_columns",
+        "contradiction_warnings"
+      ]
+    },
+    "delivery_mode": {
+      "type": "string",
+      "enum": [
+        "public"
+      ]
+    },
+    "report_ticket": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "grant_id": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "questionnaire_version",
+    "consent_version",
+    "feature_schema_version",
+    "mapping_version",
+    "vnext_feature_schema_version",
+    "vnext_mapping_version",
+    "rule_input_schema_version",
+    "rule_input_mapping_version",
+    "report_template_version",
+    "submitted_at",
+    "full_name",
+    "email",
+    "language",
+    "report_language",
+    "rows",
+    "optimized_feature_columns",
+    "optimized_feature_row",
+    "ai_api_feature_row",
+    "symptom_feature_columns",
+    "symptom_feature_row",
+    "symptom_answers",
+    "vnext_feature_columns",
+    "vnext_feature_row",
+    "vnext_feature_metadata",
+    "research_feature_columns",
+    "research_feature_row",
+    "rule_input_columns",
+    "rule_input_row",
+    "excel_row",
+    "contact_row",
+    "data_quality",
+    "delivery_mode",
+    "report_ticket",
+    "grant_id"
+  ]
+}

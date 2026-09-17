@@ -473,3 +473,51 @@ test("accepts a stable coded answer independently of display language", () => {
   };
   assert.deepEqual(validateTransitionalSubmission(submission), []);
 });
+
+// Flow B has its own trigger schema, and the institution one must stay
+// exactly as it is: it is additionalProperties:false and already pasted into
+// the Flow that serves every paying vendor, so any change to it would force
+// a re-paste -- an edit on the one Flow this design promises never to edit.
+test("the free line's trigger schema adds three fields and the institution one adds none", () => {
+  const dir = path.join(__dirname, "contracts", "power-automate");
+  const institutionPath = path.join(dir, "deployed-flow-trigger.schema.json");
+  const publicPath = path.join(dir, "deployed-flow-trigger-public.schema.json");
+
+  const institutionBefore = fs.readFileSync(institutionPath, "utf8");
+  const publicBefore = fs.readFileSync(publicPath, "utf8");
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "generate-power-automate-trigger-schema.js")], {
+    cwd: __dirname,
+    stdio: "pipe"
+  });
+  assert.equal(
+    fs.readFileSync(publicPath, "utf8"),
+    publicBefore,
+    "Run npm run generate:power-automate-trigger-schema, then paste its new content into Flow B's two actions."
+  );
+  assert.equal(fs.readFileSync(institutionPath, "utf8"), institutionBefore);
+
+  const institution = JSON.parse(institutionBefore);
+  const free = JSON.parse(publicBefore);
+  const extra = ["delivery_mode", "report_ticket", "grant_id"];
+
+  // The institution Flow must never be shown these fields, because
+  // server.js never sends them on that line.
+  for (const field of extra) {
+    assert.equal(field in institution.properties, false, `${field} must not reach the institution Flow`);
+    assert.equal(institution.required.includes(field), false);
+    assert.equal(field in free.properties, true, `${field} must reach the free Flow`);
+    assert.equal(free.required.includes(field), true, `${field} must be required on the free line`);
+  }
+
+  // Everything they share has to stay shared: the free schema is built by
+  // copying the institution one, so a drift here means the generator stopped
+  // deriving it and started duplicating it.
+  for (const [key, value] of Object.entries(institution.properties)) {
+    assert.deepEqual(free.properties[key], value, `${key} drifted between the two trigger schemas`);
+  }
+
+  // An institution submission reaching Flow B is a routing bug and must fail
+  // at the trigger, not send a paying customer an email with no report.
+  assert.deepEqual(free.properties.delivery_mode.enum, ["public"]);
+  assert.equal(free.additionalProperties, false);
+});

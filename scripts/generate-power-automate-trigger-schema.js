@@ -8,6 +8,34 @@ const {
 const root = path.resolve(__dirname, "..");
 const sourcePath = path.join(root, "contracts", "power-automate", "transitional-submission.schema.json");
 const outputPath = path.join(root, "contracts", "power-automate", "deployed-flow-trigger.schema.json");
+// The free line runs in its own Flow, so it gets its own trigger schema.
+// Two files rather than one shared one is what lets the institution Flow
+// stay frozen: its schema is additionalProperties:false, so adding these
+// three fields to the schema it already has pasted in would mean re-pasting
+// it -- and a re-paste is an edit, on the Flow serving every paying vendor.
+// See FREEMIUM_SPEC.md section 7.6.
+const publicOutputPath = path.join(root, "contracts", "power-automate", "deployed-flow-trigger-public.schema.json");
+
+// Added by server.js to a public submission only, after contract validation.
+// The institution payload never carries them, which is why they are absent
+// from the file above rather than merely optional in it.
+const PUBLIC_ONLY_FIELDS = {
+  delivery_mode: {
+    // Only "public": a Flow B run holding an institution submission is a
+    // routing bug, and should fail at the trigger rather than send a paying
+    // customer an email with no report attached.
+    type: "string",
+    enum: ["public"]
+  },
+  report_ticket: {
+    // Null when REPORT_TICKET_SECRET is unset -- the free email then has no
+    // payment link, which is visibly broken rather than quietly forgeable.
+    type: ["string", "null"]
+  },
+  grant_id: {
+    type: ["integer", "null"]
+  }
+};
 
 // The deployed Power Automate Flow's HTTP trigger and Parse JSON actions do
 // NOT accept the full transitional-submission.schema.json shape. Every
@@ -51,3 +79,18 @@ schema.title = "EG BioMed deployed Power Automate Flow trigger (adapted shape)";
 
 fs.writeFileSync(outputPath, `${JSON.stringify(schema, null, 2)}\n`);
 console.log(`Wrote ${outputPath}`);
+
+// Flow B's schema: the institution one plus the three fields the platform
+// injects for the free line. Built by copying the finished institution
+// schema rather than by re-deriving it, so the two can never drift in the
+// parts they share -- whatever changes above lands in both.
+const publicSchema = JSON.parse(JSON.stringify(schema));
+publicSchema.title = "EG BioMed deployed Power Automate Flow trigger, free line (adapted shape)";
+Object.assign(publicSchema.properties, JSON.parse(JSON.stringify(PUBLIC_ONLY_FIELDS)));
+// Required, not optional: a payload without delivery_mode is not a free-line
+// submission, and Flow B should refuse it at the trigger instead of running
+// the free-email path over whatever it was handed.
+publicSchema.required = [...schema.required, ...Object.keys(PUBLIC_ONLY_FIELDS)];
+
+fs.writeFileSync(publicOutputPath, `${JSON.stringify(publicSchema, null, 2)}\n`);
+console.log(`Wrote ${publicOutputPath}`);
