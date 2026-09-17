@@ -3,8 +3,8 @@
     <div style="background:#ffffff;border:1px solid #d9e6e2;border-radius:18px;overflow:hidden;">
       <div style="padding:28px 32px;background:#0f766e;color:#ffffff;">
         <div style="font-size:14px;letter-spacing:.04em;opacity:.9;">EG BioMed 愛立基生醫</div>
-        <h1 style="margin:10px 0 6px;font-size:26px;line-height:1.35;">AI 癌症風險評估結果摘要</h1>
-        <p style="margin:0;font-size:15px;line-height:1.7;color:#e5f4f1;">以下是您本次評估的結果摘要。完整報告包含十大癌症的完整排序、風險規則說明與個人化篩檢建議。</p>
+        <h1 style="margin:10px 0 6px;font-size:26px;line-height:1.35;">AI 十大癌症健康風險因子整理報告</h1>
+        <p style="margin:0;font-size:15px;line-height:1.7;color:#e5f4f1;">本報告依據您自行填寫的健康資訊，提供癌症相關風險因子的個人化整理與健康教育資訊。</p>
       </div>
 
       <div style="padding:30px 32px;">
@@ -22,6 +22,12 @@
           <p style="margin:12px 0 0;padding:10px 14px;background:#eef7f5;border-radius:10px;font-size:15px;font-weight:700;color:#0f766e;">相較同年齡層健康者，您的整體癌症相對風險為 @{body('HTTP')['risk_ratio_vs_healthy']} 倍</p>
         </div>
 
+        <div style="border-left:5px solid #0f766e;background:#eef7f5;border-radius:12px;padding:18px 20px;margin-bottom:26px;">
+          <div style="font-size:14px;color:#0f766e;font-weight:700;margin-bottom:6px;">這次整理結果代表什麼？</div>
+          <p style="margin:0;font-size:16px;line-height:1.8;color:#172322;">@{body('HTTP')['recommendation_zh']}</p>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.8;color:#40514f;">@{if(greaterOrEquals(float(string(body('HTTP')['risk_score'])),0.5),'您的資料中有較多癌症相關風險因子值得進一步了解。建議優先檢視下方各癌種的相對關注順序，並將生活型態、家族史與既往病史帶入後續健康諮詢。','目前填答資料未呈現明顯較高的整體風險因子組合。建議維持適合自己的健康生活型態，並依年齡、病史及一般健康管理需求持續追蹤。')}</p>
+        </div>
+
         <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">整體相對風險因子等級怎麼看？</h2>
         <div style="display:block;margin-bottom:10px;padding:16px 18px;border:1px solid #dce8e5;border-radius:14px;background:#ffffff;">
           <div style="font-weight:800;color:#177245;margin-bottom:5px;">低相對風險</div>
@@ -36,102 +42,28 @@
           <div style="font-size:14px;line-height:1.7;color:#53625f;">代表目前填答資料中有較多癌症相關風險因子值得進一步了解。建議可與醫師討論個人健康背景、生活型態與是否需要依標準醫療流程進行健康檢查。</div>
         </div>
 
-        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">最值得您留意的癌別</h2>
+        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">各癌種風險因子參考</h2>
         <div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:26px;">
-          <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">依據您提供的資料，下列癌別在本次整理中的相對關注順序最前面。</p>
-          <div style="font-size:18px;font-weight:800;line-height:1.7;color:#12312d;">@{first(split(coalesce(body('HTTP')?['cancer_risks_text'],''), decodeUriComponent('%0A')))}</div>
-          <p style="margin:12px 0 0;font-size:13px;line-height:1.7;color:#6b7976;">排序較前面不代表已經罹病，也不代表其他癌別可以忽略。完整的十大癌別排序與各項說明收錄於完整報告。</p>
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">以下依據您提供的資料，整理各癌種相關風險因子的相對關注順序，協助您掌握較值得留意的健康面向。</p>
+          <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">若整體相對指標為中度或以下，請將此段視為輔助健康教育資訊，不需要因單一癌種排序較前面而過度擔心。</p>
+          <div style="white-space:pre-line;font-size:15px;line-height:1.85;color:#243331;">@{body('HTTP')['cancer_risks_text']}</div>
+        </div>
+
+        <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">可與醫師討論的健康管理方向</h2>
+        <div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;padding:18px 20px;margin-bottom:26px;">
+          <p style="margin:0;font-size:14px;line-height:1.8;color:#5f6f6b;">您可以從生活型態、家族史、既往病史與目前健康管理需求開始整理問題，並將本報告帶給醫師作為討論參考。醫師可依您的年齡與完整健康背景，提供適合的追蹤或檢查建議。</p>
         </div>
 
         <div style="border:2px solid #0f766e;border-radius:16px;background:#f9fcfb;padding:24px;margin-bottom:26px;">
-          <div style="font-size:18px;font-weight:800;color:#12312d;margin-bottom:10px;">取得完整評估報告</div>
-          <p style="margin:0 0 8px;font-size:15px;line-height:1.8;color:#40514f;">完整報告（PDF）包含以上摘要未涵蓋的內容：</p>
+          <div style="font-size:18px;font-weight:800;color:#12312d;margin-bottom:10px;">取得完整 PDF 報告</div>
+          <p style="margin:0 0 8px;font-size:15px;line-height:1.8;color:#40514f;">完整報告是一份可下載、可列印、可直接帶給醫師的 PDF，並額外包含：</p>
           <ul style="margin:0 0 18px;padding-left:22px;font-size:15px;line-height:1.9;color:#40514f;">
-            <li>十大癌症的完整相對關注排序與各別指數</li>
-            <li>本次評估觸發的高風險規則與依據說明</li>
+            <li>本次評估觸發的高風險規則，以及每一條的判定依據</li>
             <li>依您的年齡、家族史與居住地區整理的篩檢建議</li>
+            <li>模型研究與驗證資料的完整說明</li>
           </ul>
           <a href="https://mdi.eg-bio.com/?add-to-cart=REPLACE_WITH_PRODUCT_ID&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">取得完整報告</a>
           <p style="margin:14px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">此連結僅對應您本次的評估結果，請勿轉寄他人。連結有效期限為 30 天。</p>
-        </div>
-
-<div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;padding:18px 20px;margin-bottom:26px;">
-          <div style="font-size:14px;color:#0f766e;font-weight:800;margin-bottom:6px;">模型研究與驗證摘要</div>
-          <p style="margin:0 0 14px;font-size:13px;line-height:1.7;color:#53625f;">以下為 Pan-Cancer 整體風險模型於獨立測試資料進行 100 次分層 80/20 切分的平均驗證結果。</p>
-
-          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
-            <tr>
-              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">0.875 ± 0.032</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">ROC-AUC</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">研究資料中的風險排序與區分能力</div>
-                </div>
-              </td>
-
-              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">91.2%</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">敏感度</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">既定研究設定下降低遺漏個案的能力</div>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">66.0%</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">特異度</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">辨識健康對照的能力</div>
-                </div>
-              </td>
-              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">80.3%</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">準確率</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">測試資料中的整體分類表現</div>
-                </div>
-              </td>
-            </tr>
-            <tr>
-              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">78.1%</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">PPV（陽性預測值）</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">模型判為陽性者中，實際為陽性的比例</div>
-                </div>
-              </td>
-              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
-                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-                  <div style="font-size:22px;font-weight:800;color:#12312d;">85.3%</div>
-                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">NPV（陰性預測值）</div>
-                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">模型判為陰性者中，實際為陰性的比例</div>
-                </div>
-              </td>
-            </tr>
-          </table>
-
-          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
-            <div style="font-size:20px;font-weight:800;color:#12312d;">543 筆獨立測試資料</div>
-            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">包含 308 筆陽性資料與 235 筆陰性資料</div>
-          </div>
-
-          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
-            <div style="font-size:20px;font-weight:800;color:#12312d;">100 次獨立分層驗證</div>
-            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">每次採用 80/20 資料切分，呈現平均驗證效能</div>
-          </div>
-
-          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
-            <div style="font-size:20px;font-weight:800;color:#12312d;">11 個隨機森林模型</div>
-            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">包含 1 個 Pan-Cancer 整體風險模型與 10 個癌別 One-vs-Rest 模型</div>
-          </div>
-
-          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
-            <div style="font-size:15px;font-weight:800;color:#12312d;">37 項 AI 健康評估・48 個工程特徵・SMOTE 校正</div>
-            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">將填答內容轉換為結構化資訊，並處理模型資料的類別不平衡</div>
-          </div>
-
-          <p style="margin:12px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">以上為內部研究資料在 Pan-Cancer 判定閾值 0.40 下的平均驗證表現，用於說明模型研究與開發基礎，不是個人罹癌機率，也不代表每份個人報告的準確率。</p>
         </div>
 
         <div style="background:#f4f7f6;border:1px solid #dce6e3;border-radius:14px;padding:18px 20px;">
