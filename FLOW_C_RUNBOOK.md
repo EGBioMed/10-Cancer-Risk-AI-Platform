@@ -141,11 +141,15 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 **5.2 `條件 - 分數是否仍相符`**
 
-```
-@{body('HTTP_-_重新評分比對')?['risk_score_pct']}
-  等於
-@{float(body('HTTP_-_取得模型結果')?['result']?['risk_score'])}
-```
+條件的兩個比較值都用 **fx 運算式**填，**不加 `@{}`**（見第 7 步的說明）：
+
+| 位置 | 填入 |
+|---|---|
+| 左值 | `body('HTTP_-_重新評分比對')?['risk_score_pct']` |
+| 運算子 | 等於 |
+| 右值 | `float(body('HTTP_-_取得模型結果')?['result']?['risk_score'])` |
+
+右值包了一層 `float()`：資料庫那一欄是 `DECIMAL`，讀回來是字串 `"46.80"`，而左值是數字 `46.8`。不轉型的話兩者永遠不相等，這道檢查就會變成「每一筆都中止」。
 
 - **相符** → 繼續往下產報告
 - **不相符** → **中止，不要寄信**。加一個「終止」動作，狀態設為 `Failed`，訊息寫明 record_id 與兩個分數
@@ -183,7 +187,23 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 ## 7. 寄信
 
-**收件人改成觸發帶進來的**：`@{triggerBody()?['email']}`（原本是問卷裡的 email）。
+**收件人改成觸發帶進來的**（原本是問卷裡的 email）。
+
+最簡單的做法是**不要打字**：點一下「收件者」欄位 → 右側的**動態內容**清單 → 在「當收到 HTTP 要求時」那一區點 `email`。
+
+要自己寫運算式的話，點 **fx** 分頁，輸入 `triggerBody()?['email']`。
+
+> ⚠️ **`@{ }` 只用在「文字裡插值」的地方，一般欄位不要加。**
+>
+> | 填在哪裡 | 寫法 |
+> |---|---|
+> | HTTP 動作的**本文**（整塊 JSON 文字） | `@{triggerBody()?['email']}` |
+> | HTTP 動作的 **URI**（字串中插值） | `.../result/@{triggerBody()?['record_id']}` |
+> | 收件者這種**一般欄位**（用 fx 運算式） | `triggerBody()?['email']` ← 不加 `@{}` |
+>
+> 在一般欄位裡連 `@{}` 一起貼，會得到「無效的參數」。本手冊第 4 與第 6 步寫的是本文與 URI，那兩處**要**保留 `@{}`。
+>
+> 動態內容清單裡找不到 `email`，代表第 2 步的觸發 schema 沒貼好，回去確認。
 
 **附件保留**——這封信的重點就是那份 PDF。
 
