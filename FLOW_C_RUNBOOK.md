@@ -108,7 +108,7 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 ## 4. 新增「取得模型結果」
 
-插在最前面，緊接觸發程序之後。**命名為 `HTTP - 取得模型結果`**。
+插在最前面，緊接觸發程序之後。**命名為 `GetStoredResult`**（純 ASCII、無空格，理由見下方⚠️）。
 
 | 欄位 | 值 |
 |---|---|
@@ -131,13 +131,13 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 這一步把「付費報告不會跟免費信說不同的數字」從承諾變成檢查。**兩個動作**：
 
-**5.1 `HTTP - 重新評分比對`**
+**5.1 `RescoreCheck`**
 
 | 欄位 | 值 |
 |---|---|
 | 方法 | `POST` |
 | URI | `https://cancer-risk-api.onrender.com/predict` |
-| 本文 | `@{body('HTTP_-_取得模型結果')?['result']?['feature_row']}` |
+| 本文 | `@{body('GetStoredResult')?['result']?['feature_row']}` |
 
 **5.2 `條件 - 分數是否仍相符`**
 
@@ -145,9 +145,9 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 | 位置 | 填入 |
 |---|---|
-| 左值 | `body('HTTP_-_重新評分比對')?['risk_score_pct']` |
+| 左值 | `body('RescoreCheck')?['risk_score_pct']` |
 | 運算子 | 等於 |
-| 右值 | `float(body('HTTP_-_取得模型結果')?['result']?['risk_score'])` |
+| 右值 | `float(body('GetStoredResult')?['result']?['risk_score'])` |
 
 右值包了一層 `float()`：資料庫那一欄是 `DECIMAL`，讀回來是字串 `"46.80"`，而左值是數字 `46.8`。不轉型的話兩者永遠不相等，這道檢查就會變成「每一筆都中止」。
 
@@ -166,7 +166,7 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 ```
 @{addProperty(addProperty(
-    body('HTTP_-_取得模型結果')?['result']?['feature_row'],
+    body('GetStoredResult')?['result']?['feature_row'],
     'lang', if(equals(triggerBody()?['report_language'], 'en'), 'en', 'zh-TW')),
     'name', coalesce(triggerBody()?['full_name'], ''))}
 ```
@@ -181,7 +181,29 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 
 > `lang` 與 `name` 這兩層**不能省**。`PIPELINE_READ_FIRST` 第 3 節記載：動 body 運算式時把它們一起刪掉，報告語言與姓名會**靜默**落回預設值。
 
-**動作名稱裡的空格在運算式中要寫成底線**（`HTTP - 取得模型結果` → `HTTP_-_取得模型結果`）。名稱取錯是這一步最常見的錯誤，貼上後若出現紅字先檢查這個。
+#### 出現「無效的參考」時，先看這兩件事
+
+**一、順序。** Power Automate **只能引用排在自己前面的動作**，而新增的動作預設加在最後面。`GetStoredResult` 必須在 `HTTP 1` **上方**：
+
+```
+當收到 HTTP 要求時
+  ↓
+GetStoredResult          ← 必須在這裡
+  ↓
+RescoreCheck → 條件
+  ↓
+HTTP 1（/generate_report）
+  ↓
+建立檔案 → 轉換 → 取得內容 → 寄信
+```
+
+用拖曳把它移上去。
+
+**二、名稱。** 運算式裡的動作名稱要把空格寫成底線，所以 `HTTP - 取得模型結果` 得寫成 `HTTP_-_取得模型結果`——空格、連字號、中文三種東西湊在一起，少一個底線就無效。
+
+**這就是本手冊把兩個新動作命名為 `GetStoredResult` 與 `RescoreCheck` 的原因**：純 ASCII、無空格，運算式裡怎麼寫就怎麼是。已經用中文命名的話，改名時 Power Automate 通常會問要不要自動更新引用，選「是」。
+
+最保險的填法是**不要打動作名稱**：在運算式編輯器切到「動態內容」分頁，點該動作的輸出，Power Automate 會插入正確的引用，再自己補上 `?['result']?['feature_row']` 這段。
 
 ---
 
@@ -224,35 +246,51 @@ Azure App Service → 環境變數：
 
 ⚠️ 票券密鑰兩邊不一致的話，**每一條付款連結都會驗不過**，而錯誤訊息是刻意通用的，看不出原因。
 
-### 8.2 不靠 WooCommerce 就能測
+### 8.2 不靠 WooCommerce 就能測整條鏈路
 
-WooCommerce 商品還沒上架（第 12 步），但流程 C 可以先單獨測。
+WooCommerce 商品還沒上架（第 12 步），但**不需要它也能走完整條路**——從簽票券到收到附件。這比用 Power Automate 的「測試 → 手動」好，因為它同時驗證了購買端點。
 
-在 Power Automate 裡對流程 C 用「測試 → 手動」，貼入：
+**先確認測試資料有 `feature_row`。** 只有在流程 B 補上那一行**之後**送出的評估才有；更早的那些是 null，購買端點會擋下來並回「predates stored report inputs」。
 
-```json
-{
-  "record_id": "dfc5e79a-f1dc-48f6-bc9c-46f282b3750f",
-  "order_reference": "manual-test-001",
-  "full_name": "AB",
-  "email": "（你自己的 email）",
-  "language": "zh",
-  "report_language": "zh-Hant"
-}
+Azure SSH — Application：
+
+```bash
+P=${PORT:-8080}; R=<你的 record_id>; curl -s "http://localhost:$P/api/reports/result/$R" -H "x-egbiomed-report-result-key: $REPORT_RESULT_API_KEY" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s).result;const f=r.feature_row;console.log('risk_score:',r.risk_score,'| feature_row:',f?'✓ '+Object.keys(f).length+' 欄':'✗ null');});"
 ```
 
-那個 `record_id` 是免費線測試那筆真實資料。
+**簽一張票券**（Render Shell——密鑰只在那台的環境變數裡，不會被印出來）：
 
-> ⚠️ 但它是在 `feature_row` 欄位存在**之前**送出的，所以那一欄會是 null，第 6 步會拿到空值。**要先用 `egbiotest2026` 再走一次免費線**產生一筆新的，才有 `feature_row` 可用。
+```bash
+node -e "const{signReportTicket}=require('./lib/report-ticket');console.log(signReportTicket('<你的 record_id>', process.env.REPORT_TICKET_SECRET))"
+```
+
+**模擬付款**（Azure SSH）：
+
+```bash
+P=${PORT:-8080}; curl -s -X POST "http://localhost:$P/api/reports/purchase" -H "Content-Type: application/json" -H "x-egbiomed-purchase-key: $PURCHASE_API_KEY" -d '{"ticket":"<票券>","order_reference":"manual-test-001"}'; echo
+```
+
+預期 `{"ok":true,"reused":false,"record_id":"...","delivery_triggered":true}`。
+
+**再跑一次完全相同的指令**，預期 `"reused":true` 且**不會收到第二封信**——這驗的是 WooCommerce 重送 webhook 時不會重複寄報告。
+
+| 回應 | 意思 |
+|---|---|
+| `Ticket not valid` | 兩邊的 `REPORT_TICKET_SECRET` 不一致 |
+| `predates stored report inputs` | 那筆沒有 `feature_row`，換一筆新的 |
+| `No contact details` | contact 資料表沒那筆 |
+| `Delivery flow unreachable` | `REPORT_DELIVERY_FLOW_URL` 錯了，或流程 C 沒開 |
 
 ### 驗收
 
 | 檢查 | 預期 |
 |---|---|
+| 購買端點回應 | `reused:false`、`delivery_triggered:true` |
 | 收到的信 | **有** PDF 附件 |
 | PDF 裡的風險分數 | 與那筆免費信**完全相同** |
 | 流程 A 的執行紀錄 | **沒有**新執行 |
 | 流程 B 的執行紀錄 | **沒有**新執行 |
+| 重送同一 order_reference | `reused:true`，**沒有第二封信** |
 
 最後兩項確認三條流程彼此獨立。
 
