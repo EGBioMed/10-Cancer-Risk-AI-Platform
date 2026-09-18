@@ -201,47 +201,116 @@ test("both languages map the API's band from the same Chinese labels", () => {
   assert.match(read("power-automate-email-en.html"), /,body\('HTTP'\)\?\['risk_level_display'\]\)\)\)\}/);
 });
 
-// Flow C's email is the paid one with the model's output read from the
-// stored result instead of a live call in the same run. Ten expressions per
-// language have to move; missing one is not visible until send time, after
-// the customer has paid.
+
+// The email that carries the paid report is a covering note, not a second
+// copy of the report. Everything substantial is in the attached PDF, so
+// repeating it in the body makes the email long and technical -- the
+// criticism the report itself already drew -- and has the recipient read
+// the same thing twice.
 const DELIVERY = {
   zh: read("power-automate-email-delivery-zh.html"),
   en: read("power-automate-email-delivery-en.html")
 };
 
+// Belongs in the PDF, not in the covering email.
+const NOT_IN_DELIVERY = {
+  zh: [
+    ["模型研究與驗證摘要", "the validation summary"],
+    ["543 筆獨立測試資料", "the test-set size"],
+    ["各癌種風險因子參考", "the full cancer ranking"],
+    ["cancer_risks_text", "the ranking text"],
+    ["recommendation_zh", "the personalised recommendation"],
+    ["可與醫師討論的健康管理方向", "the guidance section"],
+    ["整體相對風險因子等級怎麼看？", "the band explainer"]
+  ],
+  en: [
+    ["Model Research and Validation Summary", "the validation summary"],
+    ["543 independent test records", "the test-set size"],
+    ["Cancer-type risk factor reference", "the full cancer ranking"],
+    ["cancer_risks_text", "the ranking text"],
+    ["Health management topics to discuss", "the guidance section"],
+    ["Understanding the overall relative risk factor levels", "the band explainer"]
+  ]
+};
+
+// Worth seeing without opening a 2.6 MB attachment.
+const IN_DELIVERY = {
+  zh: [
+    ["risk_score", "the risk index"],
+    ["risk_ratio_vs_healthy", "the comparison against healthy peers"],
+    ["final_risk_level", "the band, read from the API"],
+    ["您的完整癌症風險評估報告", "its own title"],
+    ["附件報告包含", "what the attachment covers"],
+    ["報告使用說明", "the disclaimer"]
+  ],
+  en: [
+    ["risk_score", "the risk index"],
+    ["risk_ratio_vs_healthy", "the comparison against healthy peers"],
+    ["final_risk_level", "the band, read from the API"],
+    ["Your Complete Cancer Risk Assessment Report", "its own title"],
+    ["What the attached report covers", "what the attachment covers"],
+    ["How to use this report", "the disclaimer"]
+  ]
+};
+
 for (const lang of ["zh", "en"]) {
+  test(`the ${lang} delivery email is a covering note, not the report again`, () => {
+    for (const [needle, description] of NOT_IN_DELIVERY[lang]) {
+      assert.equal(
+        DELIVERY[lang].includes(needle),
+        false,
+        `the delivery email must not repeat ${description} -- it is in the PDF`
+      );
+    }
+    for (const [needle, description] of IN_DELIVERY[lang]) {
+      assert.equal(DELIVERY[lang].includes(needle), true, `the delivery email must keep ${description}`);
+    }
+  });
+
+  // It must not read like the free email with an attachment stapled on.
+  test(`the ${lang} delivery email is materially shorter than the free one`, () => {
+    const delivery = DELIVERY[lang].split("\n").length;
+    const free = FREE[lang].split("\n").length;
+    assert(
+      delivery < free * 0.75,
+      `the covering note (${delivery} lines) should be well shorter than the free email (${free})`
+    );
+  });
+
   test(`the ${lang} delivery email reads the model output from the stored result`, () => {
-    // Nothing may still point at a live /predict action: flow C has none.
+    // Flow C has no /predict action of its own.
     assert.doesNotMatch(DELIVERY[lang], /body\('HTTP'\)/);
-
-    // Every reference the paid template made must have moved, not just some.
-    const paidRefs = (PAID[lang].match(/body\('HTTP'\)/g) || []).length;
-    const movedRefs = (DELIVERY[lang].match(/body\('GetStoredResult'\)\?\['result'\]\?\['prediction_json'\]/g) || []).length;
-    assert.equal(movedRefs, paidRefs, "every model reference must be repointed, not just some");
-
-    // Safe navigation throughout, so a missing field yields null rather
-    // than failing the whole send.
+    assert.match(DELIVERY[lang], /body\('GetStoredResult'\)\?\['result'\]\?\['prediction_json'\]/);
+    // Safe navigation throughout, so a field the stored prediction lacks
+    // yields null rather than failing the send -- after payment.
     assert.doesNotMatch(DELIVERY[lang], /prediction_json'\]\['/);
-
-    // The recipient's name still comes from the trigger, which flow C's
-    // trigger carries from the contact row.
+    // The recipient's name still comes from the trigger.
     assert.match(DELIVERY[lang], /triggerBody\(\)\?\['full_name'\]/);
   });
 
   test(`the ${lang} delivery email carries the corrected risk band`, () => {
-    // Flow C inherits from flow A, which still has the old thresholds
-    // pasted in. Regenerating rather than hand-editing is what stops that
-    // bug being carried into the paid report.
+    // Flow A still has the pre-fix template pasted in; regenerating rather
+    // than hand-editing is what keeps that bug out of the paid report.
     assert.doesNotMatch(DELIVERY[lang], /greaterOrEquals\(float\(string\(body/);
-    assert.match(DELIVERY[lang], /final_risk_level/);
   });
 
-  test(`the ${lang} delivery email keeps the validation summary and has no payment link`, () => {
-    // This one is the paid report: the metrics stay, and its reader has
-    // already bought it.
-    const kept = lang === "zh" ? "模型研究與驗證摘要" : "Model Research and Validation Summary";
-    assert.match(DELIVERY[lang], new RegExp(kept));
+  test(`the ${lang} delivery email sells nothing -- its reader already paid`, () => {
     assert.equal(DELIVERY[lang].includes("mdi.eg-bio.com"), false);
+    assert.equal(DELIVERY[lang].includes("REPLACE_WITH_PRODUCT_ID"), false);
+  });
+
+  // The header and the score card come from the paid template by slicing,
+  // so the figures and their formatting cannot drift between the three
+  // emails a customer might see.
+  test(`the ${lang} delivery email's score card is identical to the paid one`, () => {
+    const cardOpener = '<div style="border:1px solid #cfe0dc;border-radius:16px;';
+    const cardStart = PAID[lang].indexOf(cardOpener);
+    assert(cardStart > 0, "score card not found in the paid template");
+    const cardEnd = PAID[lang].indexOf('<div style="border-left:5px solid #0f766e;');
+    const paidCard = PAID[lang].slice(cardStart, cardEnd).split("body('HTTP')").join(
+      "body('GetStoredResult')?['result']?['prediction_json']"
+    ).split("prediction_json']['").join("prediction_json']?['");
+
+    assert(DELIVERY[lang].includes(paidCard), "the score card must be the paid one, only repointed");
   });
 }
