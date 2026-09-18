@@ -255,7 +255,22 @@ HTTP 1（/generate_report）
 
 **附件保留**——這封信的重點就是那份 PDF。
 
-信件內文可以先沿用流程 A 的樣板。之後若要做一封專屬的「您購買的完整報告」信件，再另外處理。
+### 7.1 信件內文必須換掉
+
+**不能沿用流程 A 的樣板。** 那份樣板用 `body('HTTP')` 讀模型輸出，也就是同一次執行裡 `/predict` 的回應——流程 C 沒有那個動作。它的模型輸出是從存檔讀回來的，位置在 `body('GetStoredResult')?['result']?['prediction_json']`。
+
+每種語言有 **10 處**要改。漏掉一處不會在存檔時被擋下，而是在**寄信當下**才報樣板運算式錯誤——那時客戶已經付過錢了。
+
+所以這兩份是產生出來的，直接整份貼進寄信動作的本文（HTML 檢視）：
+
+```
+power-automate-email-delivery-zh.html
+power-automate-email-delivery-en.html
+```
+
+它們同時解決另一件事：**流程 A 目前貼著的樣板仍用舊的 `0.5` / `0.25` 門檻自行分級**，而那件事已經改為以 API 的 `final_risk_level` 為準（見 `FREEMIUM_SPEC.md`）。手動改運算式會把那個 bug 一起帶進付費報告；重新產生則不會。
+
+> ⚠️ 這兩份檔案把動作名稱寫死為 **`GetStoredResult`**。流程 C 裡那個動作若取別的名字，請改 `scripts/build-email-templates.js` 後重新產生，**不要手動改產生出來的檔案**——下次重新產生就會被蓋掉。
 
 ---
 

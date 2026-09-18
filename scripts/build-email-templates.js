@@ -87,3 +87,44 @@ for (const [lang, cfg] of Object.entries(LANGS)) {
   fs.writeFileSync(path.join(root, cfg.output), out);
   console.log(`${cfg.output}: ${out.split("\n").length} lines`);
 }
+
+// --- Delivery flow (flow C) variants -----------------------------------
+//
+// Flow C sends the paid report after payment. Its email is the paid one
+// verbatim, but the model's output no longer arrives from a live /predict
+// call in the same run -- it comes back from the stored result, one level
+// down inside { ok, result }, as result.prediction_json.
+//
+// Doing that substitution by hand means ten edits per language, and missing
+// one is not a visible failure: it is a template expression error at send
+// time, after the customer has already paid. Generating it removes that.
+//
+// The action name is fixed as GetStoredResult, matching FLOW_C_RUNBOOK.md.
+// Renaming that action in the flow means regenerating these.
+const DELIVERY = [
+  ["power-automate-email-zh.html", "power-automate-email-delivery-zh.html"],
+  ["power-automate-email-en.html", "power-automate-email-delivery-en.html"]
+];
+
+const STORED = "body('GetStoredResult')?['result']?['prediction_json']";
+
+for (const [source, output] of DELIVERY) {
+  let out = fs.readFileSync(path.join(root, source), "utf8");
+
+  // Both spellings appear in the templates: body('HTTP')['x'] and
+  // body('HTTP')?['x']. Replace the prefix, then normalise what follows to
+  // the safe-navigation form so a missing field yields null instead of
+  // failing the whole send.
+  out = out.split("body('HTTP')").join(STORED);
+  out = out.split("prediction_json']['").join("prediction_json']?['");
+
+  // triggerBody()?['full_name'] is left alone: flow C's trigger carries
+  // full_name too, from the contact row the purchase endpoint looked up.
+
+  if (out.includes("body('HTTP')")) {
+    throw new Error(`${output}: a body('HTTP') reference survived`);
+  }
+
+  fs.writeFileSync(path.join(root, output), out);
+  console.log(`${output}: ${out.split("\n").length} lines`);
+}

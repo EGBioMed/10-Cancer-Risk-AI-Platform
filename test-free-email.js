@@ -128,7 +128,7 @@ for (const lang of ["zh", "en"]) {
 
 test("the free templates are exactly what the generator produces", () => {
   const before = { zh: FREE.zh, en: FREE.en };
-  execFileSync(process.execPath, [path.join(__dirname, "scripts", "build-free-email-templates.js")], {
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "build-email-templates.js")], {
     cwd: __dirname,
     stdio: "pipe"
   });
@@ -200,3 +200,48 @@ test("both languages map the API's band from the same Chinese labels", () => {
   assert.match(read("power-automate-email-zh.html"), /,body\('HTTP'\)\?\['final_risk_level'\]\)\)\)\}/);
   assert.match(read("power-automate-email-en.html"), /,body\('HTTP'\)\?\['risk_level_display'\]\)\)\)\}/);
 });
+
+// Flow C's email is the paid one with the model's output read from the
+// stored result instead of a live call in the same run. Ten expressions per
+// language have to move; missing one is not visible until send time, after
+// the customer has paid.
+const DELIVERY = {
+  zh: read("power-automate-email-delivery-zh.html"),
+  en: read("power-automate-email-delivery-en.html")
+};
+
+for (const lang of ["zh", "en"]) {
+  test(`the ${lang} delivery email reads the model output from the stored result`, () => {
+    // Nothing may still point at a live /predict action: flow C has none.
+    assert.doesNotMatch(DELIVERY[lang], /body\('HTTP'\)/);
+
+    // Every reference the paid template made must have moved, not just some.
+    const paidRefs = (PAID[lang].match(/body\('HTTP'\)/g) || []).length;
+    const movedRefs = (DELIVERY[lang].match(/body\('GetStoredResult'\)\?\['result'\]\?\['prediction_json'\]/g) || []).length;
+    assert.equal(movedRefs, paidRefs, "every model reference must be repointed, not just some");
+
+    // Safe navigation throughout, so a missing field yields null rather
+    // than failing the whole send.
+    assert.doesNotMatch(DELIVERY[lang], /prediction_json'\]\['/);
+
+    // The recipient's name still comes from the trigger, which flow C's
+    // trigger carries from the contact row.
+    assert.match(DELIVERY[lang], /triggerBody\(\)\?\['full_name'\]/);
+  });
+
+  test(`the ${lang} delivery email carries the corrected risk band`, () => {
+    // Flow C inherits from flow A, which still has the old thresholds
+    // pasted in. Regenerating rather than hand-editing is what stops that
+    // bug being carried into the paid report.
+    assert.doesNotMatch(DELIVERY[lang], /greaterOrEquals\(float\(string\(body/);
+    assert.match(DELIVERY[lang], /final_risk_level/);
+  });
+
+  test(`the ${lang} delivery email keeps the validation summary and has no payment link`, () => {
+    // This one is the paid report: the metrics stay, and its reader has
+    // already bought it.
+    const kept = lang === "zh" ? "模型研究與驗證摘要" : "Model Research and Validation Summary";
+    assert.match(DELIVERY[lang], new RegExp(kept));
+    assert.equal(DELIVERY[lang].includes("mdi.eg-bio.com"), false);
+  });
+}
