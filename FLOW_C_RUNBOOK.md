@@ -153,11 +153,25 @@ are not defined in the template.
 
 ---
 
-## 5.（建議）加一道一致性檢查
+## 5. 一致性檢查（**必做**）
 
-這一步把「付費報告不會跟免費信說不同的數字」從承諾變成檢查。**兩個動作**：
+這一步把「付費報告不會跟免費信說不同的數字」從承諾變成檢查。**三個動作**，插在第 4 步之後、第 6 步之前。
 
-**5.1 `RescoreCheck`**
+### 5.0 要比對什麼：免費信承諾過的每一個數字
+
+免費信對客戶說了三件可驗證的事：風險指數、風險分級、排第一的癌別。付費報告若在任何一項上說了不同的話，客戶會發現，而且他已經付錢了。所以三項都比，不是只比分數。
+
+**而且比的是「畫面上那個數字」，不是浮點原始值。** 免費信顯示分數的運算式是：
+
+```
+formatNumber(mul(float(string(body('HTTP_AI_predict')['risk_score'])),100),'0.0')
+```
+
+也就是 `risk_score`（0–1 形式）乘 100、取到小數一位。而資料庫那一欄是 `DECIMAL(6,2)`，存的是 `risk_score_pct`，讀回來是字串 `"64.00"`。兩邊經過的路徑不同，直接比浮點數是在比兩個不保證同型別、同精度的東西 —— 那會讓這道檢查變成「每一筆都中止」，也就是整條交付線停擺。
+
+兩邊都先化成客戶看到的那個字串（小數一位）再比，同時也對得起這道檢查存在的理由：要保證的是**客戶讀到的數字**一致。
+
+### 5.1 `RescoreCheck`
 
 | 欄位 | 值 |
 |---|---|
@@ -165,24 +179,55 @@ are not defined in the template.
 | URI | `https://cancer-risk-api.onrender.com/predict` |
 | 本文 | `@{body('GetStoredResult')?['result']?['feature_row']}` |
 
-**5.2 `條件 - 分數是否仍相符`**
+存下來的 `feature_row` 就是 `ai_api_feature_row` 本身，與流程 B 當初餵給 `/predict` 的東西逐位元組相同（`lang`、`name` 是產報告時才附加的，沒有存進去）。所以這一次呼叫的輸入與當初完全一樣，輸出若不同，就只可能是模型變了。
 
-條件的兩個比較值都用 **fx 運算式**填，**不加 `@{}`**（見第 7 步的說明）：
+### 5.2 `條件 - 與免費信是否仍一致`
 
-| 位置 | 填入 |
-|---|---|
-| 左值 | `body('RescoreCheck')?['risk_score_pct']` |
-| 運算子 | 等於 |
-| 右值 | `float(body('GetStoredResult')?['result']?['risk_score'])` |
+三列，關係選 **且（AND）**。六個值**全部用 fx 運算式**填，**不加 `@{}`**（理由見第 7 步）：
 
-右值包了一層 `float()`：資料庫那一欄是 `DECIMAL`，讀回來是字串 `"46.80"`，而左值是數字 `46.8`。不轉型的話兩者永遠不相等，這道檢查就會變成「每一筆都中止」。
+| # | 比對 | 左值 | 右值 |
+|---|---|---|---|
+| 1 | 風險指數 | `formatNumber(mul(float(string(body('RescoreCheck')?['risk_score'])),100),'0.0')` | `formatNumber(float(body('GetStoredResult')?['result']?['risk_score']),'0.0')` |
+| 2 | 風險分級 | `body('RescoreCheck')?['final_risk_level']` | `body('GetStoredResult')?['result']?['risk_band']` |
+| 3 | 第一名癌別 | `first(body('RescoreCheck')?['cancer_risks'])?['cancer']` | `body('GetStoredResult')?['result']?['top_cancer_label']` |
 
-- **相符** → 繼續往下產報告
-- **不相符** → **中止，不要寄信**。加一個「終止」動作，狀態設為 `Failed`，訊息寫明 record_id 與兩個分數
+運算子三列都是**等於**。
 
-不相符代表模型在免費信寄出之後變動過。這時寄出的報告會跟客戶付錢時看到的數字不一樣——**停下來讓人處理，比自動寄一份對不上的報告好**。
+第 1 列左右兩邊路徑不同是刻意的：左邊重現免費信的算法（`risk_score` × 100），右邊是存檔值（`risk_score_pct`）。這道檢查因此也順便驗證了這兩個欄位沒有分岔。
 
-> 想先把流程串通的話，這一步可以之後再加。但**正式對外之前必須補上**，否則「兩邊數字一致」只是一句沒有檢查的話。
+### 5.3 `終止`
+
+放進條件的 **「如果否」** 分支。狀態選 `Failed`，訊息：
+
+```
+@{concat('報告交付中止：重新評分與免費信不一致。record_id=', triggerBody()?['record_id'], '｜存檔 ', string(body('GetStoredResult')?['result']?['risk_score']), ' / ', body('GetStoredResult')?['result']?['risk_band'], ' / ', body('GetStoredResult')?['result']?['top_cancer_label'], '｜重算 ', string(body('RescoreCheck')?['risk_score_pct']), ' / ', body('RescoreCheck')?['final_risk_level'], ' / ', first(body('RescoreCheck')?['cancer_risks'])?['cancer'])}
+```
+
+訊息裡把六個值都印出來，是因為「不一致」有三種完全不同的成因（模型改版、分級門檻調整、癌別排序規則變動），而執行紀錄開了 Secure Outputs，看不到動作的輸出。這一行是唯一看得見的線索。
+
+> **「如果是」分支留空。** 不要把後面的動作拖進去 —— 「終止」會立刻結束整個執行，所以只要把它放在「如果否」，條件之後的每一個動作自然就只在相符時才會跑。這樣新增這道檢查不必搬動任何既有動作，而搬動動作正是最容易把流程改壞的操作。
+
+### 5.4 不相符時該怎麼辦
+
+不相符代表模型在免費信寄出之後變動過。這時**不要**手動放行 —— 寄出的報告會跟客戶付錢時看到的數字不一樣。正確處置是：
+
+1. 從終止訊息取得 record_id 與兩組數字
+2. 判斷是哪一種變動（分數變／分級變／癌別排序變）
+3. 客戶已經付款，所以要嘛以當初的數字人工補一份報告，要嘛退款並說明
+
+`report_purchases` 的冪等是依 `order_reference`，所以這筆訂單不會自己重試。
+
+### 5.5 怎麼驗證這道檢查真的會擋
+
+建好之後**一定要測它會擋**，否則你只知道它不擋而已 —— 一個永遠回傳 true 的檢查跟沒有檢查是一樣的。
+
+暫時把第 2 列的右值改成一個寫死的錯字串（例如 `'不存在的分級'`），觸發一次交付，確認：
+
+- 執行結果是 **Failed**
+- 終止訊息裡六個值都有印出來
+- **沒有寄出任何信**
+
+確認之後把右值改回 `body('GetStoredResult')?['result']?['risk_band']`，再跑一次正常的，確認會寄。
 
 ---
 
