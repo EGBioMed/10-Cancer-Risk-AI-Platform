@@ -79,12 +79,45 @@ for (const lang of ["zh", "en"]) {
   // The free email is now the paid one minus one block plus one block, so
   // everything before the removal has to match exactly. This is what stops
   // the two drifting as the paid email is edited over time.
+  //
+  // The one permitted difference is the /predict action's name: flow A calls
+  // it HTTP and flow B calls it HTTP_AI_predict, so the paid side is renamed
+  // before comparing. Renaming the paid copy rather than stripping the name
+  // from both keeps the comparison strict -- a template that referenced some
+  // third action would still fail here.
   test(`the ${lang} free email is byte-identical to the paid one up to the removal`, () => {
     const opener = '<div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;';
     const marker = lang === "zh" ? "模型研究與驗證摘要" : "Model Research and Validation Summary";
     const cut = PAID[lang].lastIndexOf(opener, PAID[lang].indexOf(marker));
     assert(cut > 0, "could not locate the removal point");
-    assert.equal(FREE[lang].slice(0, cut), PAID[lang].slice(0, cut));
+
+    const renamed = PAID[lang]
+      .slice(0, cut)
+      .split("body('HTTP')")
+      .join("body('HTTP_AI_predict')");
+
+    // The longer action name shifts everything after it, so the free side is
+    // taken to the renamed length, not to the cut offset in the paid file.
+    assert.equal(FREE[lang].slice(0, renamed.length), renamed);
+  });
+
+  // Flow B has no action called HTTP, so a leftover reference is rejected at
+  // save time -- which is how this was found. Flow A must keep its own name:
+  // it is frozen and still serving institutions.
+  test(`the ${lang} free email points at flow B's own /predict action`, () => {
+    assert.equal(
+      FREE[lang].includes("body('HTTP')"),
+      false,
+      "a body('HTTP') survived the rename; flow B will refuse to save"
+    );
+    assert(
+      FREE[lang].includes("body('HTTP_AI_predict')"),
+      "the free email no longer reads the model output at all"
+    );
+    assert(
+      PAID[lang].includes("body('HTTP')"),
+      "the paid template was renamed -- flow A is frozen and must keep HTTP"
+    );
   });
 
   test(`the ${lang} free email offers exactly one payment link, carrying the ticket`, () => {

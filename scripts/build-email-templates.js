@@ -14,6 +14,20 @@ const root = path.resolve(__dirname, "..");
 // something else.
 const REPORT_PRODUCT_ID = 1062;
 
+// The /predict action's name, as flow B has it. The paid templates carry
+// flow A's name for it -- plain "HTTP" -- and flow A is frozen, so the
+// rename happens here on the way out instead of in either flow.
+//
+// Power Automate resolves these by name and refuses to save an action that
+// references one the flow does not have, so a wrong name here is at least
+// loud. What makes it worth automating anyway is the count: seven of them in
+// the Chinese template and six in the English one, and a hand edit in the
+// HTML view is thirteen chances to leave one behind.
+//
+// If flow B's action is ever renamed, change this line and re-run. Do not
+// edit the generated files.
+const PREDICT_ACTION = "HTTP_AI_predict";
+
 // The free email is the paid email with two edits: the model validation
 // summary comes out, and a call to action goes in where it stood.
 //
@@ -95,7 +109,11 @@ for (const [lang, cfg] of Object.entries(LANGS)) {
   const blockEnd = src.lastIndexOf(DISCLAIMER_BLOCK_OPENER, disclaimerIdx);
   if (blockEnd <= blockStart) throw new Error(`${lang}: could not bound the validation block`);
 
-  const out = src.slice(0, blockStart) + cfg.cta + src.slice(blockEnd);
+  // split/join rather than a regex: the action name goes in verbatim, with
+  // no chance of a character in it being read as a pattern.
+  const out = (src.slice(0, blockStart) + cfg.cta + src.slice(blockEnd))
+    .split("body('HTTP')")
+    .join(`body('${PREDICT_ACTION}')`);
 
   fs.writeFileSync(path.join(root, cfg.output), out);
   console.log(`${cfg.output}: ${out.split("\n").length} lines`);
