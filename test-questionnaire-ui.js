@@ -158,7 +158,12 @@ test("country question is a canonical dropdown with the requested bilingual choi
   assert.equal(country.renderAs, "dropdown");
   assert.equal(country.excludeFromCanonicalContract, undefined);
   assert(canonicalAnswerQuestions.some((question) => question.id === "country"));
-  assert.deepEqual([...country.options], ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"]);
+  // Order is part of the contract, not presentation: answer codes are
+  // positional (country.option_NN), so inserting an option anywhere but the
+  // end silently repoints every code after it at a different country, and
+  // every answer already stored under the old numbering with it. New
+  // options go on the end.
+  assert.deepEqual([...country.options], ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞", "越南"]);
   assert.deepEqual(Array.from(country.options, (option) => i18n.en.options[option]), [
     "Taiwan",
     "Hong Kong",
@@ -166,7 +171,8 @@ test("country question is a canonical dropdown with the requested bilingual choi
     "United States",
     "Japan",
     "Canada",
-    "Malaysia"
+    "Malaysia",
+    "Vietnam"
   ]);
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
   assert(manifest.questions.some((question) => question.question_id === "country"));
@@ -201,7 +207,7 @@ test("country reaches the API body and the server fallback agrees with the clien
   // （報告走國健署基準，並在該行印出 "(Taiwan baseline)" 說明分母）。
   const expected = {
     "臺灣": "TW", "香港": "TW", "中國": "TW", "美國": "US",
-    "日本": "TW", "加拿大": "CA", "馬來西亞": "TW"
+    "日本": "TW", "加拿大": "CA", "馬來西亞": "TW", "越南": "TW"
   };
   assert.deepEqual(grab(source), expected);
   // server.js rebuilds this row when the client did not supply one; if it forgot

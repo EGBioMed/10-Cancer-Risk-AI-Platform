@@ -156,6 +156,11 @@
           "code": "country.option_07",
           "label_zh": "馬來西亞",
           "label_en": "Malaysia"
+        },
+        {
+          "code": "country.option_08",
+          "label_zh": "越南",
+          "label_en": "Vietnam"
         }
       ]
     },

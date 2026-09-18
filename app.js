@@ -589,7 +589,7 @@ const questions = [
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
   { id: "sex", module: "basic", type: "single", required: true, title: "您的性別？", note: "系統會依您的選擇顯示適用題目。", field: "demographics.sex", options: ["男性", "女性"] },
-  { id: "country", module: "basic", type: "single", renderAs: "dropdown", required: true, title: "您目前居住的國家／地區？", titleEn: "Which country/region do you currently live in?", note: "請選擇最符合您目前居住地的選項。", noteEn: "Select the option that best matches where you currently live.", field: "demographics.country", options: ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞"] },
+  { id: "country", module: "basic", type: "single", renderAs: "dropdown", required: true, title: "您目前居住的國家／地區？", titleEn: "Which country/region do you currently live in?", note: "請選擇最符合您目前居住地的選項。", noteEn: "Select the option that best matches where you currently live.", field: "demographics.country", options: ["臺灣", "香港", "中國", "美國", "日本", "加拿大", "馬來西亞", "越南"] },
   { id: "race", module: "basic", type: "single", required: true, excludeFromCanonicalContract: true, title: "您認為自己屬於哪一個人種？", note: "請選擇最符合您的選項；若不希望提供，可選擇不回答。", field: "demographics.race", options: ["亞洲裔", "白人", "黑人或非洲裔", "其他族群", "選擇不回答"] },
   { id: "weight_change", module: "basic", type: "single", required: true, title: "近半年內，您的體重是否明顯「下降」？（超過體重5%）", note: "若不確定，請選不確定。", field: "demographics.weight_change_over_5_percent", options: ["是", "否", "不確定"] },
   { id: "exercise_time", module: "basic", type: "single", required: true, title: "每週運動時間", note: "請選擇最接近您一般狀況的選項。", field: "lifestyle.weekly_exercise_time", options: ["幾乎不運動", "30-60 分鐘", "1-2 小時", "多於 2 小時"] },
@@ -848,7 +848,7 @@ const i18n = {
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
       // 本對照表以中文原字串為鍵、全表共用，故泛用詞一旦在別題也拿來當選項就會互相蓋台。
       // 下列國別字串目前全檔僅國別題使用（人種題用的是「其他族群」），新增選項前請先 grep。
-      "臺灣": "Taiwan", "香港": "Hong Kong", "中國": "China", "美國": "United States", "日本": "Japan", "加拿大": "Canada", "馬來西亞": "Malaysia",
+      "臺灣": "Taiwan", "香港": "Hong Kong", "中國": "China", "美國": "United States", "日本": "Japan", "加拿大": "Canada", "馬來西亞": "Malaysia", "越南": "Vietnam",
       "幾乎不運動": "Almost no exercise", "30-60 分鐘": "30-60 minutes", "1-2 小時": "1-2 hours", "多於 2 小時": "More than 2 hours",
       "12 歲以前（含 12 歲）": "Age 12 or younger", "13 歲以後（含 13 歲）": "Age 13 or older",
       "尚未停經（仍有月經）": "Not menopausal (still menstruating)", "已停經（55 歲或以前停經）": "Menopause at age 55 or earlier", "已停經（55 歲或以後停經）": "Menopause after age 55", "已切除子宮或卵巢": "Uterus or ovaries removed",
@@ -2483,7 +2483,8 @@ const AI_API_COUNTRY_CODES = {
   "美國": "US",
   "日本": "TW",
   "加拿大": "CA",
-  "馬來西亞": "TW"
+  "馬來西亞": "TW",
+  "越南": "TW"
 };
 
 // ai_api_feature_row 是唯一容許超出所屬 columns 清單的向量：這些欄位不是模型特徵，

@@ -62,7 +62,8 @@
       "美國",
       "日本",
       "加拿大",
-      "馬來西亞"
+      "馬來西亞",
+      "越南"
     ],
     "sent_as": "ai_api_feature_row.country",
     "codes": {
@@ -72,11 +73,12 @@
       "美國": "US",
       "日本": "TW",
       "加拿大": "CA",
-      "馬來西亞": "TW"
+      "馬來西亞": "TW",
+      "越南": "TW"
     },
     "excluded_from_canonical_contract": false,
     "purpose": "Selects the population baseline for the report's population-scale risk figure (that country's age-standardized incidence) and which country's screening guidance is cited. It is NOT a model feature: the model does not consume it, and AI risk scores and hazard ratios are identical whatever is chosen.",
-    "other_or_unanswered": "Every option other than the United States and Canada falls back to the Taiwan (HPA) baseline, because CALIB_TRUE_INCIDENCE_GLOBOCAN in the backend holds population baselines for those two countries only. The English report then prints '(Taiwan baseline)' inline on the population-scale risk line so a reader in Hong Kong, China, Japan or Malaysia can see which denominator produced the figure. Add a baseline to the backend constant first, then remap the code here, to give any of them its own denominator.",
+    "other_or_unanswered": "Every option other than the United States and Canada falls back to the Taiwan (HPA) baseline, because CALIB_TRUE_INCIDENCE_GLOBOCAN in the backend holds population baselines for those two countries only. The English report then prints '(Taiwan baseline)' inline on the population-scale risk line so a reader in Hong Kong, China, Japan, Malaysia or Vietnam can see which denominator produced the figure. Add a baseline to the backend constant first, then remap the code here, to give any of them its own denominator.",
     "question_added_in": "questionnaire/2026-09-04-v19.6-phase1 (question only); ai_api_feature_row.country wiring added afterwards, without which the question had no effect on the report"
   },
   "compatibility": {

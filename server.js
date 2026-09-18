@@ -235,7 +235,8 @@ const AI_API_COUNTRY_CODES = {
   "美國": "US",
   "日本": "TW",
   "加拿大": "CA",
-  "馬來西亞": "TW"
+  "馬來西亞": "TW",
+  "越南": "TW"
 };
 
 function buildAiApiFeatureRow(submission) {
