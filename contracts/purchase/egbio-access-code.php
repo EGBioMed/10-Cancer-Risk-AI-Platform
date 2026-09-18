@@ -258,6 +258,18 @@ if ( ! function_exists( 'egbio_issue_ai_access_code' ) ) {
 		// 排查卡住的原因。
 		if ( ! egbio_order_has_ai_cancer_risk( $order ) ) {
 
+			// 但「只買了完整報告」是已知的正常組合，安靜跳過。那個註記
+			// 當初加上來的時候，代碼是唯一的商品；現在每一筆報告訂單都會
+			// 跳一則寫著 skipped 的假警報，客服很快就會學會忽略訂單註記
+			// ——那正好毀掉這些註記存在的理由。第 12 節會為報告商品留下
+			// 它自己的說明。
+			if (
+				function_exists( 'egbio_order_has_report_product' )
+				&& egbio_order_has_report_product( $order )
+			) {
+				return;
+			}
+
 			$seen = array();
 
 			foreach ( $order->get_items( 'line_item' ) as $item ) {
@@ -612,6 +624,43 @@ if ( ! function_exists( 'egbio_require_ticket_for_report' ) ) {
 		);
 
 		return false;
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 9b. 加入購物車之後直接前往結帳
+ *
+ * 免費信的連結指向網站根目錄，所以加入購物車之後使用者會停在首頁，
+ * 面對一個他沒有理由待在那裡的畫面——他按的是「取得完整報告」，不是
+ * 「去逛商店」。
+ *
+ * 用重新導向而不是把連結直接指向結帳頁，是因為順便解決了另一件事：
+ * 網址裡的 add-to-cart 參數在重新整理時會再觸發一次。停在帶著參數的
+ * 頁面上按 F5，購物車就會變成兩份——付兩份錢，只會交付一份報告。
+ * 導向之後網址上不再有那個參數，重新整理是安全的。
+ *
+ * 只對報告商品生效。評估代碼那個商品維持原本的行為。
+ * --------------------------------------------------------- */
+
+add_filter( 'woocommerce_add_to_cart_redirect', 'egbio_report_redirect_to_checkout', 10, 2 );
+
+if ( ! function_exists( 'egbio_report_redirect_to_checkout' ) ) {
+	function egbio_report_redirect_to_checkout( $url, $adding_to_cart = null ) {
+
+		if ( ! $adding_to_cart instanceof WC_Product ) {
+			return $url;
+		}
+
+		if ( $adding_to_cart->get_sku() !== EGBIO_REPORT_PRODUCT_SKU ) {
+			return $url;
+		}
+
+		$checkout = function_exists( 'wc_get_checkout_url' ) ? wc_get_checkout_url() : '';
+
+		// 結帳頁找不到時交還原本的網址，而不是回傳空字串——空字串會讓
+		// WooCommerce 不導向，使用者仍在首頁，但至少商品有進購物車。
+		return $checkout ? $checkout : $url;
 	}
 }
 

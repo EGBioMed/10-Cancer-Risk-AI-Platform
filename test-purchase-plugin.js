@@ -210,3 +210,47 @@ test("the two products stay on their own paths", () => {
   const fn = PLUGIN.slice(reportHandler, PLUGIN.indexOf("\n\t}\n}", reportHandler));
   assert.doesNotMatch(fn, /egbio_get_ai_access_code|egbio_request_ai_access_code/);
 });
+
+// Buying only the report is an ordinary order, not an anomaly. The note it
+// used to leave said "skipped" on every one of them, and a warning that
+// fires on every normal order teaches support to stop reading the notes --
+// which is the opposite of what that note was added for.
+test("a report-only order leaves no access-code warning", () => {
+  const fnStart = PLUGIN.indexOf("function egbio_issue_ai_access_code");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  const noMatch = fn.indexOf("if ( ! egbio_order_has_ai_cancer_risk( $order ) ) {");
+  const quiet = fn.indexOf("egbio_order_has_report_product( $order )", noMatch);
+  const note = fn.indexOf("add_order_note", noMatch);
+
+  assert(noMatch > 0, "the no-matching-product branch is gone");
+  assert(quiet > noMatch, "the report-only case is not recognised");
+  assert(quiet < note, "the quiet return must come before the note is written");
+
+  // The note still has to exist for an order with neither product: that is
+  // the case it was added to make visible.
+  assert(note > 0, "an order with neither product must still be explained");
+});
+
+// The link in the free email lands on the site root, so without this the
+// buyer is left looking at the homepage after pressing "取得完整報告".
+// The redirect also drops the add-to-cart parameter from the address, so a
+// refresh cannot add a second copy of a report that can only be delivered
+// once.
+test("adding the report to the cart goes straight to checkout", () => {
+  assert.match(PLUGIN, /add_filter\(\s*'woocommerce_add_to_cart_redirect'/);
+
+  const fnStart = PLUGIN.indexOf("function egbio_report_redirect_to_checkout");
+  assert(fnStart > 0, "the redirect is not defined");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  assert.match(fn, /wc_get_checkout_url/);
+
+  // It must not redirect every product: the access-code product keeps the
+  // store's own behaviour.
+  const skuAt = fn.indexOf("EGBIO_REPORT_PRODUCT_SKU");
+  const checkoutAt = fn.indexOf("wc_get_checkout_url");
+  assert(skuAt > 0, "the redirect does not check which product was added");
+  assert(skuAt < checkoutAt, "the SKU must be checked before the redirect is chosen");
+  assert.match(fn, /return \$url;/, "a non-report product must keep the original url");
+});
