@@ -93,9 +93,12 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
   "risk_score": @{body('HTTP')?['risk_score_pct']},
   "risk_band": "@{body('HTTP')?['final_risk_level']}",
   "top_cancer_label": "@{first(body('HTTP')?['cancer_risks'])?['cancer']}",
-  "prediction": @{body('HTTP')}
+  "prediction": @{body('HTTP')},
+  "feature_row": @{coalesce(body('剖析_JSON')?['ai_api_feature_row'], body('剖析_JSON')?['excel_row'])}
 }
 ```
+
+> 🔔 **已經建好這個動作的人**：`feature_row` 是 2026-09-18 才加的一行，請回去補上（連同 `"prediction"` 那行結尾的逗號）。缺了它，這筆評估**日後無法產出付費報告**——購買端點會擋下來並回 409。
 
 逐欄說明：
 
@@ -105,6 +108,17 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 - **`risk_band`** — 見 3.4 末尾的已知不一致，那一項要先決定。
 - **`top_cancer_label`** — 從結構化陣列取第一筆，**不必解析文字**。
 - **`prediction`** — 整包回應原樣存入，不挑欄位。資料庫那一欄是 JSON blob，形狀隨模型版本變動，整包存下來最不會漏。**這一行不加引號**（是物件）；加了會存成字串。
+- **`feature_row`** — 產生這筆預測的**輸入**。付費報告要靠它才產得出來，理由見下方。**這一行同樣不加引號。**
+
+#### 為什麼要連輸入一起存
+
+`/generate_report` 吃的是特徵列、回傳 Word 檔，**它自己會重跑一次模型**——那個 API 沒有「拿現成的預測結果去排版」的介面（2026-09-18 實測）。所以流程 C 光有 `prediction` 是產不出報告的，它需要當初餵給模型的那一份輸入。
+
+三個細節都是刻意的：
+
+- **用 `coalesce(ai_api_feature_row, excel_row)`**，與 `/predict` 那個動作的本文**同一個運算式**。`ai_api_feature_row` 缺席時 `/predict` 拿到的是 `excel_row`，那麼存下來的也必須是 `excel_row`——否則存的輸入不是真正產生那個輸出的東西。
+- **不含 `lang` 與 `name`。** 流程呼叫 API 前會用 `addProperty` 補上那兩層，而 `name` 是受檢者姓名；`report_results` 依設計不存個資，所以那兩層留給流程 C 從 contact 資料自己補。
+- **缺了它就無法交付。** 購買端點在**記錄付款之前**檢查這一欄，沒有就回 409。收了錢才發現產不出報告，是最糟的失敗順序。
 
 ### 3.4 `/predict` 實際回傳什麼（2026-09-17 實測）
 
@@ -119,6 +133,7 @@ contracts/power-automate/deployed-flow-trigger-public.schema.json
 | `risk_level` / `risk_label_zh` / `risk_level_display` / `model_risk_level` / `final_risk_level` | string | `中度風險` | 分級（五個欄位同值） |
 | `risk_ratio_vs_healthy` | number | `5.5` | 與同齡健康者的倍數 |
 | `cancer_risks` | **array** | 見下 | 結構化陣列，依「風險等級 → 可靠性 → pct」排序 |
+| （回傳的是什麼格式） | — | — | `/predict` 回 JSON；**`/generate_report` 回 Word 檔**（2.6 MB），不是 PDF |
 | `cancer_risks_text` | string | `🟤 大腸直腸癌：41.8 / 100…` | 信件用的預先排版文字（含 `<br>`） |
 | `recommendation_zh` / `risk_factors_zh` / `all_risk_factors_zh` / `disclaimer_zh` | string | | 信件各段落 |
 | `rule_hard_rule_hits` | array | `[]` | 規則命中（付費內容） |
