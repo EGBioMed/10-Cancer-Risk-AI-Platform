@@ -488,3 +488,315 @@ if ( ! function_exists( 'egbio_show_ai_access_code_in_admin' ) ) {
 		</p>';
 	}
 }
+
+
+/* =========================================================
+ * 完整報告（付費 PDF）
+ *
+ * 與上面的評估代碼是兩個不同的商品，走兩條不同的路：
+ *
+ *   評估代碼 AI-CANCER-RISK    付款 → 鑄一組代碼 → 客戶填問卷
+ *   完整報告 AI-CANCER-REPORT  付款 → 驗票券 → 產報告 → 寄附件
+ *
+ * 報告這條沒有代碼可發。客戶是從免費信裡的連結進來的，那條連結帶著一張
+ * 簽章票券，指明要交付哪一份評估。票券由問卷平台簽發、由資料 API 驗證，
+ * WordPress 只負責把它從網址搬到訂單上，再在付款完成時轉交出去——簽章
+ * 密鑰**不放在這台**，這裡驗不了票，也不該驗。
+ * ========================================================= */
+
+if ( ! defined( 'EGBIO_REPORT_PRODUCT_SKU' ) ) {
+	define( 'EGBIO_REPORT_PRODUCT_SKU', 'AI-CANCER-REPORT' );
+}
+
+if ( ! defined( 'EGBIO_REPORT_API_URL' ) ) {
+	define( 'EGBIO_REPORT_API_URL', 'https://egbiomed-ai-data-api-freycna5dghng2d0.westus2-01.azurewebsites.net/api/reports/purchase' );
+}
+
+if ( ! defined( 'EGBIO_REPORT_TICKET_META_KEY' ) ) {
+	define( 'EGBIO_REPORT_TICKET_META_KEY', '_egbio_report_ticket' );
+}
+
+if ( ! defined( 'EGBIO_REPORT_DELIVERY_META_KEY' ) ) {
+	define( 'EGBIO_REPORT_DELIVERY_META_KEY', '_egbio_report_delivery_requested' );
+}
+
+if ( ! defined( 'EGBIO_REPORT_SESSION_KEY' ) ) {
+	define( 'EGBIO_REPORT_SESSION_KEY', 'egbio_report_ticket' );
+}
+
+
+/* ---------------------------------------------------------
+ * 7. 票券的形狀
+ *
+ * base64url 的 payload、一個點、64 碼小寫十六進位的簽章。這裡只檢查
+ * 形狀，不檢查簽章——簽章密鑰在資料 API 那端。形狀不對的東西連存進
+ * session 都不必，省得一路帶到付款才失敗。
+ * --------------------------------------------------------- */
+
+if ( ! function_exists( 'egbio_is_report_ticket_shaped' ) ) {
+	function egbio_is_report_ticket_shaped( $ticket ) {
+		return is_string( $ticket ) && (bool) preg_match( '/^[A-Za-z0-9_-]+\.[0-9a-f]{64}$/', $ticket );
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 8. 從網址接下票券，存進購物車工作階段
+ *
+ * 免費信裡的連結長這樣：
+ *   https://mdi.eg-bio.com/?add-to-cart=<商品ID>&egbio_ticket=<票券>
+ * --------------------------------------------------------- */
+
+add_action( 'wp_loaded', 'egbio_capture_report_ticket', 20 );
+
+if ( ! function_exists( 'egbio_capture_report_ticket' ) ) {
+	function egbio_capture_report_ticket() {
+
+		if ( ! isset( $_GET['egbio_ticket'] ) ) {
+			return;
+		}
+
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return;
+		}
+
+		$ticket = sanitize_text_field( wp_unslash( $_GET['egbio_ticket'] ) );
+
+		if ( ! egbio_is_report_ticket_shaped( $ticket ) ) {
+			return;
+		}
+
+		WC()->session->set( EGBIO_REPORT_SESSION_KEY, $ticket );
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 9. 沒有票券就不准把報告加入購物車
+ *
+ * 這是本段最重要的一道防線。沒有票券，資料 API 不知道要交付哪一份評估，
+ * 報告就產不出來——而那時錢已經收了。寧可在加入購物車就擋下來，讓客戶
+ * 回頭去點自己信裡的連結，也不要收了錢再回頭退款。
+ * --------------------------------------------------------- */
+
+add_filter( 'woocommerce_add_to_cart_validation', 'egbio_require_ticket_for_report', 10, 3 );
+
+if ( ! function_exists( 'egbio_require_ticket_for_report' ) ) {
+	function egbio_require_ticket_for_report( $passed, $product_id, $quantity ) {
+
+		$product = wc_get_product( $product_id );
+
+		if ( ! $product || $product->get_sku() !== EGBIO_REPORT_PRODUCT_SKU ) {
+			return $passed;
+		}
+
+		$ticket = ( function_exists( 'WC' ) && WC()->session )
+			? WC()->session->get( EGBIO_REPORT_SESSION_KEY )
+			: '';
+
+		if ( egbio_is_report_ticket_shaped( $ticket ) ) {
+			return $passed;
+		}
+
+		wc_add_notice(
+			'請從您收到的評估結果 Email 中的「取得完整報告」按鈕進入，該連結會指明要產生哪一份報告。直接加入購物車無法辨識您的評估結果。',
+			'error'
+		);
+
+		return false;
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 10. 結帳時把票券寫進訂單
+ *
+ * 工作階段會過期、會被清空；訂單不會。從這一刻起，這筆訂單自己記得它
+ * 要交付哪一份評估。
+ * --------------------------------------------------------- */
+
+add_action( 'woocommerce_checkout_create_order', 'egbio_attach_report_ticket_to_order', 10, 2 );
+
+if ( ! function_exists( 'egbio_attach_report_ticket_to_order' ) ) {
+	function egbio_attach_report_ticket_to_order( $order, $data ) {
+
+		if ( ! function_exists( 'WC' ) || ! WC()->session ) {
+			return;
+		}
+
+		$ticket = WC()->session->get( EGBIO_REPORT_SESSION_KEY );
+
+		if ( ! egbio_is_report_ticket_shaped( $ticket ) ) {
+			return;
+		}
+
+		$order->update_meta_data( EGBIO_REPORT_TICKET_META_KEY, $ticket );
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 11. 判斷訂單中是否包含完整報告
+ * --------------------------------------------------------- */
+
+if ( ! function_exists( 'egbio_order_has_report_product' ) ) {
+	function egbio_order_has_report_product( $order ) {
+
+		if ( ! $order instanceof WC_Order ) {
+			return false;
+		}
+
+		foreach ( $order->get_items( 'line_item' ) as $item ) {
+
+			$product = $item->get_product();
+
+			if ( $product && $product->get_sku() === EGBIO_REPORT_PRODUCT_SKU ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 12. 付款完成後，請資料 API 交付報告
+ *
+ * 與第 4 節掛在同一組 hook、同一個優先序，兩者互不干擾：一筆訂單裡可以
+ * 同時有評估代碼與完整報告，各自處理各自的商品。
+ *
+ * 這裡**不寄任何信**，也不知道報告長什麼樣。它只是通知資料 API「這筆訂單
+ * 付款了」，由那邊驗票、比對存檔、觸發交付流程。決定要不要交付的判斷全在
+ * 那一端——WordPress 是本系統中最暴露的元件，不該握有那個權力。
+ *
+ * 端點依 order_reference 冪等，所以 WooCommerce 重送 webhook、訂單經過
+ * 多個已付款狀態，都不會重複寄出報告。
+ * --------------------------------------------------------- */
+
+add_action( 'woocommerce_order_status_processing', 'egbio_request_report_delivery', 5, 1 );
+add_action( 'woocommerce_order_status_completed', 'egbio_request_report_delivery', 5, 1 );
+
+if ( ! function_exists( 'egbio_request_report_delivery' ) ) {
+	function egbio_request_report_delivery( $order_id ) {
+
+		$order = wc_get_order( $order_id );
+
+		if ( ! $order ) {
+			return;
+		}
+
+		// 不含報告商品就與這一段無關，安靜返回：這是唯一不留註記的 early
+		// return，因為每一筆只買了評估代碼的訂單都會走到這裡，留註記只會
+		// 把真正的問題淹掉。第 4 節已經會為它自己的商品留下說明。
+		if ( ! egbio_order_has_report_product( $order ) ) {
+			return;
+		}
+
+		// 已經請求過就不再請求，也避免重複留註記。
+		if ( ! empty( $order->get_meta( EGBIO_REPORT_DELIVERY_META_KEY ) ) ) {
+			return;
+		}
+
+		$ticket = $order->get_meta( EGBIO_REPORT_TICKET_META_KEY );
+
+		// 走到這裡卻沒有票券，代表第 9 節那道防線被繞過了（例如後台手動
+		// 建立訂單）。錢已經收了，所以這一定要留下痕跡並讓人處理。
+		if ( ! egbio_is_report_ticket_shaped( $ticket ) ) {
+			$order->add_order_note(
+				'完整報告無法交付：這筆訂單沒有票券，無法判斷要交付哪一份評估。'
+				. '請確認客戶是否從結果 Email 的連結進入結帳；必要時請以人工方式處理。'
+			);
+			$order->save();
+			return;
+		}
+
+		if ( ! defined( 'EGBIO_PURCHASE_API_KEY' ) || ! EGBIO_PURCHASE_API_KEY ) {
+			$order->add_order_note( '完整報告無法交付：EGBIO_PURCHASE_API_KEY 未設定。' );
+			$order->save();
+			return;
+		}
+
+		$response = wp_remote_post(
+			EGBIO_REPORT_API_URL,
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Content-Type'             => 'application/json',
+					'x-egbiomed-purchase-key'  => EGBIO_PURCHASE_API_KEY,
+				),
+				'body'    => wp_json_encode(
+					array(
+						'ticket'          => $ticket,
+						'order_reference' => 'wc-order-' . $order->get_id(),
+					)
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			$order->add_order_note(
+				sprintf( '完整報告交付請求失敗（無法連線）：%s', $response->get_error_message() )
+			);
+			$order->save();
+			return;
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $code < 200 || $code >= 300 ) {
+			// 把 API 的錯誤原樣記下來。它的訊息是刻意寫得可讀的：票券無效、
+			// 找不到評估結果、該筆評估早於輸入存檔——三種完全不同的處置。
+			$order->add_order_note(
+				sprintf(
+					'完整報告交付請求被拒（HTTP %d）：%s',
+					$code,
+					isset( $body['error'] ) ? $body['error'] : wp_remote_retrieve_body( $response )
+				)
+			);
+			$order->save();
+			return;
+		}
+
+		// 只有成功才記旗標。失敗時不記，下一次狀態變更（例如 processing →
+		// completed）會再試一次，而不是把一筆付了錢的訂單永遠擱在那裡。
+		$order->update_meta_data( EGBIO_REPORT_DELIVERY_META_KEY, current_time( 'mysql' ) );
+
+		$order->add_order_note(
+			sprintf(
+				'完整報告已請求交付%s。報告將由系統直接寄至客戶填寫評估時使用的 Email。',
+				( isset( $body['reused'] ) && $body['reused'] ) ? '（此訂單先前已請求過，未重複寄送）' : ''
+			)
+		);
+		$order->save();
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 13. 後台訂單頁顯示票券狀態
+ *
+ * 不顯示票券本身——它很長，而且看了也無從判斷對錯。顯示的是客服真正需要
+ * 知道的：這筆訂單有沒有票券、交付請求送出了沒有。
+ * --------------------------------------------------------- */
+
+add_action( 'woocommerce_admin_order_data_after_billing_address', 'egbio_show_report_status_in_admin', 21, 1 );
+
+if ( ! function_exists( 'egbio_show_report_status_in_admin' ) ) {
+	function egbio_show_report_status_in_admin( $order ) {
+
+		if ( ! egbio_order_has_report_product( $order ) ) {
+			return;
+		}
+
+		$ticket    = $order->get_meta( EGBIO_REPORT_TICKET_META_KEY );
+		$delivered = $order->get_meta( EGBIO_REPORT_DELIVERY_META_KEY );
+
+		echo '<p><strong>完整報告</strong><br />票券：'
+			. ( egbio_is_report_ticket_shaped( $ticket ) ? '✅ 已附加' : '❌ 缺少（無法交付）' )
+			. '<br />交付請求：'
+			. ( $delivered ? '✅ 已送出 ' . esc_html( $delivered ) : '⏳ 尚未送出（請查看訂單註記）' )
+			. '</p>';
+	}
+}
