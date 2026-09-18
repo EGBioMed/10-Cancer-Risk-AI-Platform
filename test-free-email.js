@@ -91,9 +91,12 @@ for (const lang of ["zh", "en"]) {
     const links = FREE[lang].match(/https:\/\/mdi\.eg-bio\.com\/[^"]*/g) || [];
     assert.equal(links.length, 1, "one call to action, not several");
     assert.match(links[0], /egbio_ticket=@\{triggerBody\(\)\?\['report_ticket'\]\}/);
-    // The product does not exist on the store yet, so the placeholder has to
-    // stay conspicuous enough that it cannot ship by accident.
-    assert.match(links[0], /add-to-cart=REPLACE_WITH_PRODUCT_ID/);
+    // Product 1062 on the store, hidden from the catalogue because this link
+    // is the only supported way in. A wrong id here raises no error -- it
+    // quietly sells the reader some other product -- so it is pinned
+    // literally, and the generator holds the one copy of it.
+    assert.match(links[0], /add-to-cart=1062&/);
+    assert.doesNotMatch(links[0], /REPLACE_WITH_PRODUCT_ID/);
 
     // The paid email must never grow a payment link: its recipients were
     // already paid for by their institution.

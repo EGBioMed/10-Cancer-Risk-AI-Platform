@@ -3,6 +3,17 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 
+// The WooCommerce product the free email's payment link adds to the cart, on
+// mdi.eg-bio.com. SKU AI-CANCER-REPORT, published hidden from the catalogue
+// because the only supported way in is that link -- the store plugin refuses
+// to add it to a cart without a ticket.
+//
+// Declared once and interpolated into both languages. Two literals would be
+// two places for one of them to be wrong, and a wrong id here quietly sells
+// the reader a different product: nothing errors, they simply pay for
+// something else.
+const REPORT_PRODUCT_ID = 1062;
+
 // The free email is the paid email with two edits: the model validation
 // summary comes out, and a call to action goes in where it stood.
 //
@@ -32,7 +43,7 @@ const LANGS = {
             <li>依您的年齡、家族史與居住地區整理的篩檢建議</li>
             <li>模型研究與驗證資料的完整說明</li>
           </ul>
-          <a href="https://mdi.eg-bio.com/?add-to-cart=REPLACE_WITH_PRODUCT_ID&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">取得完整報告</a>
+          <a href="https://mdi.eg-bio.com/?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">取得完整報告</a>
           <p style="margin:14px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">此連結僅對應您本次的評估結果，請勿轉寄他人。連結有效期限為 30 天。</p>
         </div>
 
@@ -51,7 +62,7 @@ const LANGS = {
             <li>Screening guidance organised around your age, family history and country of residence</li>
             <li>The full account of the model's research and validation data</li>
           </ul>
-          <a href="https://mdi.eg-bio.com/?add-to-cart=REPLACE_WITH_PRODUCT_ID&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">Get the complete report</a>
+          <a href="https://mdi.eg-bio.com/?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:14px 28px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">Get the complete report</a>
           <p style="margin:14px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">This link corresponds only to your own assessment. Please do not forward it. It expires after 30 days.</p>
         </div>
 

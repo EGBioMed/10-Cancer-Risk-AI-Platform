@@ -251,10 +251,12 @@ power-automate-email-free-en.html
 樣板裡的連結長這樣：
 
 ```
-https://mdi.eg-bio.com/?add-to-cart=REPLACE_WITH_PRODUCT_ID&egbio_ticket=@{triggerBody()?['report_ticket']}
+https://mdi.eg-bio.com/?add-to-cart=1062&egbio_ticket=@{triggerBody()?['report_ticket']}
 ```
 
-`REPLACE_WITH_PRODUCT_ID` 要等 WooCommerce 上架（第 12 步）才有值。**佔位符是刻意留得很顯眼的**，避免忘了換就上線。
+`1062` 是商店裡「完整報告」這項商品的 ID（SKU `AI-CANCER-REPORT`，刻意隱藏不上架，因為唯一支援的進入方式就是這條連結）。
+
+這個數字只寫在產生器 `scripts/build-email-templates.js` 裡一個地方，中英文兩份樣板都從那裡取值。**不要手改樣板**——填錯 ID 不會出錯，只會安靜地把客戶導去買別的商品。要改就改產生器再重新產出。
 
 `report_ticket` 不用管，平台簽好章隨送件一起送進來。
 
