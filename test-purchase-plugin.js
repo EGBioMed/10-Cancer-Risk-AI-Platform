@@ -124,6 +124,22 @@ test("the ticket shape check matches what the platform signs", () => {
   }
 });
 
+// WooCommerce registers WC_Form_Handler::add_to_cart_action on wp_loaded at
+// priority 20. The ticket has to be in the session before that runs. Equal
+// priorities are resolved by plugin load order, which this plugin does not
+// control -- and if the order ever flips, the guard below refuses the very
+// customers who arrived from their own email link.
+test("the ticket is captured before WooCommerce handles add-to-cart", () => {
+  const hook = PLUGIN.match(
+    /add_action\(\s*'wp_loaded',\s*'egbio_capture_report_ticket',\s*(\d+)\s*\)/
+  );
+  assert(hook, "the capture hook is not registered on wp_loaded");
+  assert(
+    Number(hook[1]) < 20,
+    `priority ${hook[1]} ties WooCommerce's own handler, so plugin load order decides`
+  );
+});
+
 // The guard that matters most commercially: without a ticket the report
 // cannot be produced at all, so the sale must be refused before the money
 // is taken, not after.

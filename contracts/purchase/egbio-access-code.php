@@ -545,9 +545,17 @@ if ( ! function_exists( 'egbio_is_report_ticket_shaped' ) ) {
  *
  * 免費信裡的連結長這樣：
  *   https://mdi.eg-bio.com/?add-to-cart=<商品ID>&egbio_ticket=<票券>
+ *
+ * 優先序必須小於 20。WooCommerce 自己的 WC_Form_Handler::add_to_cart_action
+ * 也掛在 wp_loaded、優先序也是 20，而同優先序誰先跑取決於外掛載入順序——
+ * 那不是這個外掛能決定的事。順序一旦翻過來，票券還沒存進 session，第 9 節
+ * 那道防線就會把從自己信裡點進來的客戶擋掉：付費這條路整條斷掉，而且只在
+ * 特定環境重現。
+ *
+ * wp_loaded 比 init 晚，所以優先序調早不影響 WC()->session 是否已就緒。
  * --------------------------------------------------------- */
 
-add_action( 'wp_loaded', 'egbio_capture_report_ticket', 20 );
+add_action( 'wp_loaded', 'egbio_capture_report_ticket', 5 );
 
 if ( ! function_exists( 'egbio_capture_report_ticket' ) ) {
 	function egbio_capture_report_ticket() {
