@@ -100,9 +100,35 @@ HTTP 200 | application/vnd.openxmlformats-officedocument.wordprocessingml.docume
 - [ ] `剖析 JSON`（沒有問卷內容可剖析）
 - [ ] `執行指令碼`（研究資料在免費線那次就寫過了，重寫會產生重複列）
 - [ ] `HTTP`（`/predict`）——**注意是這一個，不是 `HTTP 1`**
-- [ ] `條件 1`（如果它是依問卷內容分支的話；先點開確認再刪）
 
 **保留**：`HTTP 1`（`/generate_report`）、建立檔案、轉換檔案、取得檔案內容、傳送電子郵件。
+
+**`條件` 不要直接刪。** 先點開看它在比什麼——它很可能是中英文分支，寄信的動作就在其中一支裡面，刪掉會把那些一起帶走。
+
+### 3.1 刪掉剖析 JSON 之後，每一處引用它的地方都要改
+
+刪除後儲存會得到：
+
+```
+The action(s) '剖析_JSON' referenced by 'inputs' in action '條件'
+are not defined in the template.
+```
+
+這是正常的——剩下的動作還指著已經不存在的來源。**儲存失敗一次只報一個錯**，修完再存可能還會跳下一個，逐一改完為止。
+
+對照表（右欄都用 fx 運算式，不加 `@{}`，除非填的是本文或 URI）：
+
+| 原本（流程 A） | 流程 C 改成 |
+|---|---|
+| `body('剖析_JSON')?['report_language']` | `triggerBody()?['report_language']` |
+| `body('剖析_JSON')?['full_name']` | `triggerBody()?['full_name']` |
+| `body('剖析_JSON')?['email']` | `triggerBody()?['email']` |
+| `body('剖析_JSON')?['contact_row']?['record_id']` | `triggerBody()?['record_id']` |
+| `body('剖析_JSON')?['ai_api_feature_row']` | `body('GetStoredResult')?['result']?['feature_row']` |
+
+**建立檔案的檔名與 SharePoint 路徑裡也常帶 `record_id`**，容易漏看。
+
+分支邏輯本身不必改——資料 API 送進來的內容同樣有 `report_language`，只是換一個來源。
 
 ---
 
