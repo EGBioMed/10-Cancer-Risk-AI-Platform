@@ -76,12 +76,18 @@
                                                                             │
                                                         WordPress plugin ──> 資料 API 驗票
                                                                             │
-                                          流程 C（報告交付,由 B 複製）<────┘
+                                          流程 C（報告交付,由 A 複製）<────┘
                                                                             │
                                           讀 report_results ──> 產 PDF ──> 寄信（含附件）
 ```
 
-**關鍵原則:PDF 只產一次,產在付款之後,且不重跑模型。** 免費信寄出當下就把模型輸出存進資料庫,付費 PDF 直接讀該筆存檔排版。這避免「免費信寫 61.6 分、模型改版後付費 PDF 卻變 58.3 分」的不一致。
+**關鍵原則:PDF 只產一次,產在付款之後,而且用產生免費信數字的那一份輸入去產。**
+
+免費信寄出當下,把模型的**輸出與輸入**都存進 `report_results`。付費 PDF 用同一份輸入重新產生,並在產出前比對分數是否仍相符,不相符就中止不寄。
+
+> **2026-09-18 更正。** 本節原本寫「直接讀該筆存檔排版,不重跑模型」——實測後確認**做不到**。`/generate_report` 吃的是特徵列、回傳 Word 檔,它自己會重跑一次模型;那個 API 沒有「拿現成預測結果去排版」的介面。
+>
+> 因此改為:存下輸入(`report_results.feature_row`)→ 用同一份輸入重產 → **產出前比對分數**。這把「兩邊數字一致」從一句承諾變成一道檢查,是現有 API 之下能做到最接近原意的做法。根治要等模型 API 提供「以既有預測結果排版」的介面。
 
 ---
 
@@ -397,7 +403,7 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 |---|---|---|---|
 | **A** | 廠商推廣版（機構線） | 平台,`POWER_AUTOMATE_WEBHOOK_URL` | **現有流程,永不修改** |
 | **B** | 免費版 | 平台,`POWER_AUTOMATE_WEBHOOK_URL_PUBLIC` | 由 A 複製後改寫 |
-| **C** | 報告交付 | 資料 API,驗票成功後 | 由 B 再複製後改寫 |
+| **C** | 報告交付 | 資料 API,驗票成功後 | **由 A 複製**後改寫（見 7.3） |
 
 ### 7.1 流程 A(廠商推廣版)— 零修改
 
@@ -417,18 +423,26 @@ X-EGBiomed-Purchase-Key: <PURCHASE_API_KEY>
 | **7（改寫）** | 寄免費信（**無附件**),付款按鈕由 `report_ticket` 組成 |
 | **8（新增）** | 更新 `report_status = free_sent` |
 
-### 7.3 流程 C(報告交付)— 由 B 再複製
+### 7.3 流程 C(報告交付)— 由 A 複製
+
+> 實際操作步驟見 **[`FLOW_C_RUNBOOK.md`](FLOW_C_RUNBOOK.md)**。以下是設計摘要。
+
+**由 A 複製,不是由 B。** 流程 C 需要 `/generate_report` → 建立檔案 → 轉換檔案 → 取得內容 → 附件寄信 這一整段尾巴,而流程 B 已經把那幾步刪掉了。複製動作在流程清單上操作,不需要打開流程 A 的編輯器。
 
 | 步驟 | 內容 |
 |---|---|
-| 1 | HTTP Trigger（由資料 API 於驗票成功後呼叫,只收 `record_id` 與收件資訊） |
-| 2 | `HTTP - 取得模型結果` → `GET /api/reports/result/{record_id}` |
-| 3 | 刪除剖析問卷、Excel 保存、`/predict` 三步——結果已存在,**不重跑模型** |
-| 4 | `HTTP 1` → `/generate_report`（保留 A 原本的運算式） |
-| 5 | `建立檔案 - SharePoint`,路徑維持 `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf` |
-| 6 | `取得檔案內容` |
-| 7 | `傳送電子郵件 (V2)`,含 PDF 附件 |
-| 8 | `HTTP - 更新報告狀態` → `delivered` |
+| 1 | HTTP Trigger（由資料 API 於驗票成功後呼叫,收 `record_id` 與收件資訊;schema 整個換掉） |
+| 2 | `HTTP - 取得模型結果` → `GET /api/reports/result/{record_id}`,取回 `prediction_json` 與 **`feature_row`** |
+| 3 | 刪除剖析問卷、Excel 保存、`/predict` 三步 |
+| 4 | `HTTP - 重新評分比對` → 用存下的 `feature_row` 呼叫 `/predict` |
+| 5 | `條件 - 分數是否仍相符` → 與存檔的 `risk_score` 比對,**不符即中止不寄** |
+| 6 | `HTTP 1` → `/generate_report`,本文改讀 `feature_row`,並照 A 的結構補回 `lang` 與 `name` |
+| 7 | 建立檔案 → **轉換檔案** → 取得檔案內容（`/generate_report` 回的是 Word 檔,不是 PDF） |
+| 8 | `傳送電子郵件 (V2)`,含 PDF 附件,收件人改用觸發帶進來的 email |
+
+第 4、5 步是「兩邊數字一致」這個保證的實作。沒有它們,那句話只是沒有檢查的承諾。
+
+第 8 步原本規劃的「更新報告狀態 → delivered」暫時跳過——該端點尚未實作,且不影響寄送。
 
 ### 7.4 為何改成三條而不是一條加分支
 
@@ -595,8 +609,8 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 7 | 產生 `deployed-flow-trigger-public.schema.json` 並貼進流程 B | 流程 B 觸發程序接受 public 送件、拒絕機構送件 | ✅ 2026-09-17 |
 | 8 | 流程 B 改寫:存模型結果、刪 PDF 三步、改寄免費信 | 以測試用 public 代碼提交,收到無附件信件 | ✅ 2026-09-17 實測通過 |
 | 9 | 免費信樣板（中英各一） | 同上 | ✅ 2026-09-17 |
-| 10 | 由流程 B 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | ⬜ |
-| 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ⬜ |
+| 10 | 由流程 **A** 複製出流程 C（報告交付） | 手動以測試 `record_id` 觸發 | 🔶 手冊已備 `FLOW_C_RUNBOOK.md`,待操作 |
+| 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ✅ `a20fcae`,待部署 |
 | 12 | WooCommerce 商品 + plugin 擴充 | 測試訂單（沿用先前不實際付款的測試方式） | ⬜ |
 | 13 | IRB 補件 | —— | ⬜ |
 | 14 | 鑄發正式宣傳代碼並對外公布 | —— | ⬜ |
