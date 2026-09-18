@@ -307,7 +307,15 @@ test("rejects a missing vector field", () => {
 // test-questionnaire-ui.js only greps app.js as text. So these tests run the
 // real client function and the real server validator on a row that has one.
 function loadClientSubmissionValidator() {
-  const source = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
+  // Normalised to LF before anything indexes into it. The repository stores
+  // app.js with LF, but a Windows checkout under core.autocrlf=true hands us
+  // CRLF, and topLevelFunction below finds a function's end by searching for
+  // a line containing only "}". Without this that search never matches and
+  // the whole file throws at load -- which is what it did, so these tests
+  // silently stopped running on Windows while CI kept passing.
+  const source = fs
+    .readFileSync(path.join(__dirname, "app.js"), "utf8")
+    .replace(/\r\n/g, "\n");
   const line = (header) => {
     const start = source.indexOf(header);
     assert(start >= 0, `Could not locate ${header} in app.js`);
