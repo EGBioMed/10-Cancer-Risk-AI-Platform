@@ -857,3 +857,107 @@ if ( ! function_exists( 'egbio_show_report_status_in_admin' ) ) {
 			. '</p>';
 	}
 }
+
+/* =========================================================
+ * 14. 檢測產品推薦轉址
+ *
+ * 免費信裡的推薦按鈕一律指向這裡：
+ *   https://mdi.eg-bio.com/recommend?c=<癌別>&src=<哪一封信>
+ *
+ * 癌別→產品的對應表只放在這一個地方。信件樣板裡沒有任何產品網址，
+ * 所以換產品、加產品、改網址都不必碰 Power Automate——而編輯流程是這
+ * 套系統裡最危險的操作（2026-09-18 那次把外掛寫成 0 bytes、以及條件
+ * 運算式裡混進一個跳位字元，都是在編輯器裡貼東西造成的）。
+ *
+ * 轉址時附上 utm 參數，讓既有的網站分析就能分辨「哪一封信、哪一個癌別」
+ * 帶進來的流量，不必在這裡自己記帳。
+ * ========================================================= */
+
+if ( ! defined( 'EGBIO_RECOMMEND_PATH' ) ) {
+	define( 'EGBIO_RECOMMEND_PATH', '/recommend' );
+}
+
+if ( ! defined( 'EGBIO_RECOMMEND_FALLBACK_URL' ) ) {
+	define( 'EGBIO_RECOMMEND_FALLBACK_URL', 'https://mdi.eg-bio.com/product-category/test/' );
+}
+
+
+/* ---------------------------------------------------------
+ * 14.1 對應表
+ *
+ * 鍵值是模型 cancer_risks[].cancer 回傳的逐字字串，不是問卷的癌別選項
+ * ——兩者不是同一套（模型會回「膽道癌」，問卷選項裡沒有這一項）。
+ *
+ * 目前只有四項有對應產品。沒有列在這裡的癌別，信件端本來就不會顯示
+ * 按鈕；這裡的 fallback 是給網址被轉寄、被改、或日後樣板與這張表不同
+ * 步時用的，讓它落在產品總覽頁而不是 404。
+ *
+ * ⚠ 三個經查證的對應關係，不要照產品名稱直覺修改：
+ *   - 肝癌 → Gastrointestinal（該產品明列涵蓋 pancreatic/colorectal/liver），
+ *     沒有單獨的肝癌檢測
+ *   - 胃癌 → 無。Gastrointestinal 這個名字不含胃癌，產品頁的涵蓋範圍
+ *     只有上述三種
+ *   - 乳癌 → Monitoring 產品，用途是「監測已確診乳癌患者的疾病狀態」，
+ *     不是篩檢。信件端只對「問卷中自述曾罹患乳癌」的人顯示
+ * --------------------------------------------------------- */
+
+if ( ! function_exists( 'egbio_recommendation_map' ) ) {
+	function egbio_recommendation_map() {
+		return array(
+			'大腸直腸癌' => 'https://mdi.eg-bio.com/product/okaidx-colorectal-cancer-detection-blood-test/',
+			'胰臟癌'     => 'https://mdi.eg-bio.com/product/okaidx-pancreatic-cancer-detection-blood-test/',
+			'肝癌'       => 'https://mdi.eg-bio.com/product/okaidx-gastrointestinal-cancer-detection-blood-test/',
+			'乳癌'       => 'https://mdi.eg-bio.com/product/okaidx-breast-cancer-monitoring-blood-test/',
+		);
+	}
+}
+
+
+/* ---------------------------------------------------------
+ * 14.2 轉址
+ *
+ * 掛在 template_redirect：查詢已經解析完、樣板還沒開始輸出，是 WordPress
+ * 攔截並轉址的標準時機。這個路徑沒有對應的頁面，WordPress 會判定 404，
+ * 但 template_redirect 仍然會執行，所以攔得到。
+ * --------------------------------------------------------- */
+
+add_action( 'template_redirect', 'egbio_handle_recommendation_link' );
+
+if ( ! function_exists( 'egbio_handle_recommendation_link' ) ) {
+	function egbio_handle_recommendation_link() {
+
+		$request = isset( $_SERVER['REQUEST_URI'] ) ? wp_unslash( $_SERVER['REQUEST_URI'] ) : '';
+		$path    = strtok( $request, '?' );
+
+		if ( untrailingslashit( $path ) !== EGBIO_RECOMMEND_PATH ) {
+			return;
+		}
+
+		$cancer = isset( $_GET['c'] ) ? sanitize_text_field( wp_unslash( $_GET['c'] ) ) : '';
+		$source = isset( $_GET['src'] ) ? sanitize_key( wp_unslash( $_GET['src'] ) ) : '';
+
+		$map = egbio_recommendation_map();
+
+		// 查不到就送去總覽頁。這裡不做模糊比對：癌別名稱只要不是逐字相符，
+		// 就代表信件端與這張表已經不同步，那時把人送到一個「看起來相關」
+		// 的產品，比送到總覽頁更糟。
+		$target = isset( $map[ $cancer ] ) ? $map[ $cancer ] : EGBIO_RECOMMEND_FALLBACK_URL;
+
+		// 用 http_build_query 而不是 add_query_arg：癌別是中文，需要確實
+		// 的百分號編碼，而 add_query_arg 對編碼的處理會因傳入形式而異。
+		$params = http_build_query(
+			array(
+				'utm_source'   => 'assessment_email',
+				'utm_medium'   => 'email',
+				'utm_campaign' => $source ? $source : 'unknown',
+				'utm_content'  => $cancer,
+			)
+		);
+
+		$target .= ( strpos( $target, '?' ) === false ? '?' : '&' ) . $params;
+
+		// 302 而非 301：對應表會變，不要讓瀏覽器把它快取成永久。
+		wp_redirect( $target, 302 );
+		exit;
+	}
+}

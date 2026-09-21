@@ -254,3 +254,95 @@ test("adding the report to the cart goes straight to checkout", () => {
   assert(skuAt < checkoutAt, "the SKU must be checked before the redirect is chosen");
   assert.match(fn, /return \$url;/, "a non-report product must keep the original url");
 });
+
+// Three of these were verified against the product pages themselves and are
+// all counter-intuitive. Each is the kind of thing a later reader "fixes"
+// from the product names alone, and each wrong answer recommends a medical
+// test to someone it is not for.
+const RECOMMENDATIONS = [
+  [
+    "大腸直腸癌",
+    "okaidx-colorectal-cancer-detection-blood-test",
+    "the colorectal test"
+  ],
+  [
+    "胰臟癌",
+    "okaidx-pancreatic-cancer-detection-blood-test",
+    "the pancreatic test"
+  ],
+  [
+    // The page lists its coverage as pancreatic, colorectal and liver. There
+    // is no standalone liver test, so the GI panel is the only option.
+    "肝癌",
+    "okaidx-gastrointestinal-cancer-detection-blood-test",
+    "the GI panel, which is the only product covering liver"
+  ],
+  [
+    // "Intended for monitoring the disease status of breast cancer patients."
+    // The email only offers this to someone who reported breast cancer in
+    // their own history, never off a risk score.
+    "乳癌",
+    "okaidx-breast-cancer-monitoring-blood-test",
+    "the breast monitoring test"
+  ]
+];
+
+test("each cancer maps to the product that actually covers it", () => {
+  const fnStart = PLUGIN.indexOf("function egbio_recommendation_map");
+  assert(fnStart > 0, "the recommendation map is not defined");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  for (const [cancer, slug, description] of RECOMMENDATIONS) {
+    const line = fn.split("\n").find((l) => l.includes(`'${cancer}'`));
+    assert(line, `${cancer} is not in the map`);
+    assert(
+      line.includes(slug),
+      `${cancer} should point at ${description}, not ${line.trim()}`
+    );
+  }
+});
+
+// Naming it "gastrointestinal" does not make it cover the stomach; the page
+// lists pancreatic, colorectal and liver only. Someone flagged for stomach
+// cancer must not be sent to a test that does not look for it.
+test("stomach and biliary cancers have no product and are not guessed at", () => {
+  const fnStart = PLUGIN.indexOf("function egbio_recommendation_map");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  assert.doesNotMatch(fn, /'胃癌'/, "the GI panel does not cover stomach cancer");
+  assert.doesNotMatch(fn, /'膽道癌'/, "no product covers biliary tract cancer");
+  assert.doesNotMatch(fn, /'肺癌'|'頭頸癌'|'子宮內膜癌'/, "no product covers these");
+});
+
+test("an unknown cancer lands on the product listing, not a 404", () => {
+  assert.match(PLUGIN, /define\( 'EGBIO_RECOMMEND_FALLBACK_URL'/);
+
+  const fnStart = PLUGIN.indexOf("function egbio_handle_recommendation_link");
+  assert(fnStart > 0, "the redirect handler is not defined");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  assert.match(fn, /EGBIO_RECOMMEND_FALLBACK_URL/, "there is no fallback");
+
+  // It must only act on its own path. Without this it would hijack the site.
+  assert.match(fn, /EGBIO_RECOMMEND_PATH/);
+  assert.match(fn, /return;/, "a request for any other path must be left alone");
+
+  // 302, because the mapping changes. A 301 would be cached in browsers that
+  // followed it once, and a customer would keep landing on last year's
+  // product long after the map was corrected.
+  assert.match(fn, /wp_redirect\( \$target, 302 \)/);
+  assert.doesNotMatch(fn, /wp_redirect\( \$target, 301 \)/);
+});
+
+test("the redirect carries the campaign back to the store's analytics", () => {
+  const fnStart = PLUGIN.indexOf("function egbio_handle_recommendation_link");
+  const fn = PLUGIN.slice(fnStart, PLUGIN.indexOf("\n\t}\n}", fnStart));
+
+  assert.match(fn, /utm_source/);
+  assert.match(fn, /utm_campaign/);
+  assert.match(fn, /utm_content/);
+
+  // The cancer name is Chinese, so the query string has to be encoded
+  // properly rather than concatenated.
+  assert.match(fn, /http_build_query/);
+});

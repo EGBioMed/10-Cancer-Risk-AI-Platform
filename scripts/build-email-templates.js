@@ -87,6 +87,157 @@ const LANGS = {
   }
 };
 
+// --- Product recommendation ---------------------------------------------
+//
+// One button, at most, under the payment call to action. Which product it
+// points at is decided by the store, not here: the email only carries the
+// cancer's name, and /recommend on the store maps it. That keeps every
+// product URL out of Power Automate, where editing is the riskiest
+// operation in this system.
+//
+// What the email does have to know is whether there is anything to offer at
+// all -- a button reading "learn about stomach cancer testing" that lands on
+// a page with no stomach test is worse than no button. So this list exists,
+// and it is the set of cancers with a product, not the set of cancers.
+//
+// Each was checked against the product page itself, and three of them are
+// not what the product names suggest. See section 14 of
+// contracts/purchase/egbio-access-code.php.
+const RISK_RECOMMENDABLE = [
+  ["大腸直腸癌", "colorectal cancer"],
+  ["胰臟癌", "pancreatic cancer"],
+  // The GI panel covers pancreatic, colorectal and liver. There is no
+  // standalone liver test, and despite the name it does not cover stomach.
+  ["肝癌", "liver cancer"]
+];
+
+const TOP = `first(body('${PREDICT_ACTION}')?['cancer_risks'])`;
+const TOP_CANCER = `${TOP}?['cancer']`;
+
+// The cancers the participant said they have or have had, as excel_row
+// carries them: a semicolon-joined string of the questionnaire's canonical
+// Chinese labels. Canonical in both languages -- an English session still
+// stores 乳癌, which is why one condition serves both templates. (The
+// follow-up question that collects this is itself gated on a Chinese string
+// comparison in app.js, so English answers could not be stored translated
+// without that question disappearing for English users.)
+const OWN_HISTORY = "coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],'')";
+
+const or = (parts) => parts.reduce((a, b) => `or(${a},${b})`);
+const and = (parts) => parts.reduce((a, b) => `and(${a},${b})`);
+
+// Binary nesting rather than the multi-argument form. Both are documented,
+// but a rejected expression here fails at paste time with a message about
+// the whole condition, and this removes one thing it could be.
+const RISK_CONDITION = and([
+  `equals(${TOP}?['reliable'],true)`,
+  or([`equals(${TOP}?['level'],'高風險')`, `equals(${TOP}?['level'],'中度風險')`]),
+  or(RISK_RECOMMENDABLE.map(([zh]) => `equals(${TOP_CANCER},'${zh}')`)),
+  // Never offer a detection test for a cancer the reader has already been
+  // diagnosed with. That is the same error as offering a monitoring test to
+  // someone healthy, pointing the other way.
+  `not(contains(${OWN_HISTORY},${TOP_CANCER}))`
+]);
+
+// The breast product is for monitoring people who have breast cancer, so it
+// is offered on what the reader told us, not on what the model inferred.
+// This is not a risk-to-screening recommendation at all.
+const BREAST_CONDITION = `contains(${OWN_HISTORY},'乳癌')`;
+
+const CARD_OPEN =
+  '<div style="border:1px solid #dce6e3;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:26px;">'
+  + '<div style="font-size:13px;font-weight:800;color:#40514f;margin-bottom:6px;">';
+const BUTTON_STYLE =
+  'display:inline-block;padding:11px 22px;border:1px solid #0f766e;color:#0f766e;'
+  + 'font-size:14px;font-weight:700;text-decoration:none;border-radius:999px;';
+
+// A quoted literal inside a Power Automate expression.
+const lit = (s) => `'${s}'`;
+
+function card({ heading, bodyBefore, nameExpr, bodyAfter, linkCancerExpr, ctaBefore, ctaAfter }) {
+  return [
+    "concat(",
+    lit(`${CARD_OPEN}${heading}</div><p style="margin:0 0 14px;font-size:14px;line-height:1.8;color:#5f6f6b;">${bodyBefore}`),
+    ",", nameExpr, ",",
+    lit(`${bodyAfter}</p><a href="https://mdi.eg-bio.com/recommend?c=`),
+    ",", `encodeUriComponent(${linkCancerExpr})`, ",",
+    lit(`&amp;src=free" style="${BUTTON_STYLE}">${ctaBefore}`),
+    ",", nameExpr, ",",
+    lit(`${ctaAfter}</a></div>`),
+    ")"
+  ].join("");
+}
+
+const RECOMMENDATION_COPY = {
+  zh: {
+    breast: {
+      heading: "延伸檢測服務",
+      bodyBefore: "您在問卷中表示曾被診斷為",
+      bodyAfter: "。EG BioMed 提供用於監測乳癌疾病狀態的血液檢測服務，供您與醫師討論追蹤方式時參考。是否需要檢測請由醫師判斷，本信件不構成醫療建議。",
+      ctaBefore: "了解",
+      ctaAfter: "相關檢測"
+    },
+    risk: {
+      heading: "延伸檢測服務",
+      bodyBefore: "本次整理中，與",
+      bodyAfter: "相關的風險因子較為集中。EG BioMed 提供對應的血液檢測服務，可作為您與醫師討論時的參考。是否需要檢測請由醫師判斷，本信件不構成醫療建議。",
+      ctaBefore: "了解",
+      ctaAfter: "相關檢測"
+    }
+  },
+  en: {
+    breast: {
+      heading: "Related testing services",
+      bodyBefore: "You indicated in the questionnaire that you have been diagnosed with ",
+      bodyAfter: ". EG BioMed offers a blood test for monitoring the disease status of breast cancer, which you may wish to discuss with your physician. Whether testing is appropriate is a decision for your physician; this email is not medical advice.",
+      ctaBefore: "Learn about ",
+      ctaAfter: " testing"
+    },
+    risk: {
+      heading: "Related testing services",
+      bodyBefore: "This assessment found a denser cluster of risk factors associated with ",
+      bodyAfter: ". EG BioMed offers a corresponding blood test, which you may wish to raise with your physician. Whether testing is appropriate is a decision for your physician; this email is not medical advice.",
+      ctaBefore: "Learn about ",
+      ctaAfter: " testing"
+    }
+  }
+};
+
+function recommendationBlock(lang) {
+  const copy = RECOMMENDATION_COPY[lang];
+
+  // The model returns no English cancer names -- prediction_json has no _en
+  // fields at all -- so the English template carries its own table. It falls
+  // back to an empty name rather than the Chinese one: a cancer that is not
+  // in the list cannot reach this expression anyway, and if one ever does,
+  // an English reader should not be shown a Chinese word.
+  const displayName =
+    lang === "zh"
+      ? TOP_CANCER
+      : RISK_RECOMMENDABLE.reduceRight(
+          (fallback, [zh, en]) => `if(equals(${TOP_CANCER},'${zh}'),'${en}',${fallback})`,
+          "''"
+        );
+
+  const breastName = lang === "zh" ? "'乳癌'" : "'breast cancer'";
+
+  const breastCard = card({
+    ...copy.breast,
+    nameExpr: breastName,
+    linkCancerExpr: "'乳癌'"
+  });
+
+  const riskCard = card({
+    ...copy.risk,
+    nameExpr: displayName,
+    linkCancerExpr: TOP_CANCER
+  });
+
+  // Own history first: what the reader stated outranks what the model
+  // inferred, and it keeps the email to one product button.
+  return `@{if(${BREAST_CONDITION},${breastCard},if(${RISK_CONDITION},${riskCard},''))}\n\n        `;
+}
+
 const DISCLAIMER_BLOCK_OPENER = '<div style="background:#f4f7f6;border:1px solid #dce6e3;';
 // Where the score card ends and the interpretive content begins.
 const RECOMMENDATION_BLOCK_OPENER = '<div style="border-left:5px solid #0f766e;';
@@ -114,7 +265,11 @@ for (const [lang, cfg] of Object.entries(LANGS)) {
 
   // split/join rather than a regex: the action name goes in verbatim, with
   // no chance of a character in it being read as a pattern.
-  const out = (src.slice(0, at) + cfg.cta + src.slice(at))
+  // The recommendation goes after the payment call to action and before the
+  // disclaimer. Order matters commercially: the report is what this email is
+  // selling, and a test the reader may not be able to order must not sit
+  // above it.
+  const out = (src.slice(0, at) + cfg.cta + recommendationBlock(lang) + src.slice(at))
     .split("body('HTTP')")
     .join(`body('${PREDICT_ACTION}')`);
 
