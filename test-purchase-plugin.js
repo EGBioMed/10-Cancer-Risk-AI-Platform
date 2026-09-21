@@ -332,6 +332,16 @@ test("an unknown cancer lands on the product listing, not a 404", () => {
   // product long after the map was corrected.
   assert.match(fn, /wp_redirect\( \$target, 302 \)/);
   assert.doesNotMatch(fn, /wp_redirect\( \$target, 301 \)/);
+
+  // Every reader of a given email requests the same URL for a given cancer,
+  // so one cached response serves all of them. On the day this shipped, a
+  // 404 cached during testing was still being replayed after the plugin was
+  // installed. The same mechanism would later replay a redirect to a product
+  // that had been changed.
+  const nocacheAt = fn.indexOf("nocache_headers()");
+  const redirectAt = fn.indexOf("wp_redirect(");
+  assert(nocacheAt > 0, "the redirect is cacheable");
+  assert(nocacheAt < redirectAt, "the no-cache headers must be sent before the redirect");
 });
 
 test("the redirect carries the campaign back to the store's analytics", () => {
