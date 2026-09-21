@@ -111,6 +111,26 @@ const RISK_RECOMMENDABLE = [
   ["肝癌", "liver cancer"]
 ];
 
+// All four products can also follow a diagnosed patient, so a reader who
+// reported one of these in their own history is offered it on that basis
+// rather than on a risk score. Checked in this order; the first match wins,
+// because a reader may have reported more than one.
+//
+// The copy differs by what each product page actually states, and that is
+// deliberate. The breast page says it is for "monitoring the disease status
+// of breast cancer patients", so its button may say so. The other three
+// pages say "early health screening purposes" and nothing about follow-up,
+// so their buttons offer a related test to discuss with a physician and
+// claim no intended use the page does not carry. When those pages are
+// updated, move them to the "monitoring" variant here -- do not let the
+// email get ahead of the product page.
+const HISTORY_RECOMMENDABLE = [
+  ["乳癌", "breast cancer", "monitoring"],
+  ["大腸直腸癌", "colorectal cancer", "followup"],
+  ["胰臟癌", "pancreatic cancer", "followup"],
+  ["肝癌", "liver cancer", "followup"]
+];
+
 const TOP = `first(body('${PREDICT_ACTION}')?['cancer_risks'])`;
 const TOP_CANCER = `${TOP}?['cancer']`;
 
@@ -139,10 +159,6 @@ const RISK_CONDITION = and([
   `not(contains(${OWN_HISTORY},${TOP_CANCER}))`
 ]);
 
-// The breast product is for monitoring people who have breast cancer, so it
-// is offered on what the reader told us, not on what the model inferred.
-// This is not a risk-to-screening recommendation at all.
-const BREAST_CONDITION = `contains(${OWN_HISTORY},'乳癌')`;
 
 const CARD_OPEN =
   '<div style="border:1px solid #dce6e3;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:26px;">'
@@ -170,10 +186,17 @@ function card({ heading, bodyBefore, nameExpr, bodyAfter, linkCancerExpr, ctaBef
 
 const RECOMMENDATION_COPY = {
   zh: {
-    breast: {
+    monitoring: {
       heading: "延伸檢測服務",
       bodyBefore: "您在問卷中表示曾被診斷為",
       bodyAfter: "。EG BioMed 提供用於監測乳癌疾病狀態的血液檢測服務，供您與醫師討論追蹤方式時參考。是否需要檢測請由醫師判斷，本信件不構成醫療建議。",
+      ctaBefore: "了解",
+      ctaAfter: "相關檢測"
+    },
+    followup: {
+      heading: "延伸檢測服務",
+      bodyBefore: "您在問卷中表示曾被診斷為",
+      bodyAfter: "。EG BioMed 提供相關的血液檢測服務，可作為您與醫師討論後續追蹤方式時的參考。是否適用、以及何時檢測，請由醫師判斷；本信件不構成醫療建議。",
       ctaBefore: "了解",
       ctaAfter: "相關檢測"
     },
@@ -186,10 +209,17 @@ const RECOMMENDATION_COPY = {
     }
   },
   en: {
-    breast: {
+    monitoring: {
       heading: "Related testing services",
       bodyBefore: "You indicated in the questionnaire that you have been diagnosed with ",
       bodyAfter: ". EG BioMed offers a blood test for monitoring the disease status of breast cancer, which you may wish to discuss with your physician. Whether testing is appropriate is a decision for your physician; this email is not medical advice.",
+      ctaBefore: "Learn about ",
+      ctaAfter: " testing"
+    },
+    followup: {
+      heading: "Related testing services",
+      bodyBefore: "You indicated in the questionnaire that you have been diagnosed with ",
+      bodyAfter: ". EG BioMed offers a related blood test, which you may wish to raise with your physician when discussing how your condition is followed up. Whether it is appropriate, and when, is a decision for your physician; this email is not medical advice.",
       ctaBefore: "Learn about ",
       ctaAfter: " testing"
     },
@@ -219,23 +249,28 @@ function recommendationBlock(lang) {
           "''"
         );
 
-  const breastName = lang === "zh" ? "'乳癌'" : "'breast cancer'";
-
-  const breastCard = card({
-    ...copy.breast,
-    nameExpr: breastName,
-    linkCancerExpr: "'乳癌'"
-  });
-
   const riskCard = card({
     ...copy.risk,
     nameExpr: displayName,
     linkCancerExpr: TOP_CANCER
   });
 
-  // Own history first: what the reader stated outranks what the model
-  // inferred, and it keeps the email to one product button.
-  return `@{if(${BREAST_CONDITION},${breastCard},if(${RISK_CONDITION},${riskCard},''))}\n\n        `;
+  // Own history first, and within it the list's order, because a reader may
+  // have reported more than one and the email shows one button.
+  //
+  // Each branch names its cancer literally rather than echoing whatever the
+  // questionnaire holds: personal_cancer_types is a joined string of
+  // everything they reported, so printing it back would put a list where a
+  // name belongs, and could put a cancer with no product into a link.
+  return `@{${HISTORY_RECOMMENDABLE.reduceRight(
+    (fallback, [zh, en, variant]) =>
+      `if(contains(${OWN_HISTORY},'${zh}'),${card({
+        ...copy[variant],
+        nameExpr: lang === "zh" ? `'${zh}'` : `'${en}'`,
+        linkCancerExpr: `'${zh}'`
+      })},${fallback})`,
+    `if(${RISK_CONDITION},${riskCard},'')`
+  )}}\n\n        `;
 }
 
 const DISCLAIMER_BLOCK_OPENER = '<div style="background:#f4f7f6;border:1px solid #dce6e3;';

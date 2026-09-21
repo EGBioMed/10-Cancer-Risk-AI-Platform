@@ -241,7 +241,47 @@ for (const lang of ["zh", "en"]) {
     );
   });
 
-  test(`the ${lang} breast recommendation follows the reader's own history, not the model`, () => {
+  // What each button may claim is bounded by what the product page states.
+  // The breast page says the test monitors the disease status of breast
+  // cancer patients, so its button says so. The other three pages say "early
+  // health screening purposes" and nothing about follow-up, so their buttons
+  // offer a related test to raise with a physician and claim nothing more.
+  // A reader who clicks through must not find a page that contradicts the
+  // email that sent them.
+  test(`the ${lang} follow-up copy claims only what each product page states`, () => {
+    const expr = recommendation();
+    const claim = lang === "zh" ? "監測" : "monitoring";
+
+    const branchAt = (cancer) => {
+      const at = expr.indexOf(`contains(coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],''),'${cancer}')`);
+      assert(at > 0, `${cancer} has no own-history branch`);
+      return at;
+    };
+
+    const bounds = ["乳癌", "大腸直腸癌", "胰臟癌", "肝癌"].map((c) => [c, branchAt(c)]);
+    bounds.sort((a, b) => a[1] - b[1]);
+
+    for (let i = 0; i < bounds.length; i += 1) {
+      const [cancer, start] = bounds[i];
+      const end = i + 1 < bounds.length ? bounds[i + 1][1] : expr.length;
+      const branch = expr.slice(start, end);
+
+      if (cancer === "乳癌") {
+        assert(
+          branch.includes(claim),
+          "the breast page states monitoring, so the button may say it"
+        );
+      } else {
+        assert.equal(
+          branch.includes(claim),
+          false,
+          `${cancer}'s product page states screening only -- the email must not claim monitoring for it`
+        );
+      }
+    }
+  });
+
+  test(`the ${lang} recommendation follows the reader's own history before the model`, () => {
     const expr = recommendation();
 
     const breastAt = expr.indexOf("'乳癌'");
@@ -277,6 +317,23 @@ for (const lang of ["zh", "en"]) {
     // No product URL may appear in the email: that is the whole point of the
     // redirect. A URL here would have to be changed inside Power Automate.
     assert.equal(expr.includes("/product/"), false, "a product URL leaked into the email template");
+
+    // personal_cancer_types is everything the reader reported, joined with
+    // semicolons. Putting that in the link sends "乳癌; 胃癌" to the store,
+    // which matches nothing and drops the reader on the listing page after
+    // they pressed a button naming one cancer. Each branch links its own.
+    assert.equal(
+      expr.includes("encodeUriComponent(coalesce("),
+      false,
+      "the link carries the whole reported history instead of this branch's cancer"
+    );
+
+    for (const cancer of ["乳癌", "大腸直腸癌", "胰臟癌", "肝癌"]) {
+      assert(
+        expr.includes(`encodeUriComponent('${cancer}')`),
+        `the ${cancer} branch does not link to ${cancer}`
+      );
+    }
   });
 
   // Promising something the reader was handed further up the same email is
