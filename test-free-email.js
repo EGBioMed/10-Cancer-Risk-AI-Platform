@@ -19,6 +19,11 @@ const FREE = { zh: read("power-automate-email-free-zh.html"), en: read("power-au
 // -- and gives up only the model validation summary. What remains to sell is
 // the rule hits, the screening guidance, the validation data and the PDF
 // itself, which is what the call to action must confine itself to promising.
+//
+// Revised 2026-09-21: the validation summary came out of the paid email too,
+// so no email in this family carries it and the data lives only in the PDF.
+// That removed this list's anti-vacuity guard -- the paid template used to
+// be the witness that these strings were real. WITNESS below replaces it.
 const WITHHELD = {
   zh: [
     ["模型研究與驗證摘要", "the validation summary heading"],
@@ -33,6 +38,25 @@ const WITHHELD = {
     ["543 independent test records", "the test-set size"]
   ]
 };
+
+// The last commit in which the paid templates still carried the validation
+// summary. Asserting a string is absent proves nothing if the string was
+// never there -- one typo and the check passes for ever while the block sits
+// in the email untouched. So each needle is first confirmed against the
+// version that really had it.
+//
+// Pinned to a SHA rather than a relative ref because HEAD~1 drifts with the
+// next commit. If this ever becomes unreachable, delete these assertions
+// deliberately; do not quietly drop the witness and keep the rest.
+const WITNESS = "b0395f8";
+
+function witnessTemplate(name) {
+  return execFileSync("git", ["show", `${WITNESS}:${name}`], {
+    cwd: __dirname,
+    encoding: "utf8",
+    maxBuffer: 10 * 1024 * 1024
+  });
+}
 
 const KEPT = {
   zh: [
@@ -57,15 +81,29 @@ const KEPT = {
 };
 
 for (const lang of ["zh", "en"]) {
-  test(`the ${lang} free email withholds the validation summary and nothing else`, () => {
+  test(`no ${lang} email carries the validation summary`, () => {
+    const witness = witnessTemplate(
+      lang === "zh" ? "power-automate-email-zh.html" : "power-automate-email-en.html"
+    );
+
     for (const [needle, description] of WITHHELD[lang]) {
-      assert.equal(FREE[lang].includes(needle), false, `the free email must not contain ${description}`);
-      // The paid template must still have it, or this is asserting against a
-      // string that no longer exists anywhere and would pass for free.
+      // Confirm the needle is a real string before concluding anything from
+      // its absence.
       assert.equal(
-        PAID[lang].includes(needle),
+        witness.includes(needle),
         true,
-        `${description} vanished from the paid email -- update this test deliberately`
+        `${description} is not in the witness either -- the needle is wrong, not the email`
+      );
+
+      // The data belongs in the PDF now, and only there. The free reader was
+      // never shown it; the paying reader gets it in the attachment rather
+      // than repeated in the covering email.
+      assert.equal(FREE[lang].includes(needle), false, `the free email must not contain ${description}`);
+      assert.equal(PAID[lang].includes(needle), false, `the paid email must not contain ${description}`);
+      assert.equal(
+        DELIVERY[lang].includes(needle),
+        false,
+        `the delivery email must not contain ${description}`
       );
     }
   });
@@ -76,29 +114,39 @@ for (const lang of ["zh", "en"]) {
     }
   });
 
-  // The free email is now the paid one minus one block plus one block, so
-  // everything before the removal has to match exactly. This is what stops
-  // the two drifting as the paid email is edited over time.
+  // The free email is now the paid one plus exactly one block. Rather than
+  // checking a prefix, this takes the call to action back out and requires
+  // what is left to be the paid template entire -- so drift anywhere in the
+  // document fails, not only above the insertion point.
+  //
+  // Cutting the block out is a genuine inverse of what the generator does,
+  // not a re-run of it: it finds the block by its own opening style and
+  // stops at the disclaimer, without consulting the generator's text.
   //
   // The one permitted difference is the /predict action's name: flow A calls
   // it HTTP and flow B calls it HTTP_AI_predict, so the paid side is renamed
   // before comparing. Renaming the paid copy rather than stripping the name
   // from both keeps the comparison strict -- a template that referenced some
   // third action would still fail here.
-  test(`the ${lang} free email is byte-identical to the paid one up to the removal`, () => {
-    const opener = '<div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;';
-    const marker = lang === "zh" ? "模型研究與驗證摘要" : "Model Research and Validation Summary";
-    const cut = PAID[lang].lastIndexOf(opener, PAID[lang].indexOf(marker));
-    assert(cut > 0, "could not locate the removal point");
+  test(`the ${lang} free email is the paid one plus the call to action, exactly`, () => {
+    const CTA_OPENER = '<div style="border:2px solid #0f766e;';
+    const DISCLAIMER_OPENER = '<div style="background:#f4f7f6;border:1px solid #dce6e3;';
 
-    const renamed = PAID[lang]
-      .slice(0, cut)
-      .split("body('HTTP')")
-      .join("body('HTTP_AI_predict')");
+    const ctaAt = FREE[lang].indexOf(CTA_OPENER);
+    assert(ctaAt > 0, "the call to action is not in the free email");
+    assert.equal(
+      FREE[lang].indexOf(CTA_OPENER, ctaAt + 1),
+      -1,
+      "two call-to-action blocks; the reader is being asked to pay twice"
+    );
 
-    // The longer action name shifts everything after it, so the free side is
-    // taken to the renamed length, not to the cut offset in the paid file.
-    assert.equal(FREE[lang].slice(0, renamed.length), renamed);
+    const discAt = FREE[lang].indexOf(DISCLAIMER_OPENER, ctaAt);
+    assert(discAt > ctaAt, "the disclaimer does not follow the call to action");
+
+    const withoutCta = FREE[lang].slice(0, ctaAt) + FREE[lang].slice(discAt);
+    const renamedPaid = PAID[lang].split("body('HTTP')").join("body('HTTP_AI_predict')");
+
+    assert.equal(withoutCta, renamedPaid);
   });
 
   // Flow B has no action called HTTP, so a leftover reference is rejected at

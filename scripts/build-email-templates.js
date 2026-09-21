@@ -28,14 +28,19 @@ const REPORT_PRODUCT_ID = 1062;
 // edit the generated files.
 const PREDICT_ACTION = "HTTP_AI_predict";
 
-// The free email is the paid email with two edits: the model validation
-// summary comes out, and a call to action goes in where it stood.
+// The free email is the paid email with one addition: this call to action,
+// placed immediately before the disclaimer.
 //
-// Slicing the paid template rather than keeping a second copy by hand is
-// deliberate. Everything the two share -- the score, the band explainer, the
-// full cancer ranking, the recommendation, the disclaimer -- then cannot
-// drift apart, and an edit to the paid email reaches the free one by
-// re-running this script.
+// It used to also remove the model validation summary. On 2026-09-21 that
+// block came out of the paid email as well, so there is nothing left to
+// remove -- no email in this family carries it now, and the validation data
+// lives only in the PDF, which both paying lines receive.
+//
+// Building the free email from the paid one rather than keeping a second
+// copy by hand is deliberate. Everything the two share -- the score, the
+// band explainer, the full cancer ranking, the recommendation, the
+// disclaimer -- then cannot drift apart, and an edit to the paid email
+// reaches the free one by re-running this script.
 //
 // What the paid PDF still holds that this email does not (FREEMIUM_SPEC.md
 // 1.1, revised 2026-09-17): the rule hits with their basis, the screening
@@ -47,7 +52,6 @@ const LANGS = {
   zh: {
     source: "power-automate-email-zh.html",
     output: "power-automate-email-free-zh.html",
-    validationMarker: "模型研究與驗證摘要",
     disclaimerMarker: "報告使用說明",
     cta: `<div style="border:2px solid #0f766e;border-radius:16px;background:#f9fcfb;padding:24px;margin-bottom:26px;">
           <div style="font-size:18px;font-weight:800;color:#12312d;margin-bottom:10px;">取得完整 PDF 報告</div>
@@ -66,7 +70,6 @@ const LANGS = {
   en: {
     source: "power-automate-email-en.html",
     output: "power-automate-email-free-en.html",
-    validationMarker: "Model Research and Validation Summary",
     disclaimerMarker: "How to use this report",
     cta: `<div style="border:2px solid #0f766e;border-radius:16px;background:#f9fcfb;padding:24px;margin-bottom:26px;">
           <div style="font-size:18px;font-weight:800;color:#12312d;margin-bottom:10px;">Get the complete PDF report</div>
@@ -84,7 +87,6 @@ const LANGS = {
   }
 };
 
-const VALIDATION_BLOCK_OPENER = '<div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;';
 const DISCLAIMER_BLOCK_OPENER = '<div style="background:#f4f7f6;border:1px solid #dce6e3;';
 // Where the score card ends and the interpretive content begins.
 const RECOMMENDATION_BLOCK_OPENER = '<div style="border-left:5px solid #0f766e;';
@@ -92,26 +94,27 @@ const RECOMMENDATION_BLOCK_OPENER = '<div style="border-left:5px solid #0f766e;'
 for (const [lang, cfg] of Object.entries(LANGS)) {
   const src = fs.readFileSync(path.join(root, cfg.source), "utf8");
 
-  const markerIdx = src.indexOf(cfg.validationMarker);
-  if (markerIdx < 0) throw new Error(`${lang}: validation summary heading not found`);
+  // The free email used to be "the paid email minus the validation block,
+  // plus this one". Since 2026-09-21 the paid email does not carry that
+  // block either, so nothing is cut: the call to action simply goes in
+  // where the block used to sit, immediately before the disclaimer.
+  //
+  // The insertion point is still anchored on the disclaimer's OUTER div
+  // rather than counted from the end. That div's style is distinctive, and
+  // anchoring on structure is what keeps the output a balanced document
+  // when the paid email is edited above it.
+  const at = src.lastIndexOf(DISCLAIMER_BLOCK_OPENER);
+  if (at < 0) throw new Error(`${lang}: disclaimer block not found`);
 
-  // The block opens with the div immediately preceding its heading...
-  const blockStart = src.lastIndexOf(VALIDATION_BLOCK_OPENER, markerIdx);
-  if (blockStart < 0) throw new Error(`${lang}: validation block start not found`);
-
-  // ...and ends where the disclaimer's OUTER div begins. Anchoring on that
-  // div's own style rather than on "the nearest <div before the heading" is
-  // the difference between a balanced document and one missing an opening
-  // tag: the heading sits inside a second, inner div, and searching
-  // backwards from it lands on the inner one.
-  const disclaimerIdx = src.indexOf(cfg.disclaimerMarker, markerIdx);
-  if (disclaimerIdx < 0) throw new Error(`${lang}: disclaimer not found after the validation summary`);
-  const blockEnd = src.lastIndexOf(DISCLAIMER_BLOCK_OPENER, disclaimerIdx);
-  if (blockEnd <= blockStart) throw new Error(`${lang}: could not bound the validation block`);
+  // Guards against the anchor matching something else that happens to share
+  // the style: the disclaimer's own heading has to be just after it.
+  if (src.indexOf(cfg.disclaimerMarker, at) < 0) {
+    throw new Error(`${lang}: the disclaimer anchor does not lead to the disclaimer`);
+  }
 
   // split/join rather than a regex: the action name goes in verbatim, with
   // no chance of a character in it being read as a pattern.
-  const out = (src.slice(0, blockStart) + cfg.cta + src.slice(blockEnd))
+  const out = (src.slice(0, at) + cfg.cta + src.slice(at))
     .split("body('HTTP')")
     .join(`body('${PREDICT_ACTION}')`);
 
