@@ -367,6 +367,70 @@ is a support path, not a bug: `npm run access:topup -- --code <code>
 --add-uses 1 --created-by <name>` restores it, and the order id in
 `payment_reference` is how you confirm they paid.
 
+## The gate protects a deployment, not a domain
+
+The gate is code that runs inside one service. It says nothing about any
+other service running this repository. A second deployment is not a weaker
+door — it is a doorway with no door in it, and nothing in the gated
+deployment can see it or report on it.
+
+**Before any URL is printed, published, or encoded in a QR code, health-check
+that exact hostname:**
+
+```bash
+curl -s https://<the hostname that will be printed>/api/health
+```
+
+`access_gate_mode` must be present and must read `enforced`. If the field is
+missing entirely, the build predates the gate and there is no gate at all —
+a different failure from `open`, and the one that does not announce itself.
+
+### Incident, 2026-09-21
+
+A QR code in circulation pointed at `one0-cancer-risk-ai-platform.onrender.com`.
+That was a **second, older Render service** built from this repository, never
+suspended, still auto-deploying a build from before the gate existed. The
+custom domain `ai-cancer-risk.eg-bio.com` was attached to a different
+service. Both were live.
+
+What a person scanning that code got: the full questionnaire — informed
+consent, all 33 questions, contact details — with no credential of any kind
+requested. The consent text shown was an older revision.
+
+The two hostnames' health output side by side is what identified it, and is
+the fastest way to identify the next one:
+
+```
+one0-cancer-risk-ai-platform.onrender.com
+  {"ok":false, "submission_mode":"dual", "database":"postgresql",
+   "database_ready":false}          <- no access_gate_mode field at all
+
+ai-cancer-risk.eg-bio.com
+  {"ok":true, "submission_mode":"power-automate",
+   "access_gate_mode":"enforced", "access_gate_ready":true}
+```
+
+One service cannot return two different payloads to two hostnames, so
+differing health output proves there are two deployments. That check costs
+one command and needs no access to the Render dashboard.
+
+The old service was suspended the same day; the hostname now returns 503.
+**Impact was still being established when this was written** — the Render
+logs for `/api/submit` on that service, and flow A's run history, are where
+the number of affected people comes from. Anyone who submitted there filled
+in a complete health questionnaire under an older consent revision, outside
+the gate the IRB approval describes.
+
+Two things to carry forward:
+
+1. **Audit the Render account for every service built from this repo**, not
+   only the one the custom domain points at. The gated service has no way to
+   know the others exist.
+2. **A suspended service cannot redirect.** Once a URL is on printed material,
+   suspending it turns every scan into an error page. If the material is
+   already distributed, the old service has to keep running something — a
+   redirect to the gated hostname — rather than be switched off.
+
 ## Explicitly deferred
 
 - Verifying the store's own webhook signature. The purchase endpoint
