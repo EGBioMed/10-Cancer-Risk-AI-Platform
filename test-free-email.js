@@ -139,22 +139,107 @@ for (const lang of ["zh", "en"]) {
   test(`the ${lang} free email is the paid one plus the call to action, exactly`, () => {
     const CTA_OPENER = '<div style="border:2px solid #0f766e;';
     const DISCLAIMER_OPENER = '<div style="background:#f4f7f6;border:1px solid #dce6e3;';
+    const TOC_OPENER =
+      '<div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:22px;">';
+    const SCORE_CARD_OPENER =
+      '<div style="border:1px solid #cfe0dc;border-radius:16px;padding:22px 24px;background:#f9fcfb;margin-bottom:22px;">';
 
-    const ctaAt = FREE[lang].indexOf(CTA_OPENER);
+    // Take the contents box back out first. It sits immediately above the
+    // score card, so cutting from its own opening div to that card removes
+    // it and nothing else. The style is close to the ranking card's -- they
+    // differ only in margin-bottom -- so its uniqueness is asserted rather
+    // than assumed.
+    const tocAt = FREE[lang].indexOf(TOC_OPENER);
+    assert(tocAt > 0, "the contents box is missing");
+    assert.equal(
+      FREE[lang].indexOf(TOC_OPENER, tocAt + 1),
+      -1,
+      "two blocks share the contents box's style; this cut would remove the wrong one"
+    );
+    const scoreAt = FREE[lang].indexOf(SCORE_CARD_OPENER, tocAt);
+    assert(scoreAt > tocAt, "the score card no longer follows the contents box");
+
+    // A local copy. Reassigning FREE[lang] here would hand every later test
+    // a document this one had already edited.
+    const withoutToc = FREE[lang].slice(0, tocAt) + FREE[lang].slice(scoreAt);
+
+    const ctaAt = withoutToc.indexOf(CTA_OPENER);
     assert(ctaAt > 0, "the call to action is not in the free email");
     assert.equal(
-      FREE[lang].indexOf(CTA_OPENER, ctaAt + 1),
+      withoutToc.indexOf(CTA_OPENER, ctaAt + 1),
       -1,
       "two call-to-action blocks; the reader is being asked to pay twice"
     );
 
-    const discAt = FREE[lang].indexOf(DISCLAIMER_OPENER, ctaAt);
+    const discAt = withoutToc.indexOf(DISCLAIMER_OPENER, ctaAt);
     assert(discAt > ctaAt, "the disclaimer does not follow the call to action");
 
-    const withoutCta = FREE[lang].slice(0, ctaAt) + FREE[lang].slice(discAt);
+    const stripped = withoutToc.slice(0, ctaAt) + withoutToc.slice(discAt);
     const renamedPaid = PAID[lang].split("body('HTTP')").join("body('HTTP_AI_predict')");
 
-    assert.equal(withoutCta, renamedPaid);
+    assert.equal(stripped, renamedPaid);
+  });
+
+  // The list is a promise about the rest of the email. An entry for
+  // something that is not there, or a section that arrives unannounced, is
+  // the one way a contents box can be worse than none.
+  test(`the ${lang} contents box matches what the email actually contains`, () => {
+    const announced = lang === "zh"
+      ? [
+          ["您的十大癌症相對風險指數與分級", "risk_score"],
+          ["這次結果代表什麼", "這次整理結果代表什麼？"],
+          ["各癌種風險因子的相對關注順序", "各癌種風險因子參考"],
+          ["可與醫師討論的健康管理方向", "可與醫師討論的健康管理方向"],
+          ["取得完整報告的方式", "add-to-cart=1062"]
+        ]
+      : [
+          ["Your relative risk index and level", "risk_score"],
+          ["What the result means", "What does this summary mean?"],
+          ["relative order of attention", "Cancer-type risk factor reference"],
+          ["Health management topics", "Health management topics to discuss"],
+          ["How to get the complete report", "add-to-cart=1062"]
+        ];
+
+    // Scoped: the box itself, and the email below it. Checking the whole
+    // document for an entry proves nothing, because every entry is worded
+    // after a heading that appears further down -- a contents box listing a
+    // section that does not exist would pass, which is exactly the mistake
+    // this test is for.
+    const tocStart = FREE[lang].indexOf(
+      '<div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:22px;">'
+    );
+    const tocEnd = FREE[lang].indexOf(
+      '<div style="border:1px solid #cfe0dc;border-radius:16px;padding:22px 24px;background:#f9fcfb;margin-bottom:22px;">'
+    );
+    assert(tocStart >= 0 && tocEnd > tocStart, "could not bound the contents box");
+
+    const toc = FREE[lang].slice(tocStart, tocEnd);
+    const rest = FREE[lang].slice(tocEnd);
+
+    // Nothing may be listed that the list below does not account for.
+    const listed = [...toc.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1]);
+    assert.equal(
+      listed.length,
+      announced.length,
+      `the contents box lists ${listed.length} items but this test knows of ${announced.length}: ${listed.join(" / ")}`
+    );
+
+    for (const [entry, section] of announced) {
+      assert(toc.includes(entry), `the contents box no longer lists ${entry}`);
+      assert(
+        rest.includes(section),
+        `the contents box promises "${entry}" but the email below it has no ${section}`
+      );
+    }
+
+    // The product recommendation is conditional, so it must not be listed:
+    // most readers would see an entry for a section that is not in their
+    // copy of the email.
+    assert.equal(
+      toc.includes(lang === "zh" ? "延伸檢測服務" : "Related testing services"),
+      false,
+      "a conditional section must not be announced to every reader"
+    );
   });
 
   // Flow B has no action called HTTP, so a leftover reference is rejected at

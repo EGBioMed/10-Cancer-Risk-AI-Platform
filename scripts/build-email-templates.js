@@ -48,11 +48,40 @@ const PREDICT_ACTION = "HTTP_AI_predict";
 // promise only those. Listing the ten-cancer ranking as a paid benefit would
 // be selling the reader something they were handed further up the same
 // email.
+// Where the contents box goes: immediately above the score card, which is
+// the first thing after the greeting. Anchored on that card's own style
+// rather than on a character offset, and the style is checked to appear
+// exactly once before anything is inserted.
+const SCORE_CARD_OPENER =
+  '<div style="border:1px solid #cfe0dc;border-radius:16px;padding:22px 24px;background:#f9fcfb;margin-bottom:22px;">';
+
+// Deliberately not links. In-page anchors are unreliable across mail
+// clients -- Gmail strips id attributes, and several clients open the mail
+// in a pane where a fragment jump does nothing -- so a linked contents list
+// would look broken for a large share of readers. This is a list of what
+// the reader is about to get, which is what was asked for; it is not
+// navigation.
+//
+// The conditional product recommendation is left out on purpose. It appears
+// for some readers and not others, and a contents entry for a section that
+// is not there reads as a fault in the email.
 const LANGS = {
   zh: {
     source: "power-automate-email-zh.html",
     output: "power-automate-email-free-zh.html",
     disclaimerMarker: "報告使用說明",
+    toc: `<div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:22px;">
+          <div style="font-size:13px;font-weight:800;color:#0f766e;letter-spacing:.02em;margin-bottom:10px;">本信件包含</div>
+          <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.95;color:#40514f;">
+            <li>您的十大癌症相對風險指數與分級</li>
+            <li>這次結果代表什麼，以及分級怎麼看</li>
+            <li>各癌種風險因子的相對關注順序</li>
+            <li>可與醫師討論的健康管理方向</li>
+            <li>取得完整報告的方式（超過 60 頁）</li>
+          </ol>
+        </div>
+
+        `,
     cta: `<div style="border:2px solid #0f766e;border-radius:16px;background:#f9fcfb;padding:26px 24px;margin-bottom:26px;">
           <div style="font-size:20px;font-weight:800;color:#12312d;line-height:1.5;margin-bottom:14px;">想更完整了解自己的癌症風險？</div>
           <div style="margin:0 0 16px;">
@@ -70,6 +99,18 @@ const LANGS = {
     source: "power-automate-email-en.html",
     output: "power-automate-email-free-en.html",
     disclaimerMarker: "How to use this report",
+    toc: `<div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:22px;">
+          <div style="font-size:13px;font-weight:800;color:#0f766e;letter-spacing:.02em;margin-bottom:10px;">What this email contains</div>
+          <ol style="margin:0;padding-left:20px;font-size:14px;line-height:1.95;color:#40514f;">
+            <li>Your relative risk index and level across ten cancers</li>
+            <li>What the result means, and how to read the levels</li>
+            <li>The relative order of attention across cancer types</li>
+            <li>Health management topics to discuss with a physician</li>
+            <li>How to get the complete report (more than 60 pages)</li>
+          </ol>
+        </div>
+
+        `,
     cta: `<div style="border:2px solid #0f766e;border-radius:16px;background:#f9fcfb;padding:26px 24px;margin-bottom:26px;">
           <div style="font-size:20px;font-weight:800;color:#12312d;line-height:1.45;margin-bottom:14px;">Want a deeper understanding of your personal cancer risk?</div>
           <div style="margin:0 0 16px;">
@@ -317,13 +358,26 @@ for (const [lang, cfg] of Object.entries(LANGS)) {
     throw new Error(`${lang}: the disclaimer anchor does not lead to the disclaimer`);
   }
 
+  // The contents box goes above the score card, so it is the first thing
+  // read after the greeting. Inserted from the back forwards -- disclaimer
+  // first, then this -- so the earlier offset is still valid when it is
+  // used. Doing it the other way round shifts `at` and puts the call to
+  // action somewhere inside the disclaimer.
+  const tocAt = src.indexOf(SCORE_CARD_OPENER);
+  if (tocAt < 0) throw new Error(`${lang}: score card not found`);
+  if (src.indexOf(SCORE_CARD_OPENER, tocAt + 1) >= 0) {
+    throw new Error(`${lang}: the score card's style is no longer unique; pick another anchor`);
+  }
+  if (tocAt >= at) throw new Error(`${lang}: the score card is below the disclaimer`);
+
   // split/join rather than a regex: the action name goes in verbatim, with
   // no chance of a character in it being read as a pattern.
   // The recommendation goes after the payment call to action and before the
   // disclaimer. Order matters commercially: the report is what this email is
   // selling, and a test the reader may not be able to order must not sit
   // above it.
-  const out = (src.slice(0, at) + cfg.cta + recommendationBlock(lang) + src.slice(at))
+  const withCta = src.slice(0, at) + cfg.cta + recommendationBlock(lang) + src.slice(at);
+  const out = (withCta.slice(0, tocAt) + cfg.toc + withCta.slice(tocAt))
     .split("body('HTTP')")
     .join(`body('${PREDICT_ACTION}')`);
 
