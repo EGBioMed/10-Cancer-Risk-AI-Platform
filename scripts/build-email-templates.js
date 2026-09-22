@@ -173,6 +173,9 @@ for (const [lang, cfg] of Object.entries(LANGS)) {
   const out = (withCta.slice(0, tocAt) + cfg.toc + withCta.slice(tocAt))
     .split("body('HTTP')")
     .join(`body('${PREDICT_ACTION}')`);
+  // 檢測產品推薦不必在這裡處理：2026-09-22 的決定是三封信都放，所以付費信這個
+  // 源頭本身就讀 ['cancer_risks_text_with_recommendations']，免費信與交付信照樣
+  // 繼承。曾經有一版只在免費信替換，那是規格原本把機構信與交付信排除在外的緣故。
 
   fs.writeFileSync(path.join(root, cfg.output), out);
   console.log(`${cfg.output}: ${out.split("\n").length} lines`);

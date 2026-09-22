@@ -2450,12 +2450,10 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
   // got no button. prev_cancer was 1 in the same row, because that one is
   // read with getAnswerValue, which goes by key.
   const symptomEntry = answers["recent_health.recent_discomfort"];
-  const personalCancerTypeEntry = answers["medical_history.personal_cancer_types"];
   const structured = symptomEntry?.structured || {};
   const join = (value) => Array.isArray(value) ? value.join("; ") : "";
-  const personalCancerTypes = personalCancerTypeEntry?.value
-    ? (Array.isArray(personalCancerTypeEntry.value) ? personalCancerTypeEntry.value.join("; ") : String(personalCancerTypeEntry.value))
-    : "";
+  // 與 ai_api_feature_row 共用同一個運算式（buildPersonalCancerTypes 的說明）。
+  const personalCancerTypes = buildPersonalCancerTypes();
   const researchExcelFields = Object.fromEntries(
     Object.entries(researchFeatureRow).map(([column, value]) => [`research_${column}`, value])
   );
@@ -2508,7 +2506,7 @@ const AI_API_COUNTRY_CODES = {
 // 送出。validateSubmissionBeforeSend() 與 lib/transitional-contract.js 的形狀檢查都要
 // 讀這份清單，否則 71 欄的 optimized_feature_columns 對不上 72 個鍵，每一筆送件都會被
 // 自己的合約檢查擋掉——2026-09-07 就是這樣壞的。
-const AI_API_REPORT_ONLY_FIELDS = ["country", "symptoms"];
+const AI_API_REPORT_ONLY_FIELDS = ["country", "symptoms", "personal_cancer_types"];
 
 // 症狀區塊的組法（含代碼翻譯與 9 哨兵值）在 api-symptoms.js，瀏覽器與 server.js 共用
 // 同一份實作，理由見該檔開頭。index.html 必須在 app.js 之前載入它。
@@ -2528,8 +2526,26 @@ function buildAiApiFeatureRow(optimizedFeatureRow, symptomFeatureRow, ruleInputR
     // 的其他層級，因為 Power Automate 的 HTTP action 是把這個物件原封不動當 body 送出，
     // 這樣就不必改 flow。代價是這個物件已不再是純粹的 model-features/1.0.0，
     // contracts/vnext/ 下三份宣告該不變式的檔案必須同步更正（見 schema 註記）。
-    country: AI_API_COUNTRY_CODES[getAnswerValue(answers, "demographics.country")] ?? "TW"
+    country: AI_API_COUNTRY_CODES[getAnswerValue(answers, "demographics.country")] ?? "TW",
+    // 自述癌症病史，分號串接的中文癌別。同樣不是模型特徵：API 只拿它決定免費信裡
+    // 的檢測產品推薦要用病史文案還是風險文案（SPEC_INLINE_RECOMMENDATION.md §3.2），
+    // 不參與任何計算。放這裡的理由與 country／symptoms 相同——flow 不必改。
+    //
+    // 與 excel_row 取同一份值而不是各自組：那一欄在 2026-09-22 之前因為用掃描
+    // entry.field 的方式讀取而永遠是空字串（saveAnswer 建立的條目裡沒有 field），
+    // 修正於 0938952。兩邊共用同一個運算式，才不會再出現一邊對一邊錯而沒人發現。
+    personal_cancer_types: buildPersonalCancerTypes()
   };
+}
+
+// excel_row 與 ai_api_feature_row 共用。回傳分號串接的中文癌別字串，未作答為空字串。
+// 一定要用鍵查 answers，不可以掃描 entry.field：answers 以 question.field 為鍵，而
+// saveAnswer（UI 上每一題實際走的路徑）建立的條目裡並沒有重複帶 field，掃描會全部
+// 落空——而落空的結果是空字串，與「沒作答」長得一模一樣，所以不會有任何告警。
+function buildPersonalCancerTypes() {
+  const entry = answers["medical_history.personal_cancer_types"];
+  if (!entry?.value) return "";
+  return Array.isArray(entry.value) ? entry.value.join("; ") : String(entry.value);
 }
 
 function buildContactRow(optimizedFeatureRow, submittedAt) {

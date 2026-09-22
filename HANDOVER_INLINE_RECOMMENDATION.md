@@ -1,6 +1,48 @@
 # 交接：把檢測產品推薦移進「各癌種風險因子參考」
 
-**狀態**：待實作。原本的獨立區塊已於 2026-09-22 從信件移除（`18bb062` 之後）。商店端的轉址**已部署且運作中**，不需要重做。
+**狀態**：2026-09-22 已在 API 端實作（見下方 §3 的做法 C），尚未接上流程 B，也尚未上線。原本的獨立區塊已於同日從信件移除（`18bb062` 之後）。商店端的轉址**已部署且運作中**，不需要重做。
+
+> ## 2026-09-22 更新：§3 的問題已解決，走的是第三條路
+>
+> `cancer_risks_text` 的格式已從程式碼確認（`cancer-risk-api/main.py` 的
+> `predict()`），不必再上傳 `show-cancer-text.js` 到 Azure 去看。結論：
+>
+> - **做法 A 不可行。** 每一行由 `predict.cancer_line` 樣板產生、以 `<br><br>` 串接。
+>   要判斷某癌別是否中度以上，只能比對字串裡的等級文字，而那段文字會隨語系翻譯，
+>   `reliable=false` 時連圖示都會被換掉。太脆弱。
+> - **做法 B 可行但位置不對**，如原文所述。
+> - **實際採用做法 C：由 API 在組每一行時就把推薦接上去。** `cancer`、`level`、
+>   `reliable` 在那裡全都在手上，判斷最單純，位置天然正確，而且**完全不必編輯流程**
+>   ——那是這套系統裡最危險的操作（見 PIPELINE_READ_FIRST.md）。
+>
+> 實作落在 `cancer-risk-api`：新檔 `product_recommendation.py` 負責判定與組字，
+> 文案在 `strings/zh-TW.json` 與 `strings/en.json` 的 `recommend.*`，測試是
+> `test_product_recommendation.py`（66 項，六項變異驗證過）。
+>
+> **`cancer_risks_text` 本身沒有被改動。** API 另外輸出
+> `cancer_risks_text_with_recommendations`，兩者內容一字不差，差別只在符合條件的
+> 癌別多一段推薦文案。分成兩欄而不是改寫同一欄，是為了讓「哪一封信有推薦」由信件
+> 樣板決定，而不是由 API 猜呼叫端是誰；也讓任何其他消費者（例如 report_generator
+> 反解舊快取結果的退路）不受影響。
+>
+> **流程要做的事只有一件**：把「各癌種風險因子參考」那個 div 裡的
+> `['cancer_risks_text']` 換成 `['cancer_risks_text_with_recommendations']`。
+> 不新增任何動作。
+>
+> 2026-09-22 的範圍變更後，這件事要在**流程 A（機構信）與流程 B（免費信）**各做
+> 一次。倉庫裡改的是付費信這個源頭（`power-automate-email-zh.html` 與 `-en.html`），
+> 免費信與交付信是從它產生的，自動繼承。
+>
+> **流程 C（交付信）不必動**，它沒有癌別區塊：完整報告已以 PDF 附於信中，中段被
+> 整段替換掉（見 build-email-templates.js 的 DELIVERY 說明）。
+>
+> 英文樣板那一行是 `coalesce(...?['cancer_risks_text_en'], ...?['cancer_risks_
+> text_with_recommendations'], '...')`。`cancer_risks_text_en` API 從未輸出，是留著
+> 的退路，但它排在前面——真的哪天有人補上那一欄，英文信會靜默失去推薦。
+>
+> 病史分支需要 `personal_cancer_types`，已由平台端放進 `ai_api_feature_row`
+> （沿用 country／symptoms 的同一個決定，所以 HTTP 動作的 body 運算式不必改）。
+> 接上流程 B 之前，病史分支不會有任何效果，風險分支則已可運作。
 
 **要做的事**：在免費信的「各癌種風險因子參考」區塊裡，為每一個**中度風險以上且有對應產品**的癌別，在它的建議篩檢旁邊加上 OkaiDx 產品連結。
 

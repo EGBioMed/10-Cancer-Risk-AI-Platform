@@ -255,6 +255,35 @@ test("兩個 row 若自己帶了同名的上層欄位，不得被衍生值蓋掉
   assert.equal(symptoms.symptom_back_pain, 1);
 });
 
+// 自述癌症病史：決定免費信裡的檢測產品推薦要用病史文案還是風險文案。少了它，
+// 已確診者會拿到「與某癌相關的風險因子較為集中」那套說法——文案不同、外觀相同，
+// 所以壞掉不會有人發現。excel_row 那一欄在 0938952 之前就是這樣靜默空了一整段時間。
+test("the submission carries the reported cancer history for the API", () => {
+  const question = app.questions.find((entry) => entry.id === "personal_cancer_types");
+  app.answers[question.field] = app.makeAnswerEntry(question, ["乳癌", "大腸直腸癌"], "contract_test");
+  const submission = submitAs("臺灣");
+  assert.equal(
+    submission.ai_api_feature_row.personal_cancer_types,
+    "乳癌; 大腸直腸癌",
+    "ai_api_feature_row 少了 personal_cancer_types：已確診者會拿到風險文案而非病史文案"
+  );
+  // 兩處必須是同一個值。分頭各組一份，正是 2026-09-22 那個 bug 的成因結構。
+  assert.equal(
+    submission.excel_row.personal_cancer_types,
+    submission.ai_api_feature_row.personal_cancer_types
+  );
+  app.validateSubmissionBeforeSend(submission);
+});
+
+test("an unreported cancer history reaches the API as an empty string, not a missing key", () => {
+  const question = app.questions.find((entry) => entry.id === "personal_cancer_types");
+  delete app.answers[question.field];
+  const featureRow = submitAs("臺灣").ai_api_feature_row;
+  // 送空字串而不是整個欄位不送：API 端的 parse_personal_cancer_types 兩者都當成
+  // 無病史，但欄位存在才能從送件紀錄分辨「問卷沒問到」與「有問但沒作答」。
+  assert.equal(featureRow.personal_cancer_types, "");
+});
+
 test("an unanswered country question still submits and falls back to the Taiwan baseline", () => {
   const country = app.questions.find((question) => question.id === "country");
   delete app.answers[country.field];

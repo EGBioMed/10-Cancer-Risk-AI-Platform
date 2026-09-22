@@ -359,10 +359,11 @@ test("the report-only exemption list is identical in app.js and lib/transitional
     clientValidator.AI_API_REPORT_ONLY_FIELDS.join(","),
     AI_API_REPORT_ONLY_FIELDS.join(",")
   );
-  // 逐字盯住清單內容，而不是只比兩邊一致：這兩個欄位都是刻意放進
-  // ai_api_feature_row 的例外（country 選報告基準、symptoms 餵規則層），任何第三個
-  // 欄位混進來都必須是有人明確決定過的，不能靠 71/72 欄位檢查以外的地方悄悄放行。
-  assert.equal(AI_API_REPORT_ONLY_FIELDS.join(","), "country,symptoms");
+  // 逐字盯住清單內容，而不是只比兩邊一致：這三個欄位都是刻意放進 ai_api_feature_row
+  // 的例外（country 選報告基準、symptoms 餵規則層、personal_cancer_types 決定免費信
+  // 的檢測產品推薦要用病史文案還是風險文案），任何第四個欄位混進來都必須是有人明確
+  // 決定過的，不能靠 71/72 欄位檢查以外的地方悄悄放行。
+  assert.equal(AI_API_REPORT_ONLY_FIELDS.join(","), "country,symptoms,personal_cancer_types");
 });
 
 test("both validators accept a submission whose ai_api_feature_row carries country", () => {
@@ -564,6 +565,9 @@ function loadExcelRowBuilder() {
   vm.runInContext(
     [
       topLevelFunction("function getAnswerValue(answerStore, field) {"),
+      // excel_row 與 ai_api_feature_row 共用這個運算式，所以它被抽成獨立函式；
+      // 少了它 buildExcelRow 會 ReferenceError，而不是回一個看似合理的空字串。
+      topLevelFunction("function buildPersonalCancerTypes() {"),
       topLevelFunction("function buildExcelRow("),
       "globalThis.__excel = { buildExcelRow, answers };"
     ].join("\n"),

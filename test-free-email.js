@@ -503,3 +503,34 @@ for (const lang of ["zh", "en"]) {
     assert(DELIVERY[lang].includes(paidCard), "the score card must be the paid one, only repointed");
   });
 }
+
+// 各癌種風險因子參考要讀帶檢測產品推薦的那一欄。2026-09-22 的範圍變更（見
+// SPEC_INLINE_RECOMMENDATION.md §1）把推薦從「只有免費信」改成三封信都放；實際
+// 落地是機構信與免費信兩封，交付信沒有這個區塊。
+//
+// 釘住這件事的理由：改回舊欄位不會讓任何東西壞掉——API 兩個欄位都輸出，內容也只
+// 差那段推薦文案，所以信照樣寄出、流程照樣成功、版面完全正常，只是推薦整個不見。
+// 沒有這一條，那種回退無聲無息。
+for (const [name, tpl, expectSection] of [
+  ["paid zh", PAID.zh, true], ["paid en", PAID.en, true],
+  ["free zh", FREE.zh, true], ["free en", FREE.en, true],
+  // 交付信的中段被整段替換掉：完整報告已以 PDF 附於信中，再重印一次排序等於讓
+  // 收件者讀同樣的東西兩遍。這裡斷言它「沒有」，所以哪天有人把區塊加回來卻忘了
+  // 帶推薦，同樣會被擋下來。
+  ["delivery zh", DELIVERY.zh, false], ["delivery en", DELIVERY.en, false]
+]) {
+  test(`${name} reads the cancer ranking from the field that carries the product recommendation`, () => {
+    assert.equal(
+      tpl.includes("['cancer_risks_text']"),
+      false,
+      `${name} 讀的是不含推薦的舊欄位；信會照常寄出，只是推薦整個不見`
+    );
+    assert.equal(
+      tpl.includes("['cancer_risks_text_with_recommendations']"),
+      expectSection,
+      expectSection
+        ? `${name} 少了各癌種風險因子參考區塊`
+        : `${name} 不該有各癌種風險因子參考區塊（完整報告已附為 PDF）`
+    );
+  });
+}

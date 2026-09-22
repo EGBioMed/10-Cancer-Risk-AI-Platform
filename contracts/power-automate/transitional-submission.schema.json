@@ -139,7 +139,7 @@
     },
     "ai_api_feature_row": {
       "type": "object",
-      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-08 this is model-features/1.0.0 plus two non-model fields: country, which selects the report's population baseline and screening-guidance source, and symptoms, which is the sole input to the literature high-risk rule layer. Neither is used when scoring the model. Placing both here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
+      "description": "Posted verbatim as the body of the AI API call. As of 2026-09-22 this is model-features/1.0.0 plus three non-model fields: country, which selects the report's population baseline and screening-guidance source; symptoms, the sole input to the literature high-risk rule layer; and personal_cancer_types, which decides the wording of the free email's inline test-product recommendation. None is used when scoring the model. Placing them here rather than elsewhere in the submission is deliberate: it means the HTTP action needs no change.",
       "properties": {
         "symptoms": {
           "type": "object",
@@ -152,6 +152,10 @@
           "type": "string",
           "enum": ["TW", "US", "CA"],
           "description": "TW is the value sent for every questionnaire option other than 美國 (US) and 加拿大 (CA) -- that is 臺灣, 香港, 中國, 日本, 馬來西亞 and 越南 -- and for an unanswered question. The report then falls back to the Taiwan (HPA) baseline and says so inline, because the backend holds population baselines for the United States and Canada only."
+        },
+        "personal_cancer_types": {
+          "type": "string",
+          "description": "Semicolon-joined Chinese cancer names the examinee reported having been diagnosed with, e.g. \"乳癌; 大腸直腸癌\"; empty string when the question was not answered or does not apply. Chinese canonical values in both language versions of the questionnaire. Maps to SurveyInput.personal_cancer_types, whose sole use is deciding whether the free email's inline test-product recommendation uses the history wording or the risk wording (SPEC_INLINE_RECOMMENDATION.md section 3.2); it takes no part in scoring. Built by the same expression as excel_row.personal_cancer_types so the two cannot drift -- that column read empty on every submission before 0938952 because it was located by scanning entry.field, which saveAnswer does not set, and an empty string is indistinguishable from an unanswered question, so nothing warned."
         }
       },
       "x-country-required-from": "Deliberately not in this object's required list yet: a browser holding a cached copy of the previous app.js would otherwise have its submission rejected outright, whereas omitting country only makes the backend fall back to the Taiwan baseline. Promote it to required once the deployed frontend has rolled out."

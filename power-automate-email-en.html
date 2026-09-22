@@ -45,7 +45,7 @@
         <div style="border:1px solid #dce8e5;border-radius:14px;background:#ffffff;padding:18px 20px;margin-bottom:26px;">
           <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">Based on the information you provided, the following section organizes cancer-related risk factors by relative area of focus to help you identify health topics that may deserve attention.</p>
           <p style="margin:0 0 12px;font-size:14px;line-height:1.8;color:#5f6f6b;">If the overall relative index is moderate or lower, treat this section as supplementary health education information. A higher position for one cancer type should not by itself cause excessive concern.</p>
-          <div style="white-space:pre-line;font-size:15px;line-height:1.85;color:#243331;">@{coalesce(body('HTTP')?['cancer_risks_text_en'],body('HTTP')?['cancer_risks_text'],'Cancer-specific reference information is currently unavailable.')}</div>
+          <div style="white-space:pre-line;font-size:15px;line-height:1.85;color:#243331;">@{coalesce(body('HTTP')?['cancer_risks_text_en'],body('HTTP')?['cancer_risks_text_with_recommendations'],'Cancer-specific reference information is currently unavailable.')}</div>
         </div>
 
         <h2 style="font-size:19px;line-height:1.4;margin:0 0 14px;color:#172322;">Health management topics to discuss with a physician</h2>
