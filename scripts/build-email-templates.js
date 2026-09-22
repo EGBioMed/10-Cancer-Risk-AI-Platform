@@ -134,6 +134,12 @@ const HISTORY_RECOMMENDABLE = [
 const TOP = `first(body('${PREDICT_ACTION}')?['cancer_risks'])`;
 const TOP_CANCER = `${TOP}?['cancer']`;
 
+// The Parse JSON action in flow B. Everything else in the flow reads the
+// submission through it, including the send-email action's own recipient
+// field (body('剖析_JSON')['email']), so it is the reference this flow has
+// actually proven.
+const PARSE_ACTION = "剖析_JSON";
+
 // The cancers the participant said they have or have had, as excel_row
 // carries them: a semicolon-joined string of the questionnaire's canonical
 // Chinese labels. Canonical in both languages -- an English session still
@@ -141,7 +147,22 @@ const TOP_CANCER = `${TOP}?['cancer']`;
 // follow-up question that collects this is itself gated on a Chinese string
 // comparison in app.js, so English answers could not be stored translated
 // without that question disappearing for English users.)
-const OWN_HISTORY = "coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],'')";
+//
+// Read through both references, first that resolves wins. On 2026-09-21 a
+// submission that did record a cancer history -- report_results.feature_row
+// has prev_cancer = 1 for it -- produced no button, so triggerBody() was
+// not reaching this nested field. The likely reason is that the trigger
+// schema declares excel_row as a bare object with no properties, while
+// top-level fields it does declare (report_ticket, full_name) resolve
+// fine. Rather than assert which of the two works, ask for both: they name
+// the same data, so whichever resolves is the right answer.
+//
+// If neither resolves the buttons stay hidden and the next step is to
+// declare personal_cancer_types inside excel_row in the trigger schema,
+// which would make triggerBody() work by construction.
+const OWN_HISTORY =
+  "coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],"
+  + `body('${PARSE_ACTION}')?['excel_row']?['personal_cancer_types'],'')`;
 
 const or = (parts) => parts.reduce((a, b) => `or(${a},${b})`);
 const and = (parts) => parts.reduce((a, b) => `and(${a},${b})`);

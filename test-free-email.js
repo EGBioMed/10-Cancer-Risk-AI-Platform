@@ -50,6 +50,14 @@ const WITHHELD = {
 // deliberately; do not quietly drop the witness and keep the rest.
 const WITNESS = "b0395f8";
 
+// How the templates read the cancers the participant reported. Spelled out
+// once: it names two sources on purpose, and repeating it at every
+// assertion would make a change to that decision read as several unrelated
+// edits.
+const OWN_HISTORY =
+  "coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],"
+  + "body('剖析_JSON')?['excel_row']?['personal_cancer_types'],'')";
+
 function witnessTemplate(name) {
   return execFileSync("git", ["show", `${WITNESS}:${name}`], {
     cwd: __dirname,
@@ -236,8 +244,27 @@ for (const lang of ["zh", "en"]) {
     // already diagnosed with that cancer is the same mistake as offering the
     // monitoring test to someone healthy, pointing the other way.
     assert(
-      expr.includes("not(contains(coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],'')"),
+      expr.includes(`not(contains(${OWN_HISTORY},`),
       "the risk button does not exclude a cancer the reader already has"
+    );
+  });
+
+  // Both references name the same field. On 2026-09-21 the trigger-body one
+  // alone silently resolved to nothing on a submission that did report a
+  // cancer history, and the buttons never appeared -- a condition that
+  // reads an absent field is false, not an error, so nothing failed and
+  // nothing was logged. Asking through both costs nothing and removes the
+  // need to be right about which one the flow honours.
+  test(`the ${lang} recommendation reads the history through both references`, () => {
+    const expr = recommendation();
+
+    assert(
+      expr.includes("triggerBody()?['excel_row']?['personal_cancer_types']"),
+      "the trigger-body reference is gone"
+    );
+    assert(
+      expr.includes("body('剖析_JSON')?['excel_row']?['personal_cancer_types']"),
+      "the parsed-body reference is gone; flow B reads everything else through it"
     );
   });
 
@@ -253,7 +280,7 @@ for (const lang of ["zh", "en"]) {
     const claim = lang === "zh" ? "監測" : "monitoring";
 
     const branchAt = (cancer) => {
-      const at = expr.indexOf(`contains(coalesce(triggerBody()?['excel_row']?['personal_cancer_types'],''),'${cancer}')`);
+      const at = expr.indexOf(`contains(${OWN_HISTORY},'${cancer}')`);
       assert(at > 0, `${cancer} has no own-history branch`);
       return at;
     };
