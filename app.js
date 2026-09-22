@@ -1848,6 +1848,10 @@ function saveAnswer(value, source, structured = null) {
   const questionCopy = getQuestionCopy(question);
   const entry = {
     question_id: question.id,
+    // Kept in step with makeAnswerEntry. The two used to disagree, and
+    // anything that read an entry's own `field` instead of the key it is
+    // stored under saw only half the answers -- see buildExcelRow.
+    field: question.field,
     label: question.title,
     display_label: questionCopy.title,
     value,
@@ -2433,8 +2437,20 @@ function buildResearchFeatureRow() {
 }
 
 function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow, ruleInputRow) {
-  const symptomEntry = Object.values(answers).find((entry) => entry.field === "recent_health.recent_discomfort");
-  const personalCancerTypeEntry = Object.values(answers).find((entry) => entry.field === "medical_history.personal_cancer_types");
+  // Looked up by key, not by scanning for entry.field. `answers` is keyed by
+  // question.field, but the two places that build an entry disagree about
+  // whether to repeat it inside: makeAnswerEntry sets `field`, saveAnswer --
+  // the path every question answered in the UI takes -- does not. Scanning
+  // for it therefore matched nothing, and both of these came out empty in
+  // every submission, silently, because "" is what an unanswered optional
+  // question looks like too.
+  //
+  // Found on 2026-09-22: the free email's product recommendation reads
+  // personal_cancer_types, and a participant who had reported breast cancer
+  // got no button. prev_cancer was 1 in the same row, because that one is
+  // read with getAnswerValue, which goes by key.
+  const symptomEntry = answers["recent_health.recent_discomfort"];
+  const personalCancerTypeEntry = answers["medical_history.personal_cancer_types"];
   const structured = symptomEntry?.structured || {};
   const join = (value) => Array.isArray(value) ? value.join("; ") : "";
   const personalCancerTypes = personalCancerTypeEntry?.value

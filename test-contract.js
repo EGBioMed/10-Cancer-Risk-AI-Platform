@@ -529,3 +529,118 @@ test("the free line's trigger schema adds three fields and the institution one a
   assert.deepEqual(free.properties.delivery_mode.enum, ["public"]);
   assert.equal(free.additionalProperties, false);
 });
+
+// ---------------------------------------------------------------------------
+// excel_row carries two things that come from the answer store rather than a
+// feature row: what the participant said they have been diagnosed with, and
+// what they wrote about recent discomfort. Both were empty in every
+// submission until 2026-09-22.
+//
+// The cause was that `answers` is keyed by question.field, while the entries
+// themselves only sometimes repeat that field inside: makeAnswerEntry set it,
+// saveAnswer -- the path every question answered in the UI goes through --
+// did not. buildExcelRow scanned for the inner property, so it matched
+// nothing. Nothing failed, because "" is also what an unanswered optional
+// question produces.
+//
+// These run the real function against entries shaped the way saveAnswer used
+// to shape them, with no inner field at all. Looking up by key has to work
+// regardless of what an entry chooses to repeat about itself.
+function loadExcelRowBuilder() {
+  const source = fs
+    .readFileSync(path.join(__dirname, "app.js"), "utf8")
+    .replace(/\r\n/g, "\n");
+
+  const topLevelFunction = (header) => {
+    const start = source.indexOf(header);
+    assert(start >= 0, `Could not locate ${header} in app.js`);
+    const end = source.indexOf("\n}\n", start);
+    assert(end > start, `Could not find the end of ${header} in app.js`);
+    return source.slice(start, end + 2);
+  };
+
+  const sandbox = { answers: {}, currentLang: "zh" };
+  vm.createContext(sandbox);
+  vm.runInContext(
+    [
+      topLevelFunction("function getAnswerValue(answerStore, field) {"),
+      topLevelFunction("function buildExcelRow("),
+      "globalThis.__excel = { buildExcelRow, answers };"
+    ].join("\n"),
+    sandbox
+  );
+
+  return sandbox.__excel;
+}
+
+const excel = loadExcelRowBuilder();
+
+// What saveAnswer produced before the fix: no `field` inside the entry.
+function legacyEntry(questionId, value, structured) {
+  const entry = { question_id: questionId, label: questionId, value, source: "multi_choice", confirmed: true };
+  if (structured) entry.structured = structured;
+  return entry;
+}
+
+function buildRow() {
+  return excel.buildExcelRow({}, "2026-09-22T00:00:00.000Z", {}, [], {}, {}, {}, {});
+}
+
+test("a reported cancer history reaches excel_row", () => {
+  for (const key of Object.keys(excel.answers)) delete excel.answers[key];
+  excel.answers["medical_history.personal_cancer_types"] = legacyEntry(
+    "personal_cancer_types",
+    ["乳癌", "大腸直腸癌"]
+  );
+
+  assert.equal(
+    buildRow().personal_cancer_types,
+    "乳癌; 大腸直腸癌",
+    "the answer store holds it, so the submission must carry it"
+  );
+});
+
+test("an unreported cancer history is an empty string, not a missing key", () => {
+  for (const key of Object.keys(excel.answers)) delete excel.answers[key];
+
+  const row = buildRow();
+  assert.equal("personal_cancer_types" in row, true, "the column must always exist");
+  assert.equal(row.personal_cancer_types, "");
+});
+
+test("recent discomfort reaches excel_row, including its structured parts", () => {
+  for (const key of Object.keys(excel.answers)) delete excel.answers[key];
+  excel.answers["recent_health.recent_discomfort"] = legacyEntry(
+    "recent_discomfort",
+    "腹部悶痛",
+    { body_parts: ["腹部"], symptoms: ["悶痛"], duration: "2週到不滿6週", no_symptom: false }
+  );
+
+  const row = buildRow();
+  assert.equal(row.recent_discomfort_text, "腹部悶痛");
+  assert.equal(row.recent_discomfort_body_parts, "腹部");
+  assert.equal(row.recent_discomfort_duration, "2週到不滿6週");
+  assert.equal(row.recent_discomfort_no_symptom, 0);
+});
+
+// The two constructors drifted apart once and cost a live feature. Neither is
+// wrong on its own; what breaks is a reader that trusts one shape.
+test("both answer-entry constructors record the question's field", () => {
+  const source = fs
+    .readFileSync(path.join(__dirname, "app.js"), "utf8")
+    .replace(/\r\n/g, "\n");
+
+  const start = source.indexOf("function saveAnswer(value, source, structured = null) {");
+  assert(start > 0, "saveAnswer is gone");
+  const saveAnswer = source.slice(start, source.indexOf("\n}\n", start));
+
+  assert.match(
+    saveAnswer,
+    /field: question\.field/,
+    "saveAnswer builds an entry without its field; anything scanning for it will miss these"
+  );
+
+  const makeStart = source.indexOf("function makeAnswerEntry(question, value, source) {");
+  const makeAnswerEntry = source.slice(makeStart, source.indexOf("\n}\n", makeStart));
+  assert.match(makeAnswerEntry, /field: question\.field/);
+});
