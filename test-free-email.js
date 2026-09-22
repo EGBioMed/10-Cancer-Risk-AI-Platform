@@ -381,11 +381,26 @@ for (const lang of ["zh", "en"]) {
       );
     }
 
-    // It must promise the things that genuinely are paid-only.
-    const genuinelyPaid = lang === "zh" ? ["高風險規則", "篩檢建議", "驗證"] : ["high-risk rules", "Screening guidance", "validation"];
+    // A known and accepted overlap, recorded rather than quietly dropped:
+    // the 2026-09-22 copy says it will 找出值得優先關注的癌症 / highlight the
+    // cancers that may deserve greater attention, and the free email already
+    // shows the full ranking with that cancer at the top. Abbie's copy, and
+    // their call; it is here so the next person to read this test knows the
+    // list above is not exhaustive by accident.
+
+    // It must still name the things that genuinely are paid-only. The
+    // wording moves with the marketing copy; what may not move is that all
+    // three are named at all.
+    const genuinelyPaid = lang === "zh"
+      ? ["醫學文獻實證規則", "後續追蹤", "科學文獻依據"]
+      : ["evidence from medical literature", "follow-up and health management", "scientific references"];
     for (const claim of genuinelyPaid) {
       assert.equal(cta.includes(claim), true, `the call to action should name ${claim}`);
     }
+
+    // The price is the offer. A call to action that has lost it is selling
+    // nothing, and a wrong one is worse -- the store charges US$10.
+    assert.equal(cta.includes("US$10"), true, "the price is missing from the call to action");
   });
 }
 
