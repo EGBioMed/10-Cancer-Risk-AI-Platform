@@ -711,6 +711,46 @@ npm run access:status -- --code <code>
 
 過程中踩到的一個坑記在這裡:從表格複製運算式時,第三列右值變成 `"@\tbody(...)"`,`@` 與運算式之間夾了一個跳位字元。Power Automate 接受並儲存了它。失敗模式是「客戶付款後收不到報告,而訊息指向癌別不一致」——所以貼完運算式後應回 Peek code 確認 `@` 後面直接接函式。
 
+### 10.5 免費信的檢測產品推薦(2026-09-22 完成)
+
+免費信在付款區塊下方最多顯示**一顆**產品按鈕。信件只帶癌別名稱,不帶任何產品網址:
+
+```text
+https://mdi.eg-bio.com/recommend?c=<癌別>&src=free
+```
+
+商店端(外掛第 14 節)查表轉址並附上 utm 參數。**換產品、加產品、改網址都不必碰 Power Automate**——編輯流程是這套系統裡最危險的操作,這個設計把它從日常維運裡拿掉了。
+
+顯示規則,依序判斷:
+
+| 條件 | 顯示 |
+|---|---|
+| `personal_cancer_types` 含乳癌／大腸直腸癌／胰臟癌／肝癌 | 該癌別的產品,文案為「曾被診斷 → 追蹤參考」 |
+| 否則:第一名癌別 ∈ {大腸直腸癌, 胰臟癌, 肝癌},`level` 為中度或高風險,`reliable` 為 true,且不在自述病史內 | 該癌別的產品,文案為「風險因子較集中」 |
+| 其他 | 不顯示 |
+
+自述病史優先於模型推論。「已確診就不推偵測產品」那一條不是可有可無:colorectal 與 pancreatic 都是 **detection** 產品,推給已確診者,與把 monitoring 產品推給健康人是同一種錯誤的兩個方向。
+
+#### 三個經查證、與產品名稱不符的對應
+
+| 癌別 | 產品 | 依據(取自產品頁原文) |
+|---|---|---|
+| 肝癌 | Gastrointestinal | 該產品涵蓋 pancreatic / colorectal / **liver**;沒有單項肝癌檢測 |
+| 胃癌 | **無** | Gastrointestinal 這個名字**不含胃癌**,涵蓋範圍只有上述三種 |
+| 乳癌 | Breast Monitoring | "Intended for **monitoring the disease status** of breast cancer patients",不是篩檢 |
+
+文案受各自產品頁的措辭約束:乳癌頁寫了監測用途,按鈕才可以那樣講;另外三個產品頁目前只寫 "early health screening purposes",所以它們的文案不替產品宣稱頁面沒寫的用途。**那三頁補上追蹤用途後**,把產生器 `HISTORY_RECOMMENDABLE` 裡的 `followup` 改成 `monitoring` 即可,有測試擋著不讓信件跑在產品頁前面。
+
+#### 這個功能上線前修掉的一個平台 bug
+
+推薦按鈕一直不出現,而流程、樣板、轉址端全部正確。原因是 `excel_row.personal_cancer_types` **在每一筆送件裡都是空字串**:
+
+`answers` 以 `question.field` 為鍵,但 `saveAnswer`(畫面上每一題作答走的路徑)建立的項目**不帶 `field` 屬性**,而 `buildExcelRow` 用 `Object.values(answers).find(e => e.field === ...)` 去掃。掃不到,回傳 `""`。同一列的 `prev_cancer` 正常,因為它走 `getAnswerValue`,用鍵查找。
+
+同一行程式碼也讓 `recent_discomfort_*` 七個欄位一起空白。**在 `0938952` 之前的所有送件,研究匯出裡這八個欄位都是空的**;答案本身還在 `rows` 陣列裡,但 excel_row 的欄位補不回來。
+
+診斷方式值得記下來:在流程裡加一個暫時的「編輯」(Compose,zh-TW 介面譯作**編輯**不是撰寫)動作,輸出 `string(triggerBody()?['excel_row'])`,跑一次送件再看。那一份輸出同時顯示 `prev_cancer: 1` 與 `personal_cancer_types: ""`,矛盾直接指向取值方式。在那之前有四次從程式碼推論「這裡有寫所以送得到」的判斷,全部是錯的。
+
 ---
 
 ## 11. 驗收條件
