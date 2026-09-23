@@ -295,6 +295,54 @@ git push -u origin "codex/<工作名稱>"
 不要把 `runtime/`、`.env`、`local-backups/`、`local-exports/`、憑證私鑰或真實健康資料
 加入 Git。提交前務必用 `git status` 再檢查一次。
 
+### B8. 行尾（第一次 pull 之後看到「整個檔案都變了」時看這裡）
+
+本倉庫自 2026-09-22 起有 `.gitattributes`，文字檔一律固定為 **LF**，Windows 指令碼
+（`.ps1`／`.bat`／`.cmd`）維持 CRLF，圖片與文件檔標為 binary。
+
+**為什麼要這樣**：`power-automate-email-*.html` 與 `contracts/` 底下的幾個 JSON 是由
+產生器寫出來的，Node 寫的是 LF；而 Windows 上 `core.autocrlf=true` 會在 checkout 時
+寫成 CRLF。那些「產出檔是否與產生器一致」的測試是**逐位元組**比對，所以在每次 git
+操作之後的第一次執行會失敗，跑完又被產生器改回 LF 而自行恢復。
+
+會自己好的紅燈比一直紅的更糟 —— 它教人重跑而不是去看，而真正的失敗就在同一批測試裡。
+
+#### 套用到你的工作區
+
+`.gitattributes` 只在 checkout 時生效，既有檔案不會自己更新。拉到這個變更之後，
+**先確認工作區乾淨**，再讓整棵樹重取一次：
+
+```powershell
+git status --porcelain
+```
+
+沒有任何輸出才繼續：
+
+```powershell
+git rm --cached -r . ; git reset --hard
+```
+
+`git rm --cached` 只清索引不刪檔案，`git reset --hard` 再依新規則取出。未追蹤的檔案
+（`node_modules/`、`runtime/`、`local-backups/`）完全不受影響。
+
+> **有未提交的變更時不要執行。** `git reset --hard` 會把它們丟掉。先 commit 或 stash。
+
+驗證：
+
+```powershell
+node -e "const s=require('fs').readFileSync('app.js','utf8');console.log('CRLF:',(s.match(/\r\n/g)||[]).length)"
+```
+
+印出 `CRLF: 0` 就對了。然後 `npm test` 連跑兩次，兩次都要全綠。
+
+#### 預期會看到的現象
+
+- 編輯器可能顯示大量檔案「已修改」。**內容一個位元組都沒有變**，只有行尾。重取之後
+  `git status` 應該是乾淨的
+- `git diff` 出現整檔差異時，加 `--ignore-all-space` 對照一次，通常會變成空的
+- **不要為了「修好」而把行尾改回 CRLF。** 產生器寫 LF，測試比對 LF，Linux 上的部署
+  也是 LF
+
 ## 情境 C：在另一台 Windows 電腦建立完整伺服器
 
 此流程需要本機系統管理員、資料庫管理員及網路管理權限。新伺服器投入真實資料前，
@@ -680,6 +728,16 @@ Get-NetTCPConnection -State Listen |
 
 預期 443 由 Caddy 使用；3000 由 Node 使用；5432 由 PostgreSQL 使用。不要直接終止
 不明程序，先查明 PID 所屬服務。
+
+### 4.8 `npm test` 第一次紅、第二次就綠
+
+行尾問題。失敗的通常是「產出檔與產生器一致」那類逐位元組比對的測試：你的工作區是
+CRLF，產生器寫的是 LF，第一次比對失敗，而那次執行順手把檔案改回 LF，所以第二次就過。
+
+依 **B8** 讓工作區重取一次。**不要因為第二次會過就當成沒事** —— 真正的失敗也在同一批
+測試裡，習慣重跑之後就分不出來了。
+
+拉了別人的 commit、切分支、rebase 之後特別容易遇到。
 
 ## 5. 變更完成的最低驗收清單
 
