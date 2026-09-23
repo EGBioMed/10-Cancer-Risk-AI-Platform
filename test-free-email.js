@@ -39,23 +39,23 @@ const WITHHELD = {
   ]
 };
 
-// The last commit in which the paid templates still carried the validation
-// summary. Asserting a string is absent proves nothing if the string was
-// never there -- one typo and the check passes for ever while the block sits
-// in the email untouched. So each needle is first confirmed against the
-// version that really had it.
+// The validation summary as the paid email carried it at b0395f8, kept as a
+// file. Asserting a string is absent proves nothing if the string was never
+// there -- one typo and the check passes for ever while the block sits in
+// the email untouched. So each needle is first confirmed against a copy of
+// the block that really had it.
 //
-// Pinned to a SHA rather than a relative ref because HEAD~1 drifts with the
-// next commit. If this ever becomes unreachable, delete these assertions
-// deliberately; do not quietly drop the witness and keep the rest.
-const WITNESS = "b0395f8";
-
+// This used to read the old blob with `git show <sha>:<file>`. That works on
+// a full clone and fails on CI, where actions/checkout fetches a single
+// commit, so the object is simply not there: CI was red for 18 consecutive
+// pushes from 2026-09-21 while every local run was green. A test has no
+// business caring how deeply the repository was cloned.
+//
+// The fixtures are a historical record. Do not edit them to make a test
+// pass; if a needle no longer matches, the needle is what is wrong.
 function witnessTemplate(name) {
-  return execFileSync("git", ["show", `${WITNESS}:${name}`], {
-    cwd: __dirname,
-    encoding: "utf8",
-    maxBuffer: 10 * 1024 * 1024
-  });
+  const lang = name.includes("-en.html") ? "en" : "zh";
+  return read(path.join("test-fixtures", `validation-summary-${lang}.html`));
 }
 
 const KEPT = {

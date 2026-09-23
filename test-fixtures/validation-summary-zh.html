@@ -1,0 +1,90 @@
+<!--
+  付費信在 b0395f8 時仍帶有的「模型驗證摘要」區塊，原樣保留。
+
+  這是 test-free-email.js 的證人：斷言某個字串不在信件裡，前提是那個字串真的
+  存在過。少了證人，打錯一個字就會讓檢查永遠通過，而區塊安然無恙地留在信裡。
+
+  原本是用 git show 去歷史裡取，但 CI 的 actions/checkout 是淺層複製，那個
+  commit 不在複製範圍內——2026-09-21 起 CI 連續紅了 18 次。改存成檔案之後
+  測試不再依賴倉庫的複製深度。
+
+  這個檔案是歷史紀錄，不應該再被修改。
+-->
+<div style="border:1px solid #dce8e5;border-radius:14px;background:#f9fcfb;padding:18px 20px;margin-bottom:26px;">
+          <div style="font-size:14px;color:#0f766e;font-weight:800;margin-bottom:6px;">模型研究與驗證摘要</div>
+          <p style="margin:0 0 14px;font-size:13px;line-height:1.7;color:#53625f;">以下為 Pan-Cancer 整體風險模型於獨立測試資料進行 100 次分層 80/20 切分的平均驗證結果。</p>
+
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">0.875 ± 0.032</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">ROC-AUC</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">研究資料中的風險排序與區分能力</div>
+                </div>
+              </td>
+
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">91.2%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">敏感度</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">既定研究設定下降低遺漏個案的能力</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">66.0%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">特異度</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">辨識健康對照的能力</div>
+                </div>
+              </td>
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">80.3%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">準確率</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">測試資料中的整體分類表現</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top" style="padding:0 8px 12px 0;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">78.1%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">PPV（陽性預測值）</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">模型判為陽性者中，實際為陽性的比例</div>
+                </div>
+              </td>
+              <td width="50%" valign="top" style="padding:0 0 12px 8px;">
+                <div style="padding:14px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+                  <div style="font-size:22px;font-weight:800;color:#12312d;">85.3%</div>
+                  <div style="font-size:13px;font-weight:700;color:#40514f;margin-top:4px;">NPV（陰性預測值）</div>
+                  <div style="font-size:12px;line-height:1.6;color:#6b7976;margin-top:4px;">模型判為陰性者中，實際為陰性的比例</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">543 筆獨立測試資料</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">包含 308 筆陽性資料與 235 筆陰性資料</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">100 次獨立分層驗證</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">每次採用 80/20 資料切分，呈現平均驗證效能</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;margin-bottom:10px;">
+            <div style="font-size:20px;font-weight:800;color:#12312d;">11 個隨機森林模型</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">包含 1 個 Pan-Cancer 整體風險模型與 10 個癌別 One-vs-Rest 模型</div>
+          </div>
+
+          <div style="padding:14px 16px;border:1px solid #dce8e5;border-radius:10px;background:#ffffff;">
+            <div style="font-size:15px;font-weight:800;color:#12312d;">37 項 AI 健康評估・48 個工程特徵・SMOTE 校正</div>
+            <div style="font-size:13px;line-height:1.7;color:#53625f;margin-top:3px;">將填答內容轉換為結構化資訊，並處理模型資料的類別不平衡</div>
+          </div>
+
+          <p style="margin:12px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">以上為內部研究資料在 Pan-Cancer 判定閾值 0.40 下的平均驗證表現，用於說明模型研究與開發基礎，不是個人罹癌機率，也不代表每份個人報告的準確率。</p>
+        </div>
