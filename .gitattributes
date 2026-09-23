@@ -1,0 +1,39 @@
+# 行尾規則
+#
+# 這個倉庫的開發機是 Windows，git 設定為 core.autocrlf=true，所以 checkout 時
+# 文字檔會被寫成 CRLF。但這裡有好幾個檔案是由產生器寫出來的，而 Node 寫的是
+# LF —— 兩者不一致時，那些「產出檔是否與產生器一致」的逐位元組比對測試，在每次
+# git 操作之後的第一次執行都會失敗，跑完又被產生器改回 LF 而自行恢復。
+#
+# 那種紅燈最糟的地方不是它會紅，是它會自己好。久了就會學會忽略紅燈，而真正的
+# 失敗也在同一批測試裡。
+#
+# 2026-09-22 rebase 之後實際發生過一次，兩個測試紅、下一次跑就全綠。
+#
+# 所以把文字檔一律固定成 LF。這與產生器的輸出一致，也與 Linux 上的 CI 一致。
+
+* text=auto eol=lf
+
+# Windows 指令碼維持 CRLF。PowerShell 讀 LF 沒問題，但這些檔案是在 Windows 上
+# 用記事本或 ISE 開來看的，而且 .bat/.cmd 在 LF 下的行為有已知的地雷，所以一併
+# 排除，不必分辨哪些真的敏感。
+*.ps1  text eol=crlf
+*.psm1 text eol=crlf
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+
+# 二進位檔明確標示，避免被當成文字做行尾轉換而損毀。
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.ico  binary
+*.pdf  binary
+*.zip  binary
+*.docx binary
+*.xlsx binary
+*.pptx binary
+*.woff  binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
