@@ -179,17 +179,15 @@ for (const lang of ["zh", "en"]) {
     const announced = lang === "zh"
       ? [
           ["您的十大癌症相對風險指數與分級", "risk_score"],
-          ["這次結果代表什麼", "這次整理結果代表什麼？"],
           ["各癌種風險因子的相對關注順序", "各癌種風險因子參考"],
           ["可與醫師討論的健康管理方向", "可與醫師討論的健康管理方向"],
-          ["取得完整報告的方式", "add-to-cart=1062"]
+          ["取得您的個人化完整報告", "add-to-cart=1062"]
         ]
       : [
           ["Your relative risk index and level", "risk_score"],
-          ["What the result means", "What does this summary mean?"],
           ["relative order of attention", "Cancer-type risk factor reference"],
           ["Health management topics", "Health management topics to discuss"],
-          ["How to get the complete report", "add-to-cart=1062"]
+          ["Your personalised complete report", "add-to-cart=1062"]
         ];
 
     // Scoped: the box itself, and the email below it. Checking the whole
@@ -208,8 +206,14 @@ for (const lang of ["zh", "en"]) {
     const toc = FREE[lang].slice(tocStart, tocEnd);
     const rest = FREE[lang].slice(tocEnd);
 
-    // Nothing may be listed that the list below does not account for.
-    const listed = [...toc.matchAll(/<li>([^<]+)<\/li>/g)].map((m) => m[1]);
+    // Nothing may be listed that the list below does not account for. Tags
+    // inside an item are stripped rather than excluded: the highlighted
+    // entry wraps its text in a span, and a regex that only matched bare
+    // text would stop counting it and let the count check pass while an
+    // entry went unexamined.
+    const listed = [...toc.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) =>
+      m[1].replace(/<[^>]*>/g, "").trim()
+    );
     assert.equal(
       listed.length,
       announced.length,
@@ -223,6 +227,18 @@ for (const lang of ["zh", "en"]) {
         `the contents box promises "${entry}" but the email below it has no ${section}`
       );
     }
+
+    // The paid report is the only entry that is an offer rather than a
+    // description, and it is emphasised on purpose. Nothing else about the
+    // box would look wrong if the emphasis were lost in a regeneration, so
+    // it is pinned here.
+    const items = [...toc.matchAll(/<li>[\s\S]*?<\/li>/g)].map((m) => m[0]);
+    const highlighted = items.filter((item) => item.includes("background:#eef7f5"));
+    assert.equal(highlighted.length, 1, "exactly one entry should be highlighted");
+    assert(
+      highlighted[0].includes(lang === "zh" ? "完整報告" : "complete report"),
+      "the highlighted entry is not the one about the paid report"
+    );
 
     // The product recommendation is conditional, so it must not be listed:
     // most readers would see an entry for a section that is not in their
