@@ -329,6 +329,31 @@ for (const lang of ["zh", "en"]) {
     // nothing, and a wrong one is worse -- the store charges US$10.
     assert.equal(cta.includes("US$10"), true, "the price is missing from the call to action");
   });
+
+  // The page count appears three times: the contents entry, the badge, and
+  // the paragraph. On 2026-09-22 the contents box was changed to 50~70 while
+  // the other two still said 超過 60, so one email quoted two different
+  // lengths for the same report -- and 50~70 admits values the other ruled
+  // out. Nothing catches that by reading; it has to be compared.
+  test(`the ${lang} email quotes one page count, not several`, () => {
+    const pattern = lang === "zh" ? /\d+~\d+ 頁/g : /\d+&ndash;\d+ pages/g;
+    const counts = FREE[lang].match(pattern) || [];
+
+    assert(counts.length >= 2, `expected the page count in several places, found ${counts.length}`);
+    assert.equal(
+      new Set(counts).size,
+      1,
+      `the email quotes ${new Set(counts).size} different page counts: ${[...new Set(counts)].join(" / ")}`
+    );
+
+    // The older wording is open-ended and cannot agree with a range, so its
+    // absence is checked rather than left to the comparison above.
+    assert.equal(
+      FREE[lang].includes(lang === "zh" ? "超過 60 頁" : "more than 60 pages"),
+      false,
+      "an open-ended page count survived; it cannot be reconciled with a range"
+    );
+  });
 }
 
 test("the free templates are exactly what the generator produces", () => {
