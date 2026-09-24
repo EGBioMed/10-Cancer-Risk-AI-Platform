@@ -180,13 +180,11 @@ for (const lang of ["zh", "en"]) {
       ? [
           ["您的十大癌症相對風險指數與分級", "risk_score"],
           ["各癌種風險因子的相對關注順序", "各癌種風險因子參考"],
-          ["可與醫師討論的健康管理方向", "可與醫師討論的健康管理方向"],
           ["取得您的個人化完整報告", "add-to-cart=1062"]
         ]
       : [
           ["Your relative risk index and level", "risk_score"],
           ["relative order of attention", "Cancer-type risk factor reference"],
-          ["Health management topics", "Health management topics to discuss"],
           ["Your personalised complete report", "add-to-cart=1062"]
         ];
 

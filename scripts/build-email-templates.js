@@ -75,7 +75,6 @@ const LANGS = {
           <ol style="margin:0;padding-left:20px;font-size:14px;line-height:2.1;color:#40514f;">
             <li>您的十大癌症相對風險指數與分級</li>
             <li>各癌種風險因子的相對關注順序</li>
-            <li>可與醫師討論的健康管理方向</li>
             <li><span style="background:#eef7f5;color:#0f766e;font-weight:800;padding:2px 7px;border-radius:6px;">取得您的個人化完整報告（50~70 頁）</span></li>
           </ol>
         </div>
@@ -103,7 +102,6 @@ const LANGS = {
           <ol style="margin:0;padding-left:20px;font-size:14px;line-height:2.1;color:#40514f;">
             <li>Your relative risk index and level across ten cancers</li>
             <li>The relative order of attention across cancer types</li>
-            <li>Health management topics to discuss with a physician</li>
             <li><span style="background:#eef7f5;color:#0f766e;font-weight:800;padding:2px 7px;border-radius:6px;">Your personalised complete report (50&ndash;70 pages)</span></li>
           </ol>
         </div>
