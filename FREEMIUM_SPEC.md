@@ -613,7 +613,7 @@ PDF 存於 SharePoint `/CancerRiskReports/{yyyy}/{MM}/{record_id}.pdf`,客服可
 | 11 | `/api/reports/purchase` + 驗票 | 以簽發的測試票券呼叫 | ✅ `a20fcae`，已部署並實測 |
 | 12 | WooCommerce 商品 + plugin 擴充 | 測試訂單 | ✅ 2026-09-18 **真實付款**實測通過 |
 | 13 | IRB 補件 | —— | ⬜ |
-| 14 | 鑄發正式宣傳代碼並對外公布 | —— | 🟡 13 組已鑄（§10.3），**尚未對外**，等第 13 步 |
+| 14 | 鑄發正式宣傳代碼並對外公布 | —— | 🟡 14 組已鑄（§10.3），**尚未對外**，等第 13 步 |
 
 三個「這個專案不會弄壞現況」的保證,**全部兌現**:
 
@@ -664,7 +664,7 @@ egbiotest2026 → 問卷 → 免費信 → 點「取得完整報告」→ 加入
 | 輪替 `PURCHASE_API_KEY` | 該金鑰於 2026-09-18 排查過程中被貼進對話紀錄。兩邊同時改:資料 API 的環境變數與外掛裡的 `define` |
 | 補發 2026-09-18 07:21–07:50 UTC 之間的存取代碼 | 外掛被清空期間的已付款訂單不會有代碼,也不會有訂單註記 |
 | 2026-09-21 閘門外收案的影響評估 | 一張 QR 指向**第二個、未停用的舊 Render 服務**,那份程式碼早於閘門存在,任何人掃到都能在無憑證、舊版同意書的情況下填完整份問卷。服務當日已停用,**影響人數尚未確認**——查舊服務的 `/api/submit` log 與流程 A 的失敗執行。經過與預防見 [`ACCESS_GATE.md`](ACCESS_GATE.md)「The gate protects a deployment, not a domain」 |
-| IRB 補件 | **硬門檻**,擋在 §10.3 那 13 組代碼對外發放之前。補件範圍須納入上一列的評估結果 |
+| IRB 補件 | **硬門檻**,擋在 §10.3 那 14 組代碼對外發放之前。補件範圍須納入上一列的評估結果 |
 
 ### 10.3 免費版廠商代碼
 
@@ -678,17 +678,18 @@ npm run access:status -- --code <code>
 
 亂碼取自 `scripts/grant-access.js` 內建的字母表(`ABCDEFGHJKMNPQRSTUVWXYZ23456789`,排除 `0/O`、`1/I/L`),因為這些碼會被印出來、被人用眼睛讀著鍵入。
 
-2026-09-21 鑄出 13 組(grant_id 43–55),全部 `use_count: 0`:
+2026-09-21 鑄出 13 組(grant_id 43–55);2026-09-24 增鑄 ASUS(grant_id 56)。共 14 組:
 
-| 廠商 | 代碼 | 廠商 | 代碼 |
-|---|---|---|---|
-| 華康 | `EGHK3FV` | 保生 | `EGPLCG4` |
-| 雙和 | `EGSHN3J` | Garmin | `EGGRMUDH` |
-| 秀傳 | `EGSCHJGJ` | Myrostar | `EGMYRO9RU` |
-| 行動基因 | `EGACTJVK` | TimVo | `EGTVH8E` |
-| 北醫藥學 | `EGTMUPDXQ` | Daniel Chen | `EGDC57Q` |
-| Numia | `EGNUMEDJ` | 星源 | `EGETAG3` |
-| Eplus | `EGEPGGD` | | |
+| 廠商 | 代碼 | grant_id | 廠商 | 代碼 | grant_id |
+|---|---|---|---|---|---|
+| 華康 | `EGHK3FV` | 43 | 保生 | `EGPLCG4` | 51 |
+| 雙和 | `EGSHN3J` | 44 | Garmin | `EGGRMUDH` | 52 |
+| 秀傳 | `EGSCHJGJ` | 45 | Myrostar | `EGMYRO9RU` | 53 |
+| 行動基因 | `EGACTJVK` | 46 | TimVo | `EGTVH8E` | 54 |
+| 北醫藥學 | `EGTMUPDXQ` | 47 | Daniel Chen | `EGDC57Q` | 55 |
+| Numia | `EGNUMEDJ` | 48 | **ASUS** | **`EGASUSMZ5`** | **56** |
+| 星源 | `EGETAG3` | 49 | | | |
+| Eplus | `EGEPGGD` | 50 | | | |
 
 > **同一家廠商在兩條線上有兩組不同的代碼。** Garmin 的 `EGGRMUDH` 是免費版(收免費信＋付款連結),先前的 `GRMN` 開頭機構碼是付費版(收 PDF)。發錯的後果是機構客戶付了錢只拿到免費信,或民眾免費拿到完整報告——發放清單務必把兩欄分開標示。
 

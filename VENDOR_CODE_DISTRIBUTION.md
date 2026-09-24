@@ -45,6 +45,7 @@
 | Myrostar | `EGMYRO9RU` | 53 | | | | | |
 | TimVo | `EGTVH8E` | 54 | | | | | |
 | Daniel Chen | `EGDC57Q` | 55 | | | | | |
+| ASUS | `EGASUSMZ5` | 56 | | | | | |
 
 **通路**寫代碼實際出現的地方，因為那決定了它會被多少人看到：`Email`、`LINE 群組`、`紙本文宣`、`活動海報`、`廠商自有網站`⋯⋯。印在海報上的碼和寄給單一窗口的碼，被陌生人用掉的機率差好幾個數量級。
 
@@ -74,10 +75,10 @@ npm run access:export
 npm run access:status -- --code EGHK3FV
 ```
 
-一次查完免費線 13 組（Render Shell）：
+一次查完免費線 14 組（Render Shell）：
 
 ```bash
-for c in EGHK3FV EGSHN3J EGSCHJGJ EGACTJVK EGTMUPDXQ EGNUMEDJ EGETAG3 EGEPGGD EGPLCG4 EGGRMUDH EGMYRO9RU EGTVH8E EGDC57Q; do echo "--- $c ---"; npm run access:status -- --code $c; done
+for c in EGHK3FV EGSHN3J EGSCHJGJ EGACTJVK EGTMUPDXQ EGNUMEDJ EGETAG3 EGEPGGD EGPLCG4 EGGRMUDH EGMYRO9RU EGTVH8E EGDC57Q EGASUSMZ5; do echo "--- $c ---"; npm run access:status -- --code $c; done
 ```
 
 對帳時看的是 `use_count` 與這份表格的落差：
