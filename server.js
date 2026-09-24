@@ -15,6 +15,7 @@ const {
   hashToken,
   signSessionCookie,
   verifySessionCookie,
+  readSignedSessionPayload,
   parseAccessToken,
   normalizeCode,
   getClientIp,
@@ -52,9 +53,20 @@ const SUBMISSION_VERSIONS = EXPECTED_VERSIONS;
 // opts into ACCESS_GATE_MODE=open explicitly via .env.
 const ACCESS_GATE_MODE = String(process.env.ACCESS_GATE_MODE || "enforced").toLowerCase();
 const ACCESS_GATE_SESSION_SECRET = process.env.ACCESS_GATE_SESSION_SECRET || "";
+// Two hours, raised from thirty minutes on 2026-09-24. The questionnaire is
+// advertised as 8-12 minutes, but a participant who pauses -- a phone call,
+// a queue at the health-check centre, looking up which year a relative was
+// diagnosed -- was losing every answer, because the gate refuses at submit
+// time and the page holds no draft. The failure landed at the single worst
+// moment, after all the work.
+//
+// The cookie is still a browser-session cookie with no Max-Age, so closing
+// the browser ends the session regardless of this value. That is what
+// protects the next person at a shared front-desk machine; this number only
+// governs how long one sitting may last.
 const ACCESS_GATE_SESSION_TTL_SECONDS = Math.max(
   60,
-  Math.round(Number(process.env.ACCESS_GATE_SESSION_TTL_HOURS || 0.5) * 3600)
+  Math.round(Number(process.env.ACCESS_GATE_SESSION_TTL_HOURS || 2) * 3600)
 );
 const ACCESS_GATE_COOKIE_SECURE = String(process.env.ACCESS_GATE_COOKIE_SECURE ?? "true").toLowerCase() !== "false";
 // Signs the ticket in the free email's payment link. Separate from
@@ -704,6 +716,22 @@ function isSessionAuthorized(req) {
   return Boolean(payload) && !consumedSessions.isConsumed(payload.sid);
 }
 
+// True when this request carries a cookie this server signed whose time has
+// simply run out -- as opposed to no cookie, a forged one, or one already
+// spent by a successful submission. Those stay indistinguishable in the
+// response; only the lapsed case is named, and naming it tells the holder
+// nothing they did not already have.
+function hasExpiredSession(req) {
+  const cookies = parseCookies(req.headers.cookie);
+  const sessionCookie = cookies[SESSION_COOKIE_NAME];
+  if (!sessionCookie) return false;
+
+  const payload = readSignedSessionPayload(sessionCookie, ACCESS_GATE_SESSION_SECRET);
+  if (!payload || typeof payload.exp !== "number") return false;
+
+  return Math.floor(Date.now() / 1000) > payload.exp;
+}
+
 // Called once a submission has actually succeeded: marks this session as
 // spent (so any further request under the same cookie -- including a retry
 // of /api/submit itself -- is treated as unauthenticated) and returns a
@@ -790,6 +818,17 @@ const server = http.createServer(async (req, res) => {
         // Any other unauthenticated GET/HEAD lands on the same gate view.
         redirectToHome(res);
       }
+    } else if (hasExpiredSession(req)) {
+      // The wording is the client's job -- it knows which language the
+      // participant chose, and this rejection happens before the body is
+      // read, so the server does not. It sends a stable code and the limit
+      // instead, so the message and the limit cannot drift apart.
+      sendJson(res, 403, {
+        ok: false,
+        code: "session_expired",
+        session_ttl_hours: ACCESS_GATE_SESSION_TTL_SECONDS / 3600,
+        error: "The questionnaire session has expired. Please reload the page and answer again."
+      });
     } else {
       sendJson(res, 403, { ok: false, error: "Access requires a valid payment confirmation link." });
     }

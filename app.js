@@ -2684,6 +2684,29 @@ function validateSubmissionBeforeSend(submission) {
   }
 }
 
+// What the participant is told when a submission is refused.
+//
+// Separated from the request so the wording can be tested. The one case
+// worth distinguishing is the gate's time limit: it lands at the worst
+// possible moment -- every question answered, then refused -- and
+// "reference 403, please try again" is wrong twice over, because it does
+// not say what happened and because trying again does not work.
+//
+// The number of hours comes from the response, not from a constant here,
+// so this sentence cannot drift away from the limit actually enforced.
+function buildSubmitErrorMessage(responsePayload, status, lang) {
+  if (responsePayload && responsePayload.code === "session_expired") {
+    const hours = Number(responsePayload.session_ttl_hours) || 2;
+    return lang === "en"
+      ? `You have exceeded the ${hours}-hour limit for completing this questionnaire, so these answers were not sent. Please reload the page and answer again.`
+      : `已超過 ${hours} 小時的填答時間限制，這次的作答並未送出。請重新整理頁面後再次填答。`;
+  }
+
+  return lang === "en"
+    ? `Submission failed (reference ${status}). Please try again or contact support.`
+    : `資料送出失敗（參考代碼 ${status}），請再試一次或聯繫服務人員。`;
+}
+
 async function submitSubmission(submission) {
   validateSubmissionBeforeSend(submission);
   const response = await fetch(SUBMISSION_ENDPOINT, {
@@ -2698,9 +2721,7 @@ async function submitSubmission(submission) {
   if (!response.ok) {
     const error = new Error(responsePayload.error || `Submission failed: ${response.status}`);
     error.status = response.status;
-    error.userMessage = currentLang === "en"
-      ? `Submission failed (reference ${response.status}). Please try again or contact support.`
-      : `資料送出失敗（參考代碼 ${response.status}），請再試一次或聯繫服務人員。`;
+    error.userMessage = buildSubmitErrorMessage(responsePayload, response.status, currentLang);
     throw error;
   }
 
