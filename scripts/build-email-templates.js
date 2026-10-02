@@ -14,6 +14,26 @@ const root = path.resolve(__dirname, "..");
 // something else.
 const REPORT_PRODUCT_ID = 1062;
 
+// The page the payment link is made against -- deliberately the product's own
+// page rather than the site root.
+//
+// add-to-cart is handled on wp_loaded, before any page renders, so the path
+// here only decides what the reader sees when the store plugin *refuses* the
+// request: no ticket, or a malformed one. On success nobody sees this page at
+// all, because the plugin redirects to checkout first.
+//
+// The site root used to be that page and it swallowed the refusal: the Divi
+// homepage renders no WooCommerce notice area, so the reader got an unchanged
+// homepage and no explanation of what went wrong. /cart/ is no better -- it is
+// the block-based cart, which renders client-side from the Store API and drops
+// server-side notices the same way. Both verified against the live store on
+// 2026-09-29; /shop/ was too, and redirects to the homepage, losing it again.
+// The single-product template is a classic one that does print the notice, and
+// it is a sensible page to be looking at while being told to go back to your
+// email.
+const REPORT_PRODUCT_URL =
+  "https://mdi.eg-bio.com/product/full-reporteg-ai-10-cancer-risk-assessment/";
+
 // The /predict action's name, as flow B has it. The paid templates carry
 // flow A's name for it -- plain "HTTP" -- and flow A is frozen, so the
 // rename happens here on the way out instead of in either flow.
@@ -87,7 +107,7 @@ const LANGS = {
             <span style="display:inline-block;margin-left:10px;font-size:15px;font-weight:700;color:#0f766e;line-height:2.1;">50~70 頁的完整報告</span>
           </div>
           <p style="margin:0 0 20px;font-size:15px;line-height:1.9;color:#40514f;">只需 <strong style="color:#12312d;">US$10</strong>，即可取得一份 <strong style="color:#12312d;">50~70 頁</strong>的完整個人化 AI 癌症風險評估報告。報告結合 AI 模型與醫學文獻實證規則，依據您的健康史、生活型態與症狀等資訊，分析整體與各癌別風險，找出值得優先關注的癌症、重要風險因子與症狀警訊，並提供後續追蹤與健康管理方向，同時附有可供醫療專業人員快速參考的重點摘要與科學文獻依據。只需 US$10，換來一份更完整的健康風險全貌，以及更清楚的下一步。</p>
-          <a href="https://mdi.eg-bio.com/?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:15px 32px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">立即取得完整報告</a>
+          <a href="${REPORT_PRODUCT_URL}?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:15px 32px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">立即取得完整報告</a>
           <p style="margin:16px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">此連結僅對應您本次的評估結果，請勿轉寄他人。連結有效期限為 30 天。</p>
         </div>
 
@@ -114,7 +134,7 @@ const LANGS = {
             <span style="display:inline-block;margin-left:10px;font-size:15px;font-weight:700;color:#0f766e;line-height:2.1;">50&ndash;70 pages</span>
           </div>
           <p style="margin:0 0 20px;font-size:15px;line-height:1.9;color:#40514f;">For just <strong style="color:#12312d;">US$10</strong>, you can access a comprehensive Personalized AI Cancer Risk Assessment Report of <strong style="color:#12312d;">50&ndash;70 pages</strong>. By combining AI-based risk modeling with evidence from medical literature, the report evaluates your overall and cancer-specific risks based on your health history, lifestyle, and symptoms. It highlights the cancers that may deserve greater attention, identifies key personal risk factors and symptom alerts, and provides clear guidance for follow-up and health management. A concise summary for healthcare professionals and supporting scientific references are also included. For just US$10, gain a more complete picture of your health risks&mdash;and greater clarity on what to consider next.</p>
-          <a href="https://mdi.eg-bio.com/?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:15px 32px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">Access your full report</a>
+          <a href="${REPORT_PRODUCT_URL}?add-to-cart=${REPORT_PRODUCT_ID}&amp;egbio_ticket=@{triggerBody()?['report_ticket']}" style="display:inline-block;padding:15px 32px;background:#0f766e;color:#ffffff;font-size:16px;font-weight:700;text-decoration:none;border-radius:999px;">Access your full report</a>
           <p style="margin:16px 0 0;font-size:12px;line-height:1.7;color:#6b7976;">This link corresponds only to your own assessment. Please do not forward it. It expires after 30 days.</p>
         </div>
 

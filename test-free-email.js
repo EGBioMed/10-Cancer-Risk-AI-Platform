@@ -283,6 +283,21 @@ for (const lang of ["zh", "en"]) {
     assert.match(links[0], /add-to-cart=1062&/);
     assert.doesNotMatch(links[0], /REPLACE_WITH_PRODUCT_ID/);
 
+    // Made against the product's own page, not the site root. The path is
+    // invisible on the happy path -- the store plugin redirects to checkout
+    // before anything renders -- so nothing about a successful purchase would
+    // catch a regression here. It only shows when the plugin refuses the
+    // request, and the site root renders the Divi homepage, which has no
+    // WooCommerce notice area: the reader is told nothing and sees the
+    // homepage, which is indistinguishable from a broken link. The
+    // single-product template prints the notice.
+    assert.doesNotMatch(
+      links[0],
+      /^https:\/\/mdi\.eg-bio\.com\/\?add-to-cart=/,
+      "the payment link is made against the site root, which swallows the refusal notice"
+    );
+    assert.match(links[0], /^https:\/\/mdi\.eg-bio\.com\/product\/[^/"]+\/\?add-to-cart=/);
+
     // The paid email must never grow a payment link: its recipients were
     // already paid for by their institution.
     assert.equal(PAID[lang].includes("mdi.eg-bio.com"), false);
