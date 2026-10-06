@@ -24,7 +24,9 @@
 
 ---
 
-## 2. 免費線（`delivery_mode: public`，每組 1000 次）
+## 2. 免費線（`delivery_mode: public`）
+
+額度預設每組 1000 次。**不是 1000 的一定要在備註寫出來**——額度用盡的拒絕訊息和打錯字的拒絕訊息完全相同（見第 4 節），所以一組悄悄只有 5 次的碼，對廠商來說就是一組突然變成假的碼。
 
 格式與設計理由見 [`FREEMIUM_SPEC.md` §10.3](FREEMIUM_SPEC.md)。
 
@@ -47,6 +49,7 @@
 | Daniel Chen | `EGDC57Q` | 55 | | | | | |
 | ThomasTLee | `EGTTLARC` | 57 | | | | | 2026-10-01 有 1 次兌換，發放對象待補 |
 | ASUS | `EGASUSMZ5` | 58 | | | | | 2026-10-01 有 2 次兌換，發放對象待補 |
+| JoiiUP | `EGJOIICAQ` | 61 | | | | 測試 | **額度只有 5**，不是 1000。確認後 `access:topup --add-uses 995` |
 
 **通路**寫代碼實際出現的地方，因為那決定了它會被多少人看到：`Email`、`LINE 群組`、`紙本文宣`、`活動海報`、`廠商自有網站`⋯⋯。印在海報上的碼和寄給單一窗口的碼，被陌生人用掉的機率差好幾個數量級。
 
@@ -76,10 +79,10 @@ npm run access:export
 npm run access:status -- --code EGHK3FV
 ```
 
-一次查完免費線 15 組（Render Shell）：
+一次查完免費線 16 組（Render Shell）：
 
 ```bash
-for c in EGHK3FV EGSHN3J EGSCHJGJ EGACTJVK EGTMUPDXQ EGNUMEDJ EGETAG3 EGEPGGD EGPLCG4 EGGRMUDH EGMYRO9RU EGTVH8E EGDC57Q EGTTLARC EGASUSMZ5; do echo "--- $c ---"; npm run access:status -- --code $c; done
+for c in EGHK3FV EGSHN3J EGSCHJGJ EGACTJVK EGTMUPDXQ EGNUMEDJ EGETAG3 EGEPGGD EGPLCG4 EGGRMUDH EGMYRO9RU EGTVH8E EGDC57Q EGTTLARC EGASUSMZ5 EGJOIICAQ; do echo "--- $c ---"; npm run access:status -- --code $c; done
 ```
 
 但 `use_count` 只回答「這組碼被兌換過幾次」，而**對帳真正要問的是「這次填答是誰帶來的」**，那是另一個問題。一個歸零的 `use_count` 不代表那家廠商沒帶人進來——他們的人可能拿著同一家廠商的**機構線**舊碼進來的，那組碼有自己的計數器，而且會寄出含 PDF 的完整報告。2026-10-01 就發生過：Garmin 的試用者用的是 9/17 鑄的 `grmnq59kxmfp`（grant 39，機構線），`EGGRMUDH` 動都沒動。
