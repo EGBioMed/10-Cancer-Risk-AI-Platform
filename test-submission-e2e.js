@@ -1,8 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const fs = require("node:fs");
-const path = require("node:path");
-const vm = require("node:vm");
+const { loadApp } = require("./lib/load-app-sandbox");
 const {
   sanitizeLegacyDirectIdentifiers,
   validateTransitionalSubmission
@@ -17,57 +15,6 @@ const {
 // 做法是把 app.js 到第一行 DOM 操作為止的部分放進 vm，補一組最小的 document 假物件，
 // 然後照題目定義把每一題都填掉。填的值不追求臨床上合理（那是報告端的測試在管），
 // 這裡只驗證形狀：向量鍵數、答案碼列數、同意紀錄、識別資訊外洩。
-function loadApp() {
-  const source = fs.readFileSync(path.join(__dirname, "app.js"), "utf8");
-  // 注意要抓行首那一個，檔案前段的 renderer 內也有同名選擇器。
-  const cutoff = source.indexOf('\ndocument.querySelectorAll(".mode-tab")') + 1;
-  assert(cutoff > 0, "Could not find the top-level DOM bootstrap in app.js");
-
-  const noop = () => {};
-  const element = new Proxy({}, {
-    get(_, prop) {
-      if (prop === "classList") return { add: noop, remove: noop, toggle: noop, contains: () => false };
-      if (prop === "style" || prop === "dataset") return {};
-      if (prop === "children") return [];
-      if (["innerHTML", "textContent", "value"].includes(prop)) return "";
-      if (typeof prop === "string") return () => element;
-      return undefined;
-    },
-    set: () => true
-  });
-
-  const sandbox = {
-    EGAnswerCodes: require("./answer-codes"),
-    // index.html 的 <script> 順序在這裡用 require 重現：app.js 在頂層就取用
-    // EGApiSymptoms，少了它整份 app.js 連載入都會 ReferenceError。
-    EGApiSymptoms: require("./api-symptoms"),
-    document: {
-      querySelector: () => element,
-      querySelectorAll: () => [],
-      createElement: () => element,
-      getElementById: () => element,
-      addEventListener: noop,
-      body: element,
-      documentElement: element
-    },
-    window: {},
-    console,
-    localStorage: { getItem: () => null, setItem: noop, removeItem: noop },
-    navigator: { language: "en" },
-    location: { href: "https://ai-cancer-risk.eg-bio.com/", search: "" },
-    setTimeout,
-    clearTimeout,
-    Date
-  };
-  sandbox.globalThis = sandbox;
-  vm.createContext(sandbox);
-  vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__app = {
-  questions, answers, makeAnswerEntry,
-  storeSubmissionForIntegration, validateSubmissionBeforeSend
-};`, sandbox);
-  return sandbox.__app;
-}
 
 const app = loadApp();
 
