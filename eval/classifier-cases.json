@@ -1,0 +1,64 @@
+{
+  "schema": "classifier-eval/1",
+  "about": "Labelled replies for the chat intake's escalation classifier (lib/classifier.js). Every case is a reply the deterministic rules in answer-resolver.js cannot resolve -- exact matches and the yes/no vocabulary never reach the model, so measuring them here would flatter it. `expect: []` means the correct answer is to abstain, which is a real answer and is scored as one.",
+  "provenance": "Written by hand against the live questionnaire on 2026-10-07. Synthetic: no real respondent said any of these. They encode the failure modes that matter rather than the distribution of real speech, so the headline number is a floor on difficulty, not an estimate of field accuracy. Replace with transcript-derived cases once the chat intake has run with real people.",
+  "cases": [
+    { "id": "smoke-past", "question_id": "smoking_ever", "utterance": "以前抽過，大概戒十年了", "expect": [0], "kind": "paraphrase", "why": "題目問的是「現在或過去」，戒菸十年仍然是有過習慣" },
+    { "id": "smoke-never", "question_id": "smoking_ever", "utterance": "我這輩子沒碰過菸", "expect": [1], "kind": "paraphrase", "why": "明確否認" },
+    { "id": "smoke-secondhand", "question_id": "smoking_ever", "utterance": "我自己不抽，但我先生在家裡抽", "expect": [1], "kind": "negation", "why": "二手菸不是本題問的；他自己明確否認" },
+    { "id": "smoke-occasional", "question_id": "smoking_ever", "utterance": "應酬的時候偶爾會抽一兩根", "expect": [0], "kind": "paraphrase", "why": "偶爾仍是有" },
+    { "id": "smoke-question-back", "question_id": "smoking_ever", "utterance": "電子菸算嗎？", "expect": [], "kind": "abstain", "why": "他在問回來，還沒回答" },
+    { "id": "smoke-vague", "question_id": "smoking_ever", "utterance": "很久以前的事了", "expect": [], "kind": "abstain", "why": "沒說抽過沒抽過；「很久以前」指涉不明" },
+
+    { "id": "weight-clear-yes", "question_id": "weight_change", "utterance": "有，這半年掉了快八公斤，我本來七十幾", "expect": [0], "kind": "paraphrase", "why": "8/72 約 11%，超過 5%" },
+    { "id": "weight-below-threshold", "question_id": "weight_change", "utterance": "大概少了一公斤吧，我六十公斤左右", "expect": [1], "kind": "threshold", "why": "1/60 約 1.7%，未達 5%，所以是「否」" },
+    { "id": "weight-gained", "question_id": "weight_change", "utterance": "沒有掉，反而胖了三公斤", "expect": [1], "kind": "negation", "why": "題目只問下降" },
+    { "id": "weight-unsure", "question_id": "weight_change", "utterance": "我沒在量體重，說不準", "expect": [2], "kind": "unknown-option", "why": "本題有「不確定」選項，應選它而不是棄權" },
+    { "id": "weight-no-scale-number", "question_id": "weight_change", "utterance": "褲子好像鬆了一點", "expect": [2], "kind": "unknown-option", "why": "無法判斷是否超過 5%，本題有不確定選項" },
+
+    { "id": "exercise-weekly-sum", "question_id": "exercise_time", "utterance": "一個禮拜大概運動一個半小時", "expect": [2], "kind": "band", "why": "1.5 小時落在 1-2 小時" },
+    { "id": "exercise-daily-walk", "question_id": "exercise_time", "utterance": "每天走路半小時", "expect": [3], "kind": "band", "why": "每天 30 分鐘 = 每週 3.5 小時，多於 2 小時" },
+    { "id": "exercise-none", "question_id": "exercise_time", "utterance": "完全沒時間運動", "expect": [0], "kind": "paraphrase", "why": "等同幾乎不運動" },
+    { "id": "exercise-ambiguous-freq", "question_id": "exercise_time", "utterance": "有空就會去走走", "expect": [], "kind": "abstain", "why": "沒有可換算成時數的資訊" },
+    { "id": "exercise-boundary", "question_id": "exercise_time", "utterance": "一週運動兩小時整", "expect": [], "kind": "abstain", "why": "剛好落在「1-2 小時」與「多於 2 小時」的交界，兩個都說得通——這是該棄權的邊界，不是該猜的" },
+
+    { "id": "chronic-two", "question_id": "chronic_conditions", "utterance": "我有高血壓跟糖尿病，都在吃藥", "expect": [0, 1], "kind": "multi", "why": "兩項都明確提到" },
+    { "id": "chronic-hepb", "question_id": "chronic_conditions", "utterance": "我是B肝帶原", "expect": [3], "kind": "multi", "why": "B 型肝炎在肝病那一項裡" },
+    { "id": "chronic-none", "question_id": "chronic_conditions", "utterance": "都沒有，我身體還算健康", "expect": [14], "kind": "none-option", "why": "明確否認全部，選「以上皆無」" },
+    { "id": "chronic-family-not-self", "question_id": "chronic_conditions", "utterance": "我爸有糖尿病，我自己沒有", "expect": [14], "kind": "negation", "why": "家族史不是本題；他自己明確否認" },
+    { "id": "chronic-unlisted", "question_id": "chronic_conditions", "utterance": "我有僵直性脊椎炎", "expect": [13], "kind": "multi", "why": "僵直性脊椎炎是自體免疫疾病" },
+    { "id": "chronic-vague-other", "question_id": "chronic_conditions", "utterance": "有一個慢性病，醫生講的名字我忘了", "expect": [15], "kind": "multi", "why": "確定有慢性病但叫不出名字，正是「其他慢性疾病」" },
+    { "id": "chronic-medication-only", "question_id": "chronic_conditions", "utterance": "我每天都要吃一顆藥", "expect": [], "kind": "abstain", "why": "吃什麼藥、為了什麼病都不知道" },
+    { "id": "chronic-borderline", "question_id": "chronic_conditions", "utterance": "醫生說我血糖有點偏高，但還沒到糖尿病", "expect": [1], "kind": "multi", "why": "選項本身就寫「糖尿病／高血糖」，高血糖涵蓋在內" },
+
+    { "id": "sym-general-tired-work", "question_id": "symptoms_general", "utterance": "最近是有點累，不過應該是加班太多", "expect": [], "kind": "abstain", "why": "選項明寫「非因工作或睡眠不足」，他自己把原因歸給加班——不該選，也不該算成沒有" },
+    { "id": "sym-general-night-sweat", "question_id": "symptoms_general", "utterance": "晚上常常流汗流到睡衣濕掉，冷氣開著也一樣", "expect": [4], "kind": "multi", "why": "排除了環境過熱" },
+    { "id": "sym-general-lump", "question_id": "symptoms_general", "utterance": "這幾個月發現腋下有一顆東西，不會痛", "expect": [6], "kind": "multi", "why": "腋下新出現腫塊，明確對應" },
+    { "id": "sym-general-two", "question_id": "symptoms_general", "utterance": "吃不太下，然後人一直很沒力", "expect": [1, 2], "kind": "multi", "why": "食慾降低＋經常疲倦，兩項都明確" },
+    { "id": "sym-general-none", "question_id": "symptoms_general", "utterance": "這些都沒有", "expect": [7], "kind": "none-option", "why": "以上皆無" },
+    { "id": "sym-general-unsure", "question_id": "symptoms_general", "utterance": "我不太確定算不算", "expect": [8], "kind": "unknown-option", "why": "本題組有「不確定」選項" },
+    { "id": "sym-general-anemia-history", "question_id": "symptoms_general", "utterance": "我以前生產完有貧血，後來補鐵好了", "expect": [], "kind": "abstain", "why": "選項問的是被診斷貧血或近期血色素偏低；已痊癒的舊病史不明確，不該替他決定" },
+
+    { "id": "sym-upper-heartburn", "question_id": "symptoms_upper_digestive", "utterance": "常常火燒心，特別是躺下來的時候", "expect": [6], "kind": "multi", "why": "灼熱感（火燒心）" },
+    { "id": "sym-upper-negated-pain", "question_id": "symptoms_upper_digestive", "utterance": "不會痛，但吃一點點就覺得很飽", "expect": [0], "kind": "negation", "why": "明確否認疼痛，只採計過早飽足" },
+    { "id": "sym-upper-three", "question_id": "symptoms_upper_digestive", "utterance": "吃完會脹、會打嗝，有時候胃酸會跑上來", "expect": [3, 5], "kind": "multi", "why": "消化不良（餐後脹、噯氣）是同一項；胃酸逆流是另一項" },
+    { "id": "sym-upper-coffee-ground", "question_id": "symptoms_upper_digestive", "utterance": "上個月吐過一次，顏色很深像咖啡渣", "expect": [8], "kind": "multi", "why": "嘔吐物呈咖啡渣樣" },
+    { "id": "sym-upper-vague", "question_id": "symptoms_upper_digestive", "utterance": "胃不太舒服", "expect": [], "kind": "abstain", "why": "上腹悶脹、疼痛、消化不良都說得通，無法分辨——這題正是當初決定不用模糊比對的例子" },
+    { "id": "sym-upper-swallow", "question_id": "symptoms_upper_digestive", "utterance": "吞東西會卡卡的，要配水才下得去", "expect": [7], "kind": "multi", "why": "食物卡住感" },
+
+    { "id": "band-three-weeks", "question_id": "symptom_hn_lump_duration_band", "utterance": "大概三個禮拜前發現的", "expect": [1], "kind": "band", "why": "3 週落在 2 週到不滿 6 週" },
+    { "id": "band-two-months", "question_id": "symptom_hn_lump_duration_band", "utterance": "兩個多月了", "expect": [2], "kind": "band", "why": "約 9 週，落在 6 週到不滿 6 個月" },
+    { "id": "band-years", "question_id": "symptom_hn_lump_duration_band", "utterance": "好幾年了，一直都在", "expect": [3], "kind": "band", "why": "超過 6 個月" },
+    { "id": "band-six-weeks-exact", "question_id": "symptom_hn_lump_duration_band", "utterance": "差不多六個禮拜", "expect": [], "kind": "abstain", "why": "「不滿 6 週」與「6 週以上」的交界，「差不多」落在哪邊不能替他決定" },
+    { "id": "band-cant-recall", "question_id": "symptom_hn_lump_duration_band", "utterance": "真的想不起來什麼時候開始的", "expect": [4], "kind": "unknown-option", "why": "本題有「不確定怎麼回答」" },
+
+    { "id": "drink-coffee-daily", "question_id": "beverage_habits", "utterance": "每天一杯美式", "expect": [1], "kind": "multi", "why": "每天 = 每週至少 3 次" },
+    { "id": "drink-social-alcohol", "question_id": "beverage_habits", "utterance": "酒大概一個月喝一兩次，茶幾乎天天喝", "expect": [2], "kind": "threshold", "why": "飲酒未達每週一次所以不選；茶每天符合每週至少 3 次" },
+    { "id": "drink-none", "question_id": "beverage_habits", "utterance": "這些我都不太碰", "expect": [3], "kind": "none-option", "why": "以上皆無" },
+    { "id": "drink-quit", "question_id": "beverage_habits", "utterance": "以前很愛喝酒，去年戒了", "expect": [], "kind": "abstain", "why": "題目問的是現在的習慣，戒了之後其他三項的狀況完全沒提" },
+    { "id": "drink-decaf-ambiguous", "question_id": "beverage_habits", "utterance": "我偶爾會喝點東西", "expect": [], "kind": "abstain", "why": "完全沒有可用資訊" },
+
+    { "id": "sex-male", "question_id": "sex", "utterance": "男的", "expect": [0], "kind": "paraphrase", "why": "口語說法" },
+    { "id": "sex-refuse", "question_id": "sex", "utterance": "這個不方便講", "expect": [], "kind": "abstain", "why": "拒答不是一個選項，也不該猜" }
+  ]
+}
