@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AI十大癌症健康風險因子評估（對話版）</title>
+    <link rel="stylesheet" href="styles.css?v=local" />
+    <style>
+      /* Page-specific only. Anything reusable belongs in styles.css, and
+         nothing here overrides the form page -- that page must look exactly as
+         it did. */
+      .chat { max-width: 720px; margin: 0 auto; padding: 24px 16px 32px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; box-sizing: border-box; }
+      .chat__header h1 { font-size: 20px; margin: 0 0 4px; }
+      .chat__header p { margin: 0; font-size: 13px; color: #6b7976; }
+      .progress { height: 6px; background: #e6efed; border-radius: 999px; overflow: hidden; }
+      .progress__bar { height: 100%; width: 0; background: #0f766e; transition: width 240ms ease; }
+      .progress__text { font-size: 12px; color: #6b7976; margin: 0; }
+      .transcript { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px; }
+      .bubble { max-width: 86%; padding: 10px 14px; border-radius: 16px; line-height: 1.65; font-size: 15px; white-space: pre-wrap; }
+      .bubble--bot { align-self: flex-start; background: #eef7f5; color: #12312d; border-bottom-left-radius: 4px; }
+      .bubble--me { align-self: flex-end; background: #0f766e; color: #ffffff; border-bottom-right-radius: 4px; }
+      .note { align-self: center; font-size: 12px; color: #6b7976; font-style: italic; }
+      .options { display: flex; flex-wrap: wrap; gap: 8px; }
+      .options__hint { width: 100%; margin: 0 0 2px; font-size: 12px; color: #6b7976; }
+      .chip { font: inherit; font-size: 14px; padding: 8px 14px; border-radius: 999px; border: 1px solid #0f766e; background: #ffffff; color: #0f766e; cursor: pointer; }
+      .chip:hover { background: #eef7f5; }
+      .chip--on { background: #0f766e; color: #ffffff; }
+      .chip--confirm { width: 100%; border-style: dashed; font-weight: 700; }
+      .composer { display: flex; gap: 8px; }
+      .composer input { flex: 1; font: inherit; font-size: 15px; padding: 11px 14px; border-radius: 999px; border: 1px solid #cfdedb; }
+      .composer input:disabled { background: #f4f7f6; }
+      .composer button { font: inherit; font-size: 15px; font-weight: 700; padding: 11px 20px; border-radius: 999px; border: 0; background: #0f766e; color: #ffffff; cursor: pointer; }
+      .composer button.ghost { background: #ffffff; color: #6b7976; border: 1px solid #cfdedb; font-weight: 500; }
+    </style>
+  </head>
+  <body>
+    <main class="chat">
+      <header class="chat__header">
+        <h1>AI 十大癌症健康風險因子評估</h1>
+        <p>對話版 · 您的回答與表單版完全相同地處理</p>
+      </header>
+
+      <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div class="progress__bar" id="progressBar"></div>
+      </div>
+      <p class="progress__text" id="progressText"></p>
+
+      <div class="transcript" id="transcript" role="log" aria-live="polite" aria-atomic="false"></div>
+
+      <div class="options" id="options"></div>
+
+      <form class="composer" id="composer" autocomplete="off">
+        <input id="reply" type="text" aria-label="您的回答" placeholder="用自己的話回答，或點上面的選項" />
+        <button type="submit">送出</button>
+        <button type="button" class="ghost" id="skip">不確定</button>
+      </form>
+    </main>
+
+    <!-- Load order matters and is not arbitrary:
+         answer-codes / api-symptoms are what app.js reads at its own top level;
+         app.js then defines the questions and the submission builders;
+         the three intake modules are independent of all of it;
+         chat.js is last because it reads names the others declare. -->
+    <script src="answer-codes.js?v=local"></script>
+    <script src="api-symptoms.js?v=local"></script>
+    <script src="app.js?v=local"></script>
+    <script src="answer-intake.js?v=local"></script>
+    <script src="answer-resolver.js?v=local"></script>
+    <script src="chat-session.js?v=local"></script>
+    <script src="chat.js?v=local"></script>
+  </body>
+</html>

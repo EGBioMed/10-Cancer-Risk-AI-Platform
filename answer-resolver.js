@@ -152,9 +152,42 @@
     return unmatched("no_rule");
   }
 
-  function resolveNumber(question, utterance) {
+  // The form constrains a number answer with the <input>'s own min and max; a
+  // conversation has no such thing, so the same constraint has to be applied
+  // here or the chat path accepts values the form would have refused.
+  //
+  // This is not hypothetical. "民國69年次" is a perfectly ordinary way to give a
+  // birth year in Taiwan, it contains exactly one number, and without the check
+  // it was accepted as the western year 69 -- a fabricated value rather than an
+  // unresolved one, which is the failure this whole chain exists to prevent.
+  //
+  // The bounds are injected rather than imported: they live in app.js with the
+  // question definitions, and a second copy here would be a second thing to
+  // keep in step.
+  function withinBounds(question, value, numberBounds) {
+    if (typeof numberBounds !== "function") return true;
+    let bounds;
+    try {
+      bounds = numberBounds(question);
+    } catch (error) {
+      return true;
+    }
+    if (!bounds) return true;
+    const numeric = Number(value);
+    if (typeof bounds.min === "number" && numeric < bounds.min) return false;
+    if (typeof bounds.max === "number" && numeric > bounds.max) return false;
+    return true;
+  }
+
+  function resolveNumber(question, utterance, settings) {
+    const numberBounds = settings && settings.numberBounds;
+    const inRange = (value) =>
+      withinBounds(question, value, numberBounds)
+        ? { status: "matched", index: -1, value: String(value), via: "number" }
+        : unmatched("out_of_range", String(value));
+
     if (typeof utterance === "number" && Number.isFinite(utterance)) {
-      return { status: "matched", index: -1, value: String(utterance), via: "number" };
+      return inRange(utterance);
     }
     if (typeof utterance !== "string" || !utterance.trim()) return unmatched("empty");
 
@@ -173,7 +206,7 @@
     const all = key.match(new RegExp(NUMERALS.source, "g")) || [];
     if (all.length > 1) return ambiguous([], "multiple_numbers");
 
-    return { status: "matched", index: -1, value: found[0], via: "number" };
+    return inRange(found[0]);
   }
 
   // For a multi question the caller passes the items it believes were
@@ -266,11 +299,11 @@
     return applyVerdict(question, verdict);
   }
 
-  function resolveByRules(question, utterance) {
+  function resolveByRules(question, utterance, settings) {
     if (!question || typeof question !== "object") {
       throw new TypeError("resolve requires a question definition");
     }
-    if (question.type === "number") return resolveNumber(question, utterance);
+    if (question.type === "number") return resolveNumber(question, utterance, settings);
     if (question.type === "multi") return resolveMulti(question, utterance);
     if (Array.isArray(question.options)) return resolveSingle(question, utterance);
 
@@ -294,7 +327,7 @@
 
   function resolve(question, utterance, options) {
     const settings = options || {};
-    const result = resolveByRules(question, utterance);
+    const result = resolveByRules(question, utterance, settings);
     if (!shouldEscalate(question, result, settings)) return result;
     return applyClassifier(question, utterance, settings.classifier);
   }
@@ -305,7 +338,7 @@
   // await anything to find that out.
   async function resolveAsync(question, utterance, options) {
     const settings = options || {};
-    const result = resolveByRules(question, utterance);
+    const result = resolveByRules(question, utterance, settings);
     if (!shouldEscalate(question, result, settings)) return result;
     return applyClassifierAsync(question, utterance, settings.classifier);
   }

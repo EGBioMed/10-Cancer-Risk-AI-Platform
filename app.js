@@ -2841,6 +2841,19 @@ async function renderResult() {
   panelFooter.hidden = true;
 }
 
+// Everything from here down wires the form page. The conversational intake
+// (chat.html) loads this file for its question definitions and its submission
+// builders -- which is the point: one questionnaire, not two -- and has none
+// of this markup. Without the guard, the first addEventListener on a null
+// element throws and takes the whole file with it, including the parts that
+// page actually needs.
+//
+// Guarded rather than split into two files: moving 2800 lines is a change the
+// contract tests cannot check, and the question definitions are the one thing
+// in this repository that must not quietly drift.
+(function bootstrapFormUi() {
+if (!questionArea) return;
+
 document.querySelectorAll(".mode-tab").forEach((tab) => {
   tab.addEventListener("click", () => {
     if (tab.hidden) return;
@@ -2948,3 +2961,5 @@ document.addEventListener("click", (event) => {
 applyStaticText();
 renderModules();
 renderQuestion();
+
+}());

@@ -59,6 +59,11 @@
       ? settings.maxAttempts
       : DEFAULT_MAX_ATTEMPTS;
     const classifier = typeof settings.classifier === "function" ? settings.classifier : undefined;
+    // Passed through to the resolver so a number answer is held to the same
+    // range the form's own <input> would have enforced. Without it the chat
+    // path accepts values the form refuses -- see answer-resolver.js.
+    const numberBounds = typeof settings.numberBounds === "function" ? settings.numberBounds : undefined;
+    const resolverOptions = (classifier || numberBounds) ? { classifier, numberBounds } : undefined;
     const source = settings.source || "chat";
 
     // The composite containers carry no field of their own; their rows are
@@ -130,7 +135,7 @@
     function receive(utterance) {
       const question = questionForReply();
       if (!question) return { status: "done", question: null };
-      const resolution = resolver.resolve(question, utterance, classifier ? { classifier } : undefined);
+      const resolution = resolver.resolve(question, utterance, resolverOptions);
       return applyResolution(question, resolution);
     }
 
@@ -141,7 +146,7 @@
       const resolution = await resolver.resolveAsync(
         question,
         utterance,
-        classifier ? { classifier } : undefined
+        resolverOptions
       );
       return applyResolution(question, resolution);
     }
@@ -158,12 +163,21 @@
           current = null;
           return { status: "answered", question, value: resolution.value, via: resolution.via };
         }
-        // The resolver matched but the intake refused. That is the drift the
-        // two modules' shared test exists to prevent, so it should be
-        // unreachable -- but if it ever happens, the honest outcome is the
-        // same as any other unresolved reply, not a crash mid-questionnaire.
+        // The resolver matched and the intake still refused. Two ways that
+        // happens. One is a rule about the answer as a whole, which the
+        // resolver cannot see -- consent needing all three items is the live
+        // example -- and the caller needs the intake's own reason to say what
+        // is still missing, so it is carried through rather than flattened.
+        // The other is genuine drift between the two modules, which their
+        // shared test exists to prevent; if it ever happens anyway the honest
+        // outcome is the same as any other unresolved reply, not a crash
+        // halfway through someone's questionnaire.
         resolution.status = "unmatched";
         resolution.via = "intake_refused";
+        resolution.reason = written.reason;
+        resolution.detail = written.unresolved && written.unresolved.length
+          ? written.unresolved
+          : resolution.detail;
       }
 
       if (resolution.status === "declined") {
@@ -185,6 +199,9 @@
       pending = {
         status: resolution.status,
         via: resolution.via,
+        // The intake's own reason when it was the intake that refused, so the
+        // caller can say "these two are still missing" instead of "try again".
+        reason: resolution.reason || null,
         detail: resolution.detail || null,
         // For an ambiguity the caller can offer the readings back rather than
         // repeating the question unchanged, which is the difference between

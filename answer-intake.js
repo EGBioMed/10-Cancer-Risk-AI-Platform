@@ -55,7 +55,8 @@
   // degraded answer for these, it is a missing submission -- so an unresolved
   // value is rejected outright and the caller has to ask again.
   const NON_DEGRADABLE_TYPES = new Set(["name", "email"]);
-  const NON_DEGRADABLE_IDS = new Set(["consent_acknowledgement"]);
+  const CONSENT_QUESTION_IDS = new Set(["consent_acknowledgement"]);
+  const NON_DEGRADABLE_IDS = CONSENT_QUESTION_IDS;
 
   const FREE_TEXT_TYPES = new Set(["name", "email"]);
 
@@ -114,6 +115,18 @@
 
     if (question.type === "multi") {
       if (!Array.isArray(candidate)) return degrade(question, "wrong_shape");
+
+      // Consent is shaped like a multi-select and is not one. The submission
+      // contract requires all three items, so a partial selection cannot be
+      // submitted at all -- and because the check lives at the very end, the
+      // person finds that out after answering the other fifty-odd questions,
+      // with nothing to do but start again. Refusing it here costs them one
+      // tap; letting it through costs them the session. Found by walking the
+      // chat page by hand.
+      if (CONSENT_QUESTION_IDS.has(question.id)) {
+        const missing = question.options.filter((option) => !candidate.includes(option));
+        if (missing.length > 0) return rejected("incomplete_consent", missing);
+      }
       // An empty selection is not "nothing is wrong with me". The symptom row
       // reads an empty array as every column 0, so it would publish a full set
       // of denials the person never made. Saying "none of these" is an option

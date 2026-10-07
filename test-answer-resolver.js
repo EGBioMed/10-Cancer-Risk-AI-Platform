@@ -63,11 +63,20 @@ test("everything the resolver matches, the intake accepts", () => {
         if (resolution.status !== "matched") continue;
 
         const written = intake.resolve(question, resolution.value);
+        // The invariant is about the near-miss class specifically: the
+        // resolver must never hand over a string the intake refuses for not
+        // being one of the question's options. An intake rule about the
+        // answer as a whole -- consent needing all three items -- is policy the
+        // resolver has no business knowing, and refusing for that reason is
+        // correct on both sides. Naming the permitted reasons keeps the test
+        // load-bearing: a new string-matching failure still fails it.
+        const STRING_REASONS = ["unresolved", "wrong_shape", "empty"];
         assert.equal(
-          written.status,
-          "answered",
-          `${question.id}: resolver matched ${JSON.stringify(variant)} but the intake refused it`
+          written.status === "answered" || !STRING_REASONS.includes(written.reason),
+          true,
+          `${question.id}: resolver matched ${JSON.stringify(variant)} and the intake refused it as ${written.reason}`
         );
+        if (written.status !== "answered") continue;
         checked += 1;
       }
     });
@@ -312,4 +321,46 @@ test("a classifier may select several options on a multi question", () => {
   });
   assert.equal(resolution.status, "matched");
   assert.deepEqual(resolution.value, [symptomGroup.options[0], symptomGroup.options[1]]);
+});
+
+// ---------------------------------------------------------------------------
+// 8. A number the form would have refused.
+// ---------------------------------------------------------------------------
+
+test("a number outside the question's range is unresolved, not accepted", () => {
+  const question = app.questions.find((candidate) => candidate.id === "birth_year");
+  const numberBounds = app.getNumberBounds;
+  assert(typeof numberBounds === "function", "app.js no longer exposes getNumberBounds");
+
+  // 民國69年次 is an ordinary way to give a birth year in Taiwan. It holds
+  // exactly one number, so every rule in resolveNumber is satisfied, and before
+  // the bounds were applied it was accepted as the western year 69 -- a
+  // fabricated value rather than an unresolved one. Found by walking the chat
+  // page by hand, not by a test.
+  const fabricated = resolver.resolve(question, "民國69年次", { numberBounds });
+  assert.equal(fabricated.status, "unmatched");
+  assert.equal(fabricated.via, "out_of_range");
+
+  assert.equal(resolver.resolve(question, "1980", { numberBounds }).value, "1980");
+  assert.equal(resolver.resolve(question, "2500", { numberBounds }).status, "unmatched");
+
+  // Without the bounds it is still accepted: the check is the injection doing
+  // the work, not something that happens to pass for another reason.
+  assert.equal(resolver.resolve(question, "民國69年次").status, "matched");
+});
+
+test("a question with no declared bounds is unaffected", () => {
+  const counted = app.questions.find(
+    (candidate) => candidate.type === "number" && !app.getNumberBounds(candidate)
+  );
+  if (!counted) return;
+  assert.equal(resolver.resolve(counted, "3", { numberBounds: app.getNumberBounds }).value, "3");
+});
+
+test("bounds that throw do not block an answer", () => {
+  const question = app.questions.find((candidate) => candidate.id === "height_cm");
+  const result = resolver.resolve(question, "165", {
+    numberBounds: () => { throw new Error("no"); }
+  });
+  assert.equal(result.status, "matched", "a broken bounds function must not refuse every number");
 });

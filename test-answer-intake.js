@@ -28,6 +28,9 @@ const symptomGroup = app.questions.find(
 function fillEveryQuestion(answers, writer) {
   for (const question of app.questions) {
     if (!question.field) continue;
+    // Consent is written in full below. Writing it here as [options[0]] would
+    // now be refused -- correctly, since a partial consent cannot be submitted.
+    if (question.id === "consent_acknowledgement") continue;
     let value;
     if (question.type === "multi") value = [question.options?.[0]];
     else if (question.options) value = question.options[0];
@@ -99,6 +102,9 @@ function withoutTimestamps(submission) {
 test("every option of every question survives the guard and maps to a code", () => {
   let checked = 0;
   for (const question of withOptions) {
+    // Consent is all or nothing (see the partial-consent test below), so its
+    // unit is the whole set rather than one item at a time.
+    if (question.id === "consent_acknowledgement") continue;
     for (const option of question.options) {
       const candidate = question.type === "multi" ? [option] : option;
       const result = intake.resolve(question, candidate);
@@ -307,4 +313,59 @@ test("a blank number is unknown rather than zero", () => {
   assert.equal(intake.resolve(question, "十八").status, "unknown");
   assert.equal(intake.resolve(question, "18").status, "answered");
   assert.equal(intake.resolve(question, 18).value, "18");
+});
+
+// ---------------------------------------------------------------------------
+// 8. Consent is not a multi-select.
+// ---------------------------------------------------------------------------
+
+test("a partial consent is refused at the gate, not at submission", () => {
+  const consent = app.questions.find((question) => question.id === "consent_acknowledgement");
+  assert.equal(consent.options.length, 3);
+
+  // The failure this closes: the submission contract requires all three items
+  // and only says so at the end, so a partial consent let someone answer the
+  // other fifty-odd questions and then lose the session to
+  // "consent_record must contain all three consent items". Found by walking
+  // the chat page by hand, not by a test.
+  for (const partial of [[consent.options[0]], [consent.options[1], consent.options[2]], []]) {
+    const answers = {};
+    const result = intake.write(answers, consent, partial, {
+      makeAnswerEntry: app.makeAnswerEntry,
+      source: "contract_test"
+    });
+    assert.equal(result.status, "rejected", `${partial.length} of 3 was accepted`);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(answers, consent.field),
+      false,
+      "a partial consent was written to the store"
+    );
+  }
+
+  const answers = {};
+  assert.equal(
+    intake.write(answers, consent, [...consent.options], {
+      makeAnswerEntry: app.makeAnswerEntry,
+      source: "contract_test"
+    }).status,
+    "answered"
+  );
+});
+
+test("the reason names which consent items are missing", () => {
+  const consent = app.questions.find((question) => question.id === "consent_acknowledgement");
+  const result = intake.resolve(consent, [consent.options[0]]);
+  assert.equal(result.reason, "incomplete_consent");
+  // So the caller can say what is still needed rather than "try again".
+  // Spread first: question.options comes from the vm sandbox, so an array
+  // derived from it carries that realm's Array.prototype and deepStrictEqual
+  // rejects it against a literal built here, however equal the contents.
+  assert.deepEqual([...result.unresolved], [consent.options[1], consent.options[2]]);
+});
+
+test("an ordinary multi question is still free to be partly selected", () => {
+  const group = app.questions.find(
+    (question) => question.field && question.type === "multi" && question.id !== "consent_acknowledgement"
+  );
+  assert.equal(intake.resolve(group, [group.options[0]]).status, "answered");
 });

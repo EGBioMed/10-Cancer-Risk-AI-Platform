@@ -341,3 +341,50 @@ test("a classifier is consulted for a reply the rules cannot resolve", () => {
     target.options[0]
   );
 });
+
+// ---------------------------------------------------------------------------
+// 8. Number bounds reach the resolver through the session.
+// ---------------------------------------------------------------------------
+
+test("the session holds a number answer to the range the form would enforce", () => {
+  const app = loadApp();
+  const session = createChatSession({ app, numberBounds: app.getNumberBounds, maxAttempts: 2 });
+
+  let target = null;
+  for (let step = 0; step < 500 && !target; step += 1) {
+    const turn = session.next();
+    if (turn.done) break;
+    if (turn.question.id === "birth_year") target = turn.question;
+    else session.receive(cooperativeReply(turn.question));
+  }
+  assert(target, "birth_year was never reached");
+
+  const refused = session.receive("民國69年次");
+  assert.equal(refused.status, "unmatched", "a民國 year was accepted as a western one");
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(app.answers, target.field),
+    false,
+    "an out-of-range number was written to the store"
+  );
+
+  const accepted = session.receive("我是1980年生的");
+  assert.equal(accepted.status, "answered");
+  assert.equal(app.answers[target.field].value, "1980");
+});
+
+test("a partial consent blocks with the missing items named", () => {
+  const { app, session } = freshSession();
+  const consent = session.next().question;
+  const result = session.receive([consent.options[0]]);
+
+  assert.equal(result.status, "blocked");
+  // Without this the page can only say "this cannot be skipped", which is true
+  // and useless to someone who did answer and just did not tick everything.
+  assert.equal(result.pending.reason, "incomplete_consent");
+  assert.deepEqual([...result.pending.detail], [consent.options[1], consent.options[2]]);
+  assert.equal(Object.prototype.hasOwnProperty.call(app.answers, consent.field), false);
+  assert.equal(session.next().question, consent);
+
+  session.receive([...consent.options]);
+  assert.notEqual(session.next().question, consent);
+});

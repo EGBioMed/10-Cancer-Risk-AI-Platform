@@ -14,20 +14,44 @@ const {
 // 就是因此讓一個已經修好並部署的錯誤在線上又活了一小時：程式碼對了，瀏覽器卻還在
 // 跑舊檔。下面的測試把「版本字串必須來自檔案內容」釘死。
 
-test("the served HTML asks for every cached script with its current content hash", () => {
-  const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-  const versioner = createAppAssetVersioner(__dirname);
-  const rewritten = versioner.applyTo(indexHtml);
+// 兩個頁面都要查，因為它們載入的腳本不同。chat.html 帶的是對話版那四支，而只查
+// index.html 正是它們被以字面上的 `?v=local` 送出、整整快取一小時的原因——上面那
+// 段事故在對話頁上原地重演了一次，才把這條測試擴大。
+const SERVED_PAGES = ["index.html", "chat.html"];
 
-  for (const fileName of VERSIONED_SCRIPTS) {
-    const expected = computeAssetVersion(fs.readFileSync(path.join(__dirname, fileName)));
-    assert.equal(versioner.versions()[fileName], expected);
-    assert(
-      rewritten.includes(`src="${fileName}?v=${expected}"`),
-      `${fileName} must be requested with its content hash`
+test("every served page asks for its cached scripts with their current content hash", () => {
+  const versioner = createAppAssetVersioner(__dirname);
+  const referenced = new Set();
+
+  for (const page of SERVED_PAGES) {
+    const source = fs.readFileSync(path.join(__dirname, page), "utf8");
+    const rewritten = versioner.applyTo(source);
+
+    for (const fileName of VERSIONED_SCRIPTS) {
+      if (!new RegExp(`src="${fileName.replace(".", "\\.")}(\\?|")`).test(source)) continue;
+      referenced.add(fileName);
+      const expected = computeAssetVersion(fs.readFileSync(path.join(__dirname, fileName)));
+      assert.equal(versioner.versions()[fileName], expected);
+      assert(
+        rewritten.includes(`src="${fileName}?v=${expected}"`),
+        `${page} must request ${fileName} with its content hash`
+      );
+    }
+
+    // 送出去的頁面不得留下任何手寫的版本字串：那正是雜湊取代掉的狀態，剩一個就
+    // 足以把一支舊檔釘在使用者的瀏覽器裡。
+    assert.doesNotMatch(
+      rewritten,
+      /src="[^"]+\?v=local"/,
+      `${page} still serves a script with a literal ?v=local`
     );
   }
+
   assert.deepEqual(Object.keys(versioner.versions()), [...VERSIONED_SCRIPTS]);
+  // 清單上有、卻沒有任何頁面載入的腳本，不是清單過期就是頁面漏載。兩種都該知道。
+  for (const fileName of VERSIONED_SCRIPTS) {
+    assert(referenced.has(fileName), `${fileName} is versioned but no served page loads it`);
+  }
 });
 
 test("a changed file necessarily changes the URL the browser requests", () => {
