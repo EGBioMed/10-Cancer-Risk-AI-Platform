@@ -17,6 +17,8 @@
   // typed, and a questionnaire that renders a respondent's own words is not a
   // place to be clever about escaping.
 
+  const CLASSIFY_ENDPOINT = "/api/chat/classify";
+
   const transcript = document.querySelector("#transcript");
   const optionsArea = document.querySelector("#options");
   const composer = document.querySelector("#composer");
@@ -38,6 +40,7 @@
       declined: "好的，這題記成「不確定」。",
       blocked: "這一題不能跳過，需要您明確回答才能繼續。",
       consentIncomplete: "三項都需要您同意才能繼續。還缺：",
+      contradictory: "您同時選了「以上皆無」和其他項目，這兩個意思互相矛盾。可以再選一次嗎？",
       done: "問卷到這裡結束，謝謝您。正在送出⋯⋯",
       submitted: "已送出。評估結果會寄到您填寫的 Email。",
       failed: "送出失敗：",
@@ -57,6 +60,7 @@
       declined: "That's fine, I'll record this one as \"not sure\".",
       blocked: "This question can't be skipped -- I need a clear answer before we continue.",
       consentIncomplete: "All three need your agreement before we can continue. Still missing: ",
+      contradictory: "You picked 'none of these' together with other items, which contradict each other. Could you choose again?",
       done: "That's the end of the questionnaire. Thank you. Submitting...",
       submitted: "Submitted. Your assessment will be emailed to the address you gave.",
       failed: "Submission failed: ",
@@ -70,9 +74,39 @@
 
   const copy = COPY[isEnglish ? "en" : "zh"];
 
+  // Escalation goes to the server, which holds the API key and builds the
+  // request from its own copy of the questionnaire. This function sends the
+  // question's id and the sentence, and gets back indices -- never text. If
+  // the endpoint is unconfigured, unreachable, rate-limited or slow, it
+  // answers null, which the resolver reads as unresolved and the session turns
+  // into asking again: the questionnaire works whether or not a model is
+  // behind it, and a bad day for the model is a slightly more repetitive
+  // conversation rather than a broken one.
+  async function classifyRemotely(question, utterance) {
+    const text = Array.isArray(utterance) ? utterance.join("；") : String(utterance ?? "");
+    let payload;
+    try {
+      const response = await fetch(CLASSIFY_ENDPOINT, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ question_id: question.id, utterance: text })
+      });
+      if (!response.ok) return null;
+      payload = await response.json();
+    } catch (error) {
+      return null;
+    }
+
+    if (!payload || payload.ok !== true || !Array.isArray(payload.indices)) return null;
+    if (payload.indices.length === 0) return null;
+    if (question.type === "multi") return payload.indices;
+    return payload.indices.length === 1 ? payload.indices[0] : null;
+  }
+
   const session = EGChatSession.createChatSession({
     app: { questions, answers, makeAnswerEntry },
     numberBounds: getNumberBounds,
+    classifier: classifyRemotely,
     source: "chat"
   });
 
@@ -184,7 +218,11 @@
 
     // The generic retry line points at options. On a question that has none,
     // that is an instruction the page cannot honour, so it gets its own wording.
-    if (turn.kind === "retry") say(retryLine(turn.question), "bot");
+    if (turn.kind === "retry") {
+      say(turn.pending && turn.pending.reason === "contradictory_selection"
+        ? copy.contradictory
+        : retryLine(turn.question), "bot");
+    }
     else if (turn.kind === "disambiguate") say(copy.disambiguate, "bot");
     else say(questionText(turn.question), "bot");
 
@@ -194,11 +232,24 @@
     return undefined;
   }
 
-  function reply(utterance, shown) {
+  // Async now that a reply may wait on the server. The composer is disabled
+  // while it does: without that, pressing send twice attributes the second
+  // sentence to whichever question the first one advanced to.
+  let inFlight = false;
+  async function reply(utterance, shown) {
+    if (inFlight) return;
+    inFlight = true;
     say(shown, "me");
     clearOptions();
+    input.disabled = true;
 
-    const result = session.receive(utterance);
+    let result;
+    try {
+      result = await session.receiveAsync(utterance);
+    } finally {
+      inFlight = false;
+      input.disabled = false;
+    }
 
     if (result.status === "declined" || result.status === "gave_up") {
       note(result.status === "declined" ? copy.declined : copy.gaveUp);

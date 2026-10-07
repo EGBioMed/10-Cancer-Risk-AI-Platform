@@ -29,6 +29,8 @@ const { createFixedWindowLimiter } = require("./lib/rate-limiter");
 const { signReportTicket } = require("./lib/report-ticket");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 const { createAppAssetVersioner } = require("./lib/asset-version");
+const { createChatClassifyHandler } = require("./lib/chat-classify");
+const { createAnthropicClassifier, DEFAULT_MODEL, DEFAULT_EFFORT } = require("./lib/classifier");
 // 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
 const { buildApiSymptoms } = require("./api-symptoms");
 
@@ -103,12 +105,77 @@ setInterval(() => codeRedeemLimiter.sweep(), 30 * 60 * 1000).unref();
 const submitLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 20 });
 setInterval(() => submitLimiter.sweep(), 30 * 60 * 1000).unref();
 
+// Unlike every other limiter here, this one guards money rather than data.
+// Each /api/chat/classify call is a billed model request, so an unbounded
+// endpoint is an unbounded invoice -- and because the conversational page
+// calls it only for replies the deterministic rules could not resolve, a real
+// conversation reaches it a couple of dozen times at most. 60/10min leaves
+// room for someone who phrases most answers unusually, and still bounds what
+// one session can spend when the page is driven by a script and not a person.
+const classifyLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 60 });
+setInterval(() => classifyLimiter.sweep(), 30 * 60 * 1000).unref();
+
 // A successful submission consumes the session it happened under (see
 // consumeSessionAndGetClearHeaders below), so one code/link redemption maps
 // to exactly one report submission instead of "unlimited submissions until
 // the 30-minute session TTL runs out."
 const consumedSessions = createConsumedSessionStore();
 setInterval(() => consumedSessions.sweep(), 30 * 60 * 1000).unref();
+
+// The conversational page's escalation layer. Absent a key the endpoint
+// reports itself unconfigured and the page falls back to asking again, which
+// is the behaviour it already has whenever the rules and the model both come
+// up empty -- so the questionnaire works with or without this, and nothing
+// about deploying it requires the key to exist first.
+const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
+const CHAT_CLASSIFIER_MODEL = process.env.CHAT_CLASSIFIER_MODEL || DEFAULT_MODEL;
+const CHAT_CLASSIFIER_EFFORT = process.env.CHAT_CLASSIFIER_EFFORT || DEFAULT_EFFORT;
+
+// Built on first use, not at boot: an SDK that failed to install should
+// disable one endpoint, not stop the server and take the form page with it.
+let cachedClassifier = null;
+let classifierUnavailable = false;
+function anthropicClassifier() {
+  if (cachedClassifier || classifierUnavailable) return cachedClassifier;
+  try {
+    const sdk = require("@anthropic-ai/sdk");
+    const Anthropic = sdk.default || sdk;
+    cachedClassifier = createAnthropicClassifier({
+      client: new Anthropic({ apiKey: ANTHROPIC_API_KEY }),
+      model: CHAT_CLASSIFIER_MODEL,
+      effort: CHAT_CLASSIFIER_EFFORT
+    });
+  } catch (error) {
+    classifierUnavailable = true;
+    console.error(`Chat classifier unavailable: ${error.message}`);
+  }
+  return cachedClassifier;
+}
+
+const handleChatClassify = createChatClassifyHandler({
+  // The server reads the questionnaire the same way the tests do, so there is
+  // one definition of the questions rather than a server-side copy that can
+  // disagree with what the browser just showed the respondent.
+  loadQuestions: () => require("./lib/load-app-sandbox").loadApp().questions,
+  classify: ANTHROPIC_API_KEY
+    ? (question, utterance) => {
+        const classify = anthropicClassifier();
+        if (!classify) throw new Error("classifier unavailable");
+        return classify(question, utterance);
+      }
+    : undefined,
+  limiter: classifyLimiter,
+  // Per session where there is one, so a shared venue IP does not put every
+  // kiosk on one budget; per IP otherwise, which is what the open-gate local
+  // and development deployments have.
+  rateLimitKey: (req) => {
+    const payload = getSessionPayload(req);
+    if (payload && payload.sid) return `sid:${payload.sid}`;
+    return `ip:${getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"])}`;
+  },
+  sendJson,
+  readBody: readRequestBody
+});
 
 if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
   throw new Error(
@@ -761,6 +828,13 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // Deliberately not in isExemptFromGate: this endpoint spends money, so it
+  // stays behind the gate like everything else that is not the door itself.
+  if (req.method === "POST" && pathname === "/api/chat/classify") {
+    await handleChatClassify(req, res);
+    return;
+  }
+
   if (req.method === "GET" && pathname === "/api/health") {
     await postgresReady;
     let databaseReady = false;
@@ -805,7 +879,12 @@ const server = http.createServer(async (req, res) => {
       // hours after the change that caused it. Exposing them here makes
       // "did the configuration actually land?" a question with an answer.
       public_webhook_configured: Boolean(POWER_AUTOMATE_WEBHOOK_URL_PUBLIC),
-      report_ticket_secret_configured: Boolean(REPORT_TICKET_SECRET)
+      report_ticket_secret_configured: Boolean(REPORT_TICKET_SECRET),
+      // Same reason the two above are here: "did the configuration actually
+      // land?" should be a question with an answer, and this one decides
+      // whether the conversational page can resolve a reply the rules cannot.
+      chat_classifier_configured: Boolean(ANTHROPIC_API_KEY),
+      chat_classifier_model: ANTHROPIC_API_KEY ? CHAT_CLASSIFIER_MODEL : undefined
     });
     return;
   }

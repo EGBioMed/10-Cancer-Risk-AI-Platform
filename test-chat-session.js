@@ -388,3 +388,32 @@ test("a partial consent blocks with the missing items named", () => {
   session.receive([...consent.options]);
   assert.notEqual(session.next().question, consent);
 });
+
+test("a contradictory selection is asked again, and nothing is recorded", () => {
+  const { app, session } = freshSession({ maxAttempts: 2 });
+  let group = null;
+  for (let step = 0; step < 500 && !group; step += 1) {
+    const turn = session.next();
+    if (turn.done) break;
+    const question = turn.question;
+    if (question.type === "multi" && question.noneOption && question.options.length > 2
+        && question.id !== "consent_acknowledgement") {
+      group = question;
+    } else {
+      session.receive(cooperativeReply(question));
+    }
+  }
+  assert(group, "no multi question with a none option was reached");
+
+  const positive = group.options.find((option) => option !== group.noneOption && option !== group.unknownOption);
+  const result = session.receive([group.noneOption, positive]);
+
+  assert.equal(result.status, "unmatched");
+  assert.equal(result.pending.reason, "contradictory_selection");
+  assert.equal(Object.prototype.hasOwnProperty.call(app.answers, group.field), false);
+  assert.equal(session.next().question, group, "the session moved on from a contradictory answer");
+  assert.equal(session.next().kind, "retry");
+
+  session.receive([positive]);
+  assert.notEqual(session.next().question, group);
+});

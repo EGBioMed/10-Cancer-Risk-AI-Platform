@@ -369,3 +369,54 @@ test("an ordinary multi question is still free to be partly selected", () => {
   );
   assert.equal(intake.resolve(group, [group.options[0]]).status, "answered");
 });
+
+// ---------------------------------------------------------------------------
+// 9. "None of these" is about the whole answer.
+// ---------------------------------------------------------------------------
+
+test("a none/unknown option beside a positive selection is contradictory, not degraded", () => {
+  const group = app.questions.find(
+    (question) => question.field && question.type === "multi" && question.noneOption && question.options.length > 2
+  );
+  assert(group, "no multi question offers a none option");
+
+  const positive = group.options.find(
+    (option) => option !== group.noneOption && option !== group.unknownOption
+  );
+
+  // The form clears the others when "none of these" is tapped (app.js's
+  // exclusiveOptions). A conversation has no such moment, and this is not a
+  // degraded answer -- we cannot tell which half to believe, and recording
+  // either would be inventing one.
+  for (const selection of [[group.noneOption, positive], [positive, group.noneOption]]) {
+    const answers = {};
+    const result = intake.write(answers, group, selection, {
+      makeAnswerEntry: app.makeAnswerEntry,
+      source: "contract_test"
+    });
+    assert.equal(result.status, "rejected", `${JSON.stringify(selection)} was accepted`);
+    assert.equal(result.reason, "contradictory_selection");
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(answers, group.field),
+      false,
+      "a contradictory selection was written"
+    );
+  }
+
+  // Each on its own is a perfectly good answer.
+  assert.equal(intake.resolve(group, [group.noneOption]).status, "answered");
+  assert.equal(intake.resolve(group, [positive]).status, "answered");
+});
+
+test("the unknown option is exclusive too", () => {
+  const group = app.questions.find(
+    (question) => question.field && question.type === "multi" && question.unknownOption && question.options.length > 2
+  );
+  if (!group) return;
+  const positive = group.options.find(
+    (option) => option !== group.noneOption && option !== group.unknownOption
+  );
+  const result = intake.resolve(group, [group.unknownOption, positive]);
+  assert.equal(result.status, "rejected");
+  assert.equal(result.reason, "contradictory_selection");
+});

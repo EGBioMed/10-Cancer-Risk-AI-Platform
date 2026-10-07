@@ -163,6 +163,17 @@
           current = null;
           return { status: "answered", question, value: resolution.value, via: resolution.via };
         }
+        // "unknown" means the intake wrote the uncertain marker. The question
+        // is recorded, so asking it again would be asking something already
+        // answered -- and the retry path below would do exactly that while
+        // next() quietly skipped past it, because a question with a marker
+        // counts as answered. Advance instead, and say what happened.
+        if (written.status === "unknown") {
+          pending = null;
+          attempts = 0;
+          current = null;
+          return { status: "gave_up", question, attempts: 0, pending: { reason: written.reason } };
+        }
         // The resolver matched and the intake still refused. Two ways that
         // happens. One is a rule about the answer as a whole, which the
         // resolver cannot see -- consent needing all three items is the live

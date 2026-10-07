@@ -134,6 +134,20 @@
       // from silence.
       if (candidate.length === 0) return degrade(question, "empty");
 
+      // "None of these" and "not sure" mean something about the whole answer,
+      // so they cannot sit beside a positive selection. The form enforces this
+      // by clearing the others when one is tapped (app.js, exclusiveOptions);
+      // a conversation has no such moment, and "以上皆無 and also headaches" is
+      // not a degraded answer, it is a contradictory one -- we do not know
+      // which half to believe, and picking either would be inventing an answer.
+      // Rejected rather than degraded so the caller asks again instead of
+      // recording a guess.
+      const exclusive = [question.noneOption, question.unknownOption].filter(Boolean);
+      const chosenExclusive = exclusive.filter((option) => candidate.includes(option));
+      if (chosenExclusive.length > 0 && candidate.length > chosenExclusive.length) {
+        return rejected("contradictory_selection", chosenExclusive);
+      }
+
       const unresolved = candidate.filter((option) => !isExactOption(question, option));
       // All or nothing, deliberately. Writing the options that did resolve
       // would reproduce the `.filter(Boolean)` defect this module exists to
