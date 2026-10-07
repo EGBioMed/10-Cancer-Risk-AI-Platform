@@ -420,3 +420,112 @@ test("the unknown option is exclusive too", () => {
   assert.equal(result.status, "rejected");
   assert.equal(result.reason, "contradictory_selection");
 });
+
+// ---------------------------------------------------------------------------
+// 10. An address the report can actually reach.
+// ---------------------------------------------------------------------------
+
+test("an email that is not an address is refused", () => {
+  const email = app.questions.find((question) => question.type === "email");
+
+  // All of these were accepted before. For the free line the email is the
+  // deliverable: an unreachable address means answering eighty questions and
+  // receiving nothing, with no error anywhere, because everything downstream
+  // worked exactly as designed.
+  for (const bad of ["abc", "王小明", "a@b", "a b@example.com", "@example.com", "a@", "abc@def ghi"]) {
+    const answers = {};
+    const result = intake.write(answers, email, bad, {
+      makeAnswerEntry: app.makeAnswerEntry,
+      source: "contract_test"
+    });
+    assert.equal(result.status, "rejected", `${JSON.stringify(bad)} was accepted as an address`);
+    assert.equal(result.reason, "invalid_email");
+    assert.equal(Object.prototype.hasOwnProperty.call(answers, email.field), false);
+  }
+
+  for (const good of ["a@b.co", "chat-test@example.com", "王小明@example.com.tw"]) {
+    assert.equal(intake.resolve(email, good).status, "answered", `${good} was refused`);
+  }
+});
+
+test("every email check in the codebase uses the same pattern", () => {
+  // It cannot be imported -- app.js is a browser script with no exports, and
+  // server.js is not loaded by the browser -- so the same literal is written
+  // out in four places: twice in app.js (the field's own check and the
+  // pre-submit one), once in server.js, once in answer-intake.js. Three of
+  // those predate the chat intake; writing the fourth is what made the
+  // duplication worth a test.
+  //
+  // Checked by collecting every regex of this shape and requiring them all to
+  // be identical, rather than asserting two named files contain a string: a
+  // fifth copy added somewhere else is exactly the drift that matters, and
+  // naming the files it may appear in would miss it. Two definitions of a
+  // valid address is a difference nobody notices until a report fails to
+  // arrive at one.
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const LITERAL = String.raw`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`;
+  const SHAPE = /\/\^\[\^[^/\n]*@[^/\n]*\//g;
+
+  const sources = ["app.js", "server.js", "answer-intake.js", "answer-resolver.js", "chat-session.js", "chat.js"];
+  let found = 0;
+  for (const file of sources) {
+    const source = fs.readFileSync(path.join(__dirname, file), "utf8");
+    for (const match of source.match(SHAPE) || []) {
+      assert.equal(match, LITERAL, `${file} has an email pattern that differs from the shared one`);
+      found += 1;
+    }
+  }
+  assert.equal(found, 4, `expected 4 copies of the email pattern, found ${found}`);
+});
+
+test("the name question still takes any non-empty name", () => {
+  const name = app.questions.find((question) => question.type === "name");
+  assert.equal(intake.resolve(name, "王小明").status, "answered");
+  assert.equal(intake.resolve(name, "O'Brien-Smith").status, "answered");
+  assert.equal(intake.resolve(name, "   ").status, "rejected");
+});
+
+// ---------------------------------------------------------------------------
+// 11. The name the report is addressed to.
+// ---------------------------------------------------------------------------
+
+test("a name is held to the form's own rules", () => {
+  const name = app.questions.find((question) => question.type === "name");
+
+  // The form collapses whitespace, caps the length at what the contact table
+  // holds, and refuses angle brackets and control characters -- this name is
+  // interpolated into the result email, so what it may contain is not only a
+  // storage question. The conversation took anything non-empty.
+  assert.equal(intake.resolve(name, "  王  小明  ").value, "王 小明");
+  assert.equal(intake.resolve(name, "a".repeat(100)).status, "answered");
+
+  for (const bad of ["a".repeat(101), "<script>", "王小明<b>", "王\u0000明", "王\u001f明"]) {
+    const answers = {};
+    const result = intake.write(answers, name, bad, {
+      makeAnswerEntry: app.makeAnswerEntry,
+      source: "contract_test"
+    });
+    assert.equal(result.status, "rejected", `${JSON.stringify(bad.slice(0, 20))} was accepted as a name`);
+    assert.equal(result.reason, "invalid_name");
+    assert.equal(Object.prototype.hasOwnProperty.call(answers, name.field), false);
+  }
+});
+
+test("the minimum selection count comes from the question, not from this file", () => {
+  const consent = app.questions.find((question) => question.id === "consent_acknowledgement");
+  assert.equal(consent.minSelected, 3, "consent no longer declares minSelected");
+
+  // A second question that declared one would be honoured without anybody
+  // remembering to add it here -- which is the point of reading it off the
+  // question rather than off a list of ids.
+  const invented = {
+    id: "invented_multi",
+    type: "multi",
+    field: "invented.field",
+    minSelected: 2,
+    options: ["甲", "乙", "丙"]
+  };
+  assert.equal(intake.resolve(invented, ["甲"]).status, "rejected");
+  assert.equal(intake.resolve(invented, ["甲", "乙"]).status, "answered");
+});

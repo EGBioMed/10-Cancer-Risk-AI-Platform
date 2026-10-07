@@ -364,3 +364,17 @@ test("bounds that throw do not block an answer", () => {
   });
   assert.equal(result.status, "matched", "a broken bounds function must not refuse every number");
 });
+
+test("a whole-number question refuses a fraction", () => {
+  const numberBounds = app.getNumberBounds;
+  // step 1 is how app.js marks these; the form's <input step="1"> refuses
+  // 1980.5 and the conversation accepted it.
+  const year = app.questions.find((candidate) => candidate.id === "birth_year");
+  assert.equal(resolver.resolve(year, "1980.5", { numberBounds }).status, "unmatched");
+  assert.equal(resolver.resolve(year, "1980", { numberBounds }).value, "1980");
+
+  // A question whose step is not 1 still takes a decimal.
+  const height = app.questions.find((candidate) => candidate.id === "height_cm");
+  assert.equal(app.getNumberBounds(height).step, 0.1);
+  assert.equal(resolver.resolve(height, "165.5", { numberBounds }).value, "165.5");
+});

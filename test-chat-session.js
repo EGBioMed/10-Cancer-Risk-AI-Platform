@@ -417,3 +417,55 @@ test("a contradictory selection is asked again, and nothing is recorded", () => 
   session.receive([positive]);
   assert.notEqual(session.next().question, group);
 });
+
+// ---------------------------------------------------------------------------
+// 9. Reopening, for the checks that only run once several answers exist.
+// ---------------------------------------------------------------------------
+
+test("reopen discards an answer so the question comes round again", () => {
+  const { app, session } = freshSession();
+  runToCompletion(session, cooperativeReply);
+  assert.equal(session.isComplete(), true);
+
+  const reopened = session.reopen(["height_cm", "weight_kg"]);
+  assert.equal(reopened, 2);
+  assert.equal(session.isComplete(), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(app.answers, "demographics.height_cm"), false);
+
+  // Asked again, in the questionnaire's own order, and finishing a second time
+  // leaves the session complete rather than stuck.
+  const asked = runToCompletion(session, cooperativeReply);
+  assert.deepEqual(asked.map((turn) => turn.id), ["height_cm", "weight_kg"]);
+  assert.equal(session.isComplete(), true);
+});
+
+test("reopening something unanswered or unknown changes nothing", () => {
+  const { session } = freshSession();
+  assert.equal(session.reopen(["height_cm"]), 0, "an unanswered question was counted as reopened");
+  assert.equal(session.reopen(["not_a_question"]), 0);
+  assert.equal(session.next().question.id, "consent_acknowledgement", "the current question moved");
+});
+
+test("an invalid email is refused during the conversation, not at the end", () => {
+  const { app, session } = freshSession({ maxAttempts: 2 });
+  let email = null;
+  for (let step = 0; step < 500 && !email; step += 1) {
+    const turn = session.next();
+    if (turn.done) break;
+    if (turn.question.type === "email") email = turn.question;
+    else session.receive(cooperativeReply(turn.question));
+  }
+  assert(email, "the email question was never reached");
+
+  // Non-degradable, so it blocks however many times it is tried -- the report
+  // cannot be delivered without a usable address, and recording "unknown"
+  // would mean finishing a questionnaire nobody can be sent.
+  for (const bad of ["王小明", "abc", "a@b"]) {
+    const result = session.receive(bad);
+    assert.equal(result.status, "blocked", `${bad} was accepted`);
+    assert.equal(result.pending.reason, "invalid_email");
+    assert.equal(Object.prototype.hasOwnProperty.call(app.answers, email.field), false);
+  }
+
+  assert.equal(session.receive("chat-test@example.com").status, "answered");
+});

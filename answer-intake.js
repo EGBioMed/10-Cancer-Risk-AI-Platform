@@ -55,10 +55,20 @@
   // degraded answer for these, it is a missing submission -- so an unresolved
   // value is rejected outright and the caller has to ask again.
   const NON_DEGRADABLE_TYPES = new Set(["name", "email"]);
-  const CONSENT_QUESTION_IDS = new Set(["consent_acknowledgement"]);
-  const NON_DEGRADABLE_IDS = CONSENT_QUESTION_IDS;
+  const NON_DEGRADABLE_IDS = new Set(["consent_acknowledgement"]);
 
   const FREE_TEXT_TYPES = new Set(["name", "email"]);
+
+  // Deliberately character-for-character the pattern app.js's
+  // validateContactEmail uses, so the two front ends agree about what an
+  // address is. It cannot be imported -- app.js is a browser script with no
+  // exports -- so test-answer-intake.js compares the two sources instead and
+  // fails if they ever diverge.
+  const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  // Both taken from the form's name field (app.js, saveFullNameBtn).
+  const NAME_MAX_LENGTH = 100;
+  const NAME_FORBIDDEN = /[<>\u0000-\u001f\u007f]/u;
 
   function canDegradeToUnknown(question) {
     return !NON_DEGRADABLE_TYPES.has(question.type) && !NON_DEGRADABLE_IDS.has(question.id);
@@ -108,8 +118,27 @@
     }
 
     if (FREE_TEXT_TYPES.has(question.type)) {
-      const text = typeof candidate === "string" ? candidate.trim() : "";
+      // Whitespace collapsed first, exactly as the form's name field does, so
+      // the two front ends store the same string for the same person rather
+      // than one with a double space in it.
+      const text = typeof candidate === "string" ? candidate.replace(/\s+/gu, " ").trim() : "";
       if (!text) return rejected("empty");
+      // The form's own name check: a length the contact table can hold, and no
+      // angle brackets or control characters. This name is interpolated into
+      // the result email, so what it may contain is not only a storage
+      // question.
+      if (question.type === "name" && (text.length > NAME_MAX_LENGTH || NAME_FORBIDDEN.test(text))) {
+        return rejected("invalid_name");
+      }
+      // The form checks this shape before it will submit (validateContactEmail
+      // in app.js); the conversation reached the end without it and accepted
+      // "王小明" and "abc" as addresses. For the free line the email *is* the
+      // deliverable -- an unreachable address means the person answers eighty
+      // questions and receives nothing, with no error anywhere, because
+      // everything downstream worked exactly as designed.
+      if (question.type === "email" && !EMAIL_PATTERN.test(text)) {
+        return rejected("invalid_email", [text]);
+      }
       return answered(text);
     }
 
@@ -123,9 +152,15 @@
       // with nothing to do but start again. Refusing it here costs them one
       // tap; letting it through costs them the session. Found by walking the
       // chat page by hand.
-      if (CONSENT_QUESTION_IDS.has(question.id)) {
+      //
+      // Driven by the question's own minSelected, which is where the form
+      // takes it from too (app.js, saveMultiBtn). Consent is the only question
+      // that sets it today -- to 3, which is all of its options -- and reading
+      // the rule off the question rather than off a list of ids here means a
+      // second one would be honoured without anybody remembering this file.
+      if (question.minSelected && candidate.length < question.minSelected) {
         const missing = question.options.filter((option) => !candidate.includes(option));
-        if (missing.length > 0) return rejected("incomplete_consent", missing);
+        return rejected("incomplete_consent", missing);
       }
       // An empty selection is not "nothing is wrong with me". The symptom row
       // reads an empty array as every column 0, so it would publish a full set

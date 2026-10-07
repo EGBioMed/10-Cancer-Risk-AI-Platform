@@ -39,6 +39,7 @@
       gaveUp: "這題先記成「不確定」，我們繼續往下。您之後可以再補。",
       declined: "好的，這題記成「不確定」。",
       blocked: "這一題不能跳過，需要您明確回答才能繼續。",
+      invalidEmail: "這看起來不是一個完整的 Email 地址。報告會寄到這裡，所以需要正確的地址（例如 name@example.com）。",
       consentIncomplete: "三項都需要您同意才能繼續。還缺：",
       contradictory: "您同時選了「以上皆無」和其他項目，這兩個意思互相矛盾。可以再選一次嗎？",
       done: "問卷到這裡結束，謝謝您。正在送出⋯⋯",
@@ -59,6 +60,7 @@
       gaveUp: "I'll record this one as \"not sure\" and move on. You can come back to it later.",
       declined: "That's fine, I'll record this one as \"not sure\".",
       blocked: "This question can't be skipped -- I need a clear answer before we continue.",
+      invalidEmail: "That does not look like a complete email address. Your report is sent there, so it needs to be exact (for example name@example.com).",
       consentIncomplete: "All three need your agreement before we can continue. Still missing: ",
       contradictory: "You picked 'none of these' together with other items, which contradict each other. Could you choose again?",
       done: "That's the end of the questionnaire. Thank you. Submitting...",
@@ -255,11 +257,16 @@
       note(result.status === "declined" ? copy.declined : copy.gaveUp);
     } else if (result.status === "blocked") {
       // Say what is still needed. "This cannot be skipped" is true and useless
-      // when the person did answer and just did not tick everything.
-      const missing = result.pending && result.pending.reason === "incomplete_consent"
-        ? result.pending.detail
-        : null;
-      say(missing ? copy.consentIncomplete + "\n\n" + missing.join("\n\n") : copy.blocked, "bot");
+      // to someone who did answer -- they ticked two of three consent items,
+      // or gave an address with a typo in it.
+      const reason = result.pending && result.pending.reason;
+      const missing = reason === "incomplete_consent" ? result.pending.detail : null;
+      say(
+        missing ? copy.consentIncomplete + "\n\n" + missing.join("\n\n")
+          : reason === "invalid_email" ? copy.invalidEmail
+          : copy.blocked,
+        "bot"
+      );
       // Re-render the same question's options so the way forward is visible
       // rather than implied.
       const turn = session.next();
@@ -271,7 +278,48 @@
     ask();
   }
 
+  // The two checks app.js runs in renderResult() before it will submit. The
+  // conversation reached submission without them, so an address like "王小明"
+  // or a height and weight that cannot belong to the same person went through
+  // -- and for the free line the email is the deliverable, so an unreachable
+  // address means answering eighty questions and receiving nothing.
+  //
+  // Both are now prevented when the answer is given (answer-intake.js checks
+  // the address, answer-resolver.js the ranges), so this is a backstop for
+  // what only becomes visible once several answers exist: the BMI implied by
+  // height and weight together. It reopens the questions rather than refusing
+  // to submit, because in a conversation there is no "go back" -- refusing
+  // would leave the person finished and stuck.
+  //
+  // All three measurements are reopened rather than the one at fault: the
+  // check reports a message, not a field, and asking one extra question is
+  // better than guessing wrong and looping.
+  const FINAL_CHECKS = [
+    { validate: () => validateContactEmail(), reopen: ["email"] },
+    { validate: () => validateCoreMeasurements(), reopen: ["birth_year", "height_cm", "weight_kg"] }
+  ];
+
+  function firstFinalProblem() {
+    for (const check of FINAL_CHECKS) {
+      let message = "";
+      try {
+        message = check.validate();
+      } catch (error) {
+        continue;
+      }
+      if (message) return { message, reopen: check.reopen };
+    }
+    return null;
+  }
+
   async function finish() {
+    const problem = firstFinalProblem();
+    if (problem && session.reopen(problem.reopen) > 0) {
+      say(problem.message, "bot");
+      ask();
+      return;
+    }
+
     clearOptions();
     input.disabled = true;
     say(copy.done, "bot");

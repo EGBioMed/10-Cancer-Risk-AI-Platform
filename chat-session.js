@@ -260,12 +260,35 @@
       return findNext() === null;
     }
 
+    // Discards an answer so the question comes round again. For the checks
+    // that can only run once several answers exist -- the form's BMI check
+    // across height and weight is the one in play -- where the alternative is
+    // refusing to submit and leaving the person with no way to correct it.
+    // Returns whether there was anything to reopen.
+    function reopen(questionIds) {
+      const wanted = new Set(Array.isArray(questionIds) ? questionIds : [questionIds]);
+      let reopened = 0;
+      for (const question of askable) {
+        if (!wanted.has(question.id)) continue;
+        if (!isAnswered(answers, question)) continue;
+        delete answers[question.field];
+        reopened += 1;
+      }
+      if (reopened > 0) {
+        current = null;
+        attempts = 0;
+        pending = null;
+      }
+      return reopened;
+    }
+
     return {
       next,
       receive,
       receiveAsync,
       progress,
       isComplete,
+      reopen,
       get currentQuestion() { return current; }
     };
   }

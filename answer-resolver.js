@@ -176,6 +176,10 @@
     const numeric = Number(value);
     if (typeof bounds.min === "number" && numeric < bounds.min) return false;
     if (typeof bounds.max === "number" && numeric > bounds.max) return false;
+    // step 1 is how app.js marks a whole-number question -- a birth year, a
+    // count of episodes, a number of days. The form's <input step="1"> refuses
+    // 1980.5; the conversation accepted it.
+    if (bounds.step === 1 && !Number.isInteger(numeric)) return false;
     return true;
   }
 
