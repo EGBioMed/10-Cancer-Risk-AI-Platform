@@ -469,3 +469,53 @@ test("an invalid email is refused during the conversation, not at the end", () =
 
   assert.equal(session.receive("chat-test@example.com").status, "answered");
 });
+
+// ---------------------------------------------------------------------------
+// 10. The one path that represents "we did not ask" honestly.
+// ---------------------------------------------------------------------------
+
+test("an unknown symptom group is omitted from the model's input, not sent as 0", () => {
+  // UNKNOWN_ANSWER_AUDIT.md: 25 questions send a concrete value when the
+  // respondent skips them -- smoking=0, family_cancer_history=0 -- which the
+  // model cannot tell from an answered "no". The symptom groups are the one
+  // place that does it properly, and that is also the evidence that the
+  // mechanism exists and the model already handles absent columns. Whatever
+  // is decided about the other 25, this must not quietly become 0 too.
+  const app = loadApp();
+  const session = createChatSession({ app, maxAttempts: 1 });
+  const group = app.questions.find(
+    (question) => question.field && question.isSymptomGroup && (question.options || []).length >= 2
+  );
+  assert(group, "no symptom group was found");
+
+  runToCompletion(session, (question) =>
+    question.id === group.id ? "完全無法解析的一句話" : cooperativeReply(question)
+  );
+
+  const submission = app.storeSubmissionForIntegration();
+  const columns = (group.symptomDefinitions || [])
+    .map(([, , column]) => column)
+    .filter(Boolean);
+  assert(columns.length > 0, "the group exposes no feature columns");
+
+  // Derived parents are excluded: symptom_mass is computed across four
+  // separate groups (app.js, getRuleParentState's derivedParents), so another
+  // group reporting a lump legitimately keeps it at 1 while this one is
+  // unknown. Asserting on it would be asserting that a real answer should be
+  // discarded.
+  const DERIVED = new Set([
+    "symptom_mass", "symptom_abdominal_pain", "symptom_back_pain",
+    "symptom_mouth_symptoms", "symptom_hn_lump"
+  ]);
+  const own = columns.filter((column) => !DERIVED.has(column));
+  assert(own.length > 0, "every column of this group is a derived parent");
+
+  for (const column of own) {
+    assert.equal(submission.symptom_feature_row[column], null, `${column} is not null`);
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(submission.ai_api_feature_row.symptoms || {}, column),
+      false,
+      `${column} was sent to the model despite being unknown`
+    );
+  }
+});
