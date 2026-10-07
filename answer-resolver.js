@@ -222,14 +222,11 @@
   // array of numbers for a multi question. Anything else it returns is
   // discarded rather than interpreted, which is what keeps a model's prose out
   // of the answer store no matter how it is prompted or what it decides to say.
-  function applyClassifier(question, utterance, classifier) {
-    let verdict;
-    try {
-      verdict = classifier(question, utterance);
-    } catch (error) {
-      return unmatched("classifier_threw", error && error.message);
-    }
-
+  // Split from the call so the sync and async paths validate identically. A
+  // real classifier is a network call and returns a promise; a test's is a
+  // plain function. Both have to be held to the same rule about what may come
+  // back, and the way to guarantee that is for there to be one copy of it.
+  function applyVerdict(question, verdict) {
     const size = (question.options || []).length;
     const isIndex = (value) => Number.isInteger(value) && value >= 0 && value < size;
 
@@ -249,39 +246,74 @@
     return matched(question, verdict, "classifier");
   }
 
-  function resolve(question, utterance, options) {
+  function applyClassifier(question, utterance, classifier) {
+    let verdict;
+    try {
+      verdict = classifier(question, utterance);
+    } catch (error) {
+      return unmatched("classifier_threw", error && error.message);
+    }
+    return applyVerdict(question, verdict);
+  }
+
+  async function applyClassifierAsync(question, utterance, classifier) {
+    let verdict;
+    try {
+      verdict = await classifier(question, utterance);
+    } catch (error) {
+      return unmatched("classifier_threw", error && error.message);
+    }
+    return applyVerdict(question, verdict);
+  }
+
+  function resolveByRules(question, utterance) {
     if (!question || typeof question !== "object") {
       throw new TypeError("resolve requires a question definition");
     }
+    if (question.type === "number") return resolveNumber(question, utterance);
+    if (question.type === "multi") return resolveMulti(question, utterance);
+    if (Array.isArray(question.options)) return resolveSingle(question, utterance);
+
+    const text = typeof utterance === "string" ? utterance.trim() : "";
+    return text
+      ? { status: "matched", index: -1, value: text, via: "free_text" }
+      : unmatched("empty");
+  }
+
+  // Only `unmatched` escalates. `ambiguous` means the rules found more than one
+  // defensible reading, and `declined` means the person already answered --
+  // sending either to a model invites it to break a tie or to overrule someone
+  // who said they did not know. A question with no options has nothing for a
+  // classifier to choose between.
+  function shouldEscalate(question, result, settings) {
+    return result.status === "unmatched"
+      && typeof settings.classifier === "function"
+      && Array.isArray(question.options)
+      && question.options.length > 0;
+  }
+
+  function resolve(question, utterance, options) {
     const settings = options || {};
+    const result = resolveByRules(question, utterance);
+    if (!shouldEscalate(question, result, settings)) return result;
+    return applyClassifier(question, utterance, settings.classifier);
+  }
 
-    let result;
-    if (question.type === "number") result = resolveNumber(question, utterance);
-    else if (question.type === "multi") result = resolveMulti(question, utterance);
-    else if (Array.isArray(question.options)) result = resolveSingle(question, utterance);
-    else {
-      const text = typeof utterance === "string" ? utterance.trim() : "";
-      result = text
-        ? { status: "matched", index: -1, value: text, via: "free_text" }
-        : unmatched("empty");
-    }
-
-    // Only `unmatched` escalates. `ambiguous` means the rules found more than
-    // one defensible reading, and `declined` means the person already answered
-    // -- sending either to a model invites it to break a tie or overrule
-    // someone who said they did not know.
-    if (result.status === "unmatched" && typeof settings.classifier === "function") {
-      if (Array.isArray(question.options) && question.options.length > 0) {
-        return applyClassifier(question, utterance, settings.classifier);
-      }
-    }
-
-    return result;
+  // The same decision, for a classifier that is a network call. Kept as a
+  // separate entry point rather than making `resolve` async: the rules alone
+  // answer most replies, and a caller that has no model should not have to
+  // await anything to find that out.
+  async function resolveAsync(question, utterance, options) {
+    const settings = options || {};
+    const result = resolveByRules(question, utterance);
+    if (!shouldEscalate(question, result, settings)) return result;
+    return applyClassifierAsync(question, utterance, settings.classifier);
   }
 
   return Object.freeze({
     normalizeText,
     resolve,
+    resolveAsync,
     resolveSingle,
     resolveMulti,
     resolveNumber,
