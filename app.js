@@ -998,7 +998,45 @@ function getModuleCopy(module) {
   return i18n.en.modules[module.id] || [module.title, module.summary];
 }
 
+// The entrance this session came through, when its reports go to one mailbox
+// instead of to each respondent. Null everywhere else, which is every entrance
+// that existed before this one. Filled in from /api/session/delivery at
+// startup; see renderQuickInput's email branch and lib/report-recipients.js.
+let forcedReportRecipient = null;
+
+async function loadForcedReportRecipient() {
+  try {
+    const response = await fetch("/api/session/delivery");
+    if (!response.ok) return;
+    const payload = await response.json();
+    if (!payload || payload.forced !== true || !payload.email || !payload.label) return;
+    forcedReportRecipient = { email: payload.email, label: payload.label };
+  } catch (error) {
+    // Unreachable or unparseable: fall back to asking for an address. The
+    // server still redirects the report, so nothing is delivered wrongly --
+    // the respondent is simply asked for something that will not be used,
+    // which is the state this whole branch exists to avoid, and is visible to
+    // anyone testing the entrance.
+    return;
+  }
+  // The email question may already be on screen by the time this returns.
+  if (getCurrentQuestion()?.type === "email") renderQuestion();
+}
+
 function getQuestionCopy(question) {
+  // Said plainly, on the question itself: the stock note promises the report
+  // goes to the address shown, and for this entrance it goes to the clinic.
+  if (question.type === "email" && forcedReportRecipient) {
+    const label = forcedReportRecipient.label;
+    return {
+      title: currentLang === "en" ? "Where your report will be sent" : "您的報告將寄送至",
+      note: currentLang === "en"
+        ? `This entrance delivers every report to ${label}, which prints them and gives you yours. You do not need an email address.`
+        : `此入口的報告統一寄送至${label}，由院方印出後交付給您。您不需要提供個人 Email。`,
+      placeholder: ""
+    };
+  }
+
   const dynamicTitle = question.dynamicTitle ? question.dynamicTitle(answers) : null;
   const dynamicTitleEn = question.dynamicTitleEn ? question.dynamicTitleEn(answers) : null;
   if (currentLang !== "en") return {
@@ -1530,6 +1568,27 @@ function renderQuickInput(question) {
   const questionCopy = getQuestionCopy(question);
 
   if (question.type === "email") {
+    // Some entrances deliver every report to one mailbox rather than to the
+    // person answering -- a clinic collecting in person, where respondents
+    // often have no email and the clinic prints the reports and hands them
+    // over. The server overwrites the address either way
+    // (lib/report-recipients.js), so the questionnaire would work without this
+    // branch: the person would be asked for an email, give one, and never
+    // learn it was disregarded. Being asked for something that is then thrown
+    // away is not a small wrinkle on a form that also collects consent.
+    if (forcedReportRecipient) {
+      quickOptions.innerHTML = `
+        <div class="number-entry">
+          <input id="emailInput" type="email" value="${escapeHtml(forcedReportRecipient.email)}" readonly aria-readonly="true" />
+          <button class="secondary-action" id="saveEmailBtn" type="button">${ui("saveContinue")}</button>
+        </div>
+      `;
+      document.querySelector("#saveEmailBtn").addEventListener("click", () => {
+        saveAnswer(forcedReportRecipient.email, "email_forced");
+      });
+      return;
+    }
+
     quickOptions.innerHTML = `
       <div class="number-entry">
         <input id="emailInput" type="email" inputmode="email" autocomplete="email" placeholder="${questionCopy.placeholder || "name@example.com"}" />
@@ -2961,5 +3020,10 @@ document.addEventListener("click", (event) => {
 applyStaticText();
 renderModules();
 renderQuestion();
+
+// Asynchronous and deliberately not awaited: the questionnaire must render
+// immediately whether or not this answers. If it arrives while the email
+// question is showing, it re-renders that one question.
+loadForcedReportRecipient();
 
 }());

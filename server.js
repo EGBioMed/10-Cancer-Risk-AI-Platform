@@ -30,6 +30,11 @@ const { signReportTicket } = require("./lib/report-ticket");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 const { createAppAssetVersioner } = require("./lib/asset-version");
 const { createChatClassifyHandler } = require("./lib/chat-classify");
+const {
+  parseReportRecipients,
+  recipientForGrant,
+  applyReportRecipient
+} = require("./lib/report-recipients");
 const { createAnthropicClassifier, DEFAULT_MODEL, DEFAULT_EFFORT } = require("./lib/classifier");
 // 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
 const { buildApiSymptoms } = require("./api-symptoms");
@@ -127,6 +132,16 @@ setInterval(() => consumedSessions.sweep(), 30 * 60 * 1000).unref();
 // is the behaviour it already has whenever the rules and the model both come
 // up empty -- so the questionnaire works with or without this, and nothing
 // about deploying it requires the key to exist first.
+// Entrances whose reports go to one mailbox instead of to each respondent.
+// Parsed once at boot; a malformed entry is reported and dropped rather than
+// stopping the server, because the rest of the questionnaire does not depend
+// on it and a deployment that will not start takes the form page down too.
+const { recipients: reportRecipients, problems: reportRecipientProblems } =
+  parseReportRecipients(process.env.INSTITUTION_REPORT_RECIPIENTS);
+for (const problem of reportRecipientProblems) {
+  console.error("INSTITUTION_REPORT_RECIPIENTS: " + problem);
+}
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
 const CHAT_CLASSIFIER_MODEL = process.env.CHAT_CLASSIFIER_MODEL || DEFAULT_MODEL;
 const CHAT_CLASSIFIER_EFFORT = process.env.CHAT_CLASSIFIER_EFFORT || DEFAULT_EFFORT;
@@ -443,12 +458,21 @@ async function receiveSubmission(req, res, sessionPayload) {
   // exactly as its record_id was just overwritten above; otherwise anyone
   // could claim the institution line and collect the full PDF for free.
   const deliveryMode = normalizeDeliveryMode(sessionPayload && sessionPayload.mode);
+  const sessionGrantId = sessionPayload ? sessionPayload.grantId : null;
   applyDeliveryFields(submission, {
     deliveryMode,
-    grantId: sessionPayload ? sessionPayload.grantId : null,
+    grantId: sessionGrantId,
     recordId,
     ticketSecret: REPORT_TICKET_SECRET
   });
+
+  // An entrance whose reports go somewhere other than to the person who
+  // answered -- a clinic that collects in person, has respondents without an
+  // email, and prints the reports itself. Taken from the grant in the signed
+  // cookie for the same reason delivery_mode is: the entrance decides, not
+  // the request body. See lib/report-recipients.js.
+  const forcedRecipient = recipientForGrant(reportRecipients, sessionGrantId);
+  if (forcedRecipient) applyReportRecipient(submission, forcedRecipient);
 
   const validFullName = getValidSubmissionFullName(submission);
   if (!validFullName) {
@@ -825,6 +849,24 @@ const server = http.createServer(async (req, res) => {
 
   if (req.method === "POST" && pathname === "/api/access/redeem-code") {
     await handleCodeRedemption(req, res);
+    return;
+  }
+
+  // What the page needs in order to tell the respondent the truth about where
+  // their report goes. Behind the gate: it answers only for the session asking,
+  // and only about that session's own entrance.
+  //
+  // It exists because the alternative is silence. The server overwrites the
+  // address anyway, so the questionnaire would work without this -- the person
+  // would simply be asked for an email, give one, and never learn that the
+  // report went to the clinic instead. Being asked for something that is then
+  // disregarded is not a small UI wrinkle on a consent form.
+  if (req.method === "GET" && pathname === "/api/session/delivery") {
+    const payload = getSessionPayload(req);
+    const recipient = recipientForGrant(reportRecipients, payload ? payload.grantId : null);
+    sendJson(res, 200, recipient
+      ? { ok: true, forced: true, label: recipient.label, email: recipient.email }
+      : { ok: true, forced: false });
     return;
   }
 

@@ -467,7 +467,10 @@ test("every email check in the codebase uses the same pattern", () => {
   const LITERAL = String.raw`/^[^\s@]+@[^\s@]+\.[^\s@]+$/`;
   const SHAPE = /\/\^\[\^[^/\n]*@[^/\n]*\//g;
 
-  const sources = ["app.js", "server.js", "answer-intake.js", "answer-resolver.js", "chat-session.js", "chat.js"];
+  const sources = [
+    "app.js", "server.js", "answer-intake.js", "answer-resolver.js",
+    "chat-session.js", "chat.js", "lib/report-recipients.js"
+  ];
   let found = 0;
   for (const file of sources) {
     const source = fs.readFileSync(path.join(__dirname, file), "utf8");
@@ -476,7 +479,10 @@ test("every email check in the codebase uses the same pattern", () => {
       found += 1;
     }
   }
-  assert.equal(found, 4, `expected 4 copies of the email pattern, found ${found}`);
+  // Five now: lib/report-recipients.js validates the mailbox an institution
+  // configures. The count is asserted so a sixth copy appearing somewhere has
+  // to be a decision rather than an accident.
+  assert.equal(found, 5, `expected 5 copies of the email pattern, found ${found}`);
 });
 
 test("the name question still takes any non-empty name", () => {
