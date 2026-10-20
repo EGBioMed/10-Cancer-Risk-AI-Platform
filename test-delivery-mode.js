@@ -134,10 +134,15 @@ test("the submission handler takes the mode from the cookie, not the body", () =
 test("the redeemed grant's mode is sealed into the signed cookie", () => {
   // Inside signSessionCookie's payload, so forging it means forging the HMAC.
   assert.match(serverSource, /signSessionCookie\(\{ grantId, mode, sid, exp: expiresAtSeconds \}/);
-  // Both redemption paths -- the link and the typed code -- must pass it on,
-  // or one of the two silently mints institution sessions for public codes.
-  const callSites = serverSource.match(/buildAccessSessionCookie\(result\.grantId, result\.deliveryMode\)/g);
-  assert.equal(callSites && callSites.length, 2, "both redemption paths must pass the delivery mode");
+  // EVERY door -- the link, the typed code, the partner hand-off -- must pass
+  // it on, or one of them silently mints an institution session for a public
+  // code. Written as "all call sites agree" rather than a fixed count, because
+  // the count is not the rule: a fourth door added without the mode has to
+  // fail this, and one added correctly has to pass.
+  const everyCall = serverSource.match(/buildAccessSessionCookie\(/g) || [];
+  const withMode = serverSource.match(/buildAccessSessionCookie\(result\.grantId, result\.deliveryMode\)/g) || [];
+  assert(everyCall.length >= 4, "expected the declaration plus the link, the code and the SSO hand-off");
+  assert.equal(withMode.length, everyCall.length - 1, "every redemption path must pass the delivery mode");
 });
 
 // Falling back to the institution webhook would send a free user's

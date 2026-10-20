@@ -20,6 +20,7 @@ const {
   normalizeCode,
   getClientIp,
   isExemptFromGate,
+  SSO_ENTRANCE_PATH,
   parseCookies,
   buildCookieHeader,
   buildExpiredCookieHeader,
@@ -30,6 +31,12 @@ const { signReportTicket } = require("./lib/report-ticket");
 const { buildGatedIndexHtml: renderGatedIndexHtml } = require("./lib/access-gate-view");
 const { createAppAssetVersioner } = require("./lib/asset-version");
 const { createChatClassifyHandler } = require("./lib/chat-classify");
+const {
+  parseSsoConfig,
+  resolveSsoEntrance,
+  renderSsoErrorPage
+} = require("./lib/sso-entrance");
+const { createReplayGuard } = require("./lib/sso-token");
 const {
   parseReportRecipients,
   recipientForGrant,
@@ -136,6 +143,35 @@ setInterval(() => consumedSessions.sweep(), 30 * 60 * 1000).unref();
 // Parsed once at boot; a malformed entry is reported and dropped rather than
 // stopping the server, because the rest of the questionnaire does not depend
 // on it and a deployment that will not start takes the form page down too.
+// The partner hand-off entrance. Absent configuration disables it rather
+// than half-enabling it: a deployment with no key cannot verify anything,
+// and the honest answer at that door is the same one a broken link gets.
+const ssoConfig = parseSsoConfig(process.env);
+for (const problem of ssoConfig.problems) console.error("SSO config: " + problem);
+if (!ssoConfig.enabled && ssoConfig.missing.length > 0) {
+  console.error("SSO entrance disabled, missing: " + ssoConfig.missing.join(", "));
+}
+// Nothing reads storeSubject yet: no submission carries the partner's user
+// identifier today, so there is nothing for the flag to switch off. It is
+// parsed because the question is open -- keeping their `sub` would give our
+// health records a foreign key into their user base, which is a protocol
+// decision -- and a knob that quietly does nothing is how a deployment comes
+// to believe it turned something on.
+if (ssoConfig.storeSubject) {
+  console.error("SSO config: STORE_SUBJECT=true is recorded but not yet honoured -- no submission carries sub.");
+}
+
+// One token, one entry. In-memory and per-instance, same honest limitation
+// as consumedSessions: a restart forgets, and a second instance never knew.
+const ssoReplayGuard = createReplayGuard();
+setInterval(() => ssoReplayGuard.sweep(), 5 * 60 * 1000).unref();
+
+// Signature verification is CPU, and each success redeems a grant. Keyed on
+// the caller's address because there is no session yet -- that is what this
+// door exists to create.
+const ssoLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 60 });
+setInterval(() => ssoLimiter.sweep(), 30 * 60 * 1000).unref();
+
 const { recipients: reportRecipients, problems: reportRecipientProblems } =
   parseReportRecipients(process.env.INSTITUTION_REPORT_RECIPIENTS);
 for (const problem of reportRecipientProblems) {
@@ -738,6 +774,64 @@ async function handleAccessRedemption(req, res, rawToken) {
   res.end();
 }
 
+// The partner hand-off. Everything it can refuse, it refuses to the same
+// page: the person is on a phone and cannot act on "wrong issuer", and a
+// caller probing the door learns nothing about which check it failed. The
+// reason goes to the log, where it is the only way to tell a misconfigured
+// integration from someone trying things.
+async function handleSsoEntrance(req, res, token) {
+  const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
+  if (!ssoLimiter.check(clientIp)) {
+    serveSsoError(res, 429);
+    return;
+  }
+
+  const resolved = resolveSsoEntrance(token, ssoConfig, { replayGuard: ssoReplayGuard });
+  if (!resolved.ok) {
+    console.error(`SSO hand-off refused: ${resolved.reason}${resolved.detail ? " (" + resolved.detail + ")" : ""}`);
+    serveSsoError(res, 403);
+    return;
+  }
+
+  await accessGateReady;
+  if (!accessGateClient || accessGateClientError) {
+    serveSsoError(res, 503);
+    return;
+  }
+
+  // Redeemed exactly as a typed code or a scanned link is -- same call, same
+  // row -- so an enterprise's quota, use_count and event log all work without
+  // the gate knowing how its people arrived. A token that verified against an
+  // exhausted code is still a refusal, and lands on the same page.
+  let result;
+  try {
+    result = await accessGateClient.redeemAccessGrant({ tokenHash: hashToken(resolved.code) });
+  } catch (error) {
+    result = null;
+  }
+  if (!result || !result.ok) {
+    console.error(`SSO hand-off could not redeem the code for org ${resolved.claims.org}`);
+    serveSsoError(res, 403);
+    return;
+  }
+
+  res.writeHead(302, {
+    Location: "/",
+    "Set-Cookie": buildAccessSessionCookie(result.grantId, result.deliveryMode),
+    "Cache-Control": "no-store"
+  });
+  res.end();
+}
+
+function serveSsoError(res, statusCode) {
+  const body = renderSsoErrorPage(ssoConfig.deepLink);
+  res.writeHead(statusCode, {
+    "Content-Type": "text/html; charset=utf-8",
+    "Cache-Control": "no-store"
+  });
+  res.end(body);
+}
+
 async function handleCodeRedemption(req, res) {
   const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
   if (!codeRedeemLimiter.check(clientIp)) {
@@ -933,9 +1027,22 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // Both of these sit AFTER the gate block, and that placement is the whole
-  // protection -- not the comment above them, and not their absence from
-  // isExemptFromGate. Registered before it, as they first were, they ran for
+  // The partner hand-off, below the gate block on purpose. It is a door, so
+  // it has to answer without a session -- and the single thing that lets it
+  // is its entry in isExemptFromGate. Registered above the block instead, it
+  // would work for a different reason: the gate would never be consulted, the
+  // exemption would be dead code that reads as the control, and the "GET
+  // only" half of it would be an accident of this matcher rather than a rule.
+  // Verified by removing the exemption and watching test-sso-entrance.js fail.
+  if (req.method === "GET" && pathname === SSO_ENTRANCE_PATH) {
+    const token = new URL(req.url, `http://${req.headers.host || "localhost"}`).searchParams.get("token");
+    await handleSsoEntrance(req, res, token);
+    return;
+  }
+
+  // The two below sit AFTER the gate block for the opposite reason, and that
+  // placement is the whole protection -- not the comment above them, and not
+  // their absence from isExemptFromGate. Registered before it, as they first were, they ran for
   // anyone: /api/chat/classify was reachable with no session at all, and
   // would have spent money on behalf of whoever found it the moment a key
   // was configured. The test that was supposed to cover this checked the
