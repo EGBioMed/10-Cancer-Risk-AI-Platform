@@ -159,6 +159,26 @@ function prepareCodeGrant() {
       console.log("Access code created:");
       console.log(normalized);
       console.log(`grant_id: ${grant.grantId}`);
+      // The same code as a link, for an institution that would rather print a
+      // QR than have people type it. Printed here so that nobody assembles the
+      // URL by hand and gets the code subtly wrong -- a code that only fails
+      // when a patient scans it at a clinic is found late.
+      //
+      // It is the same credential either way: a poster anyone can photograph,
+      // bounded by the grant's own quota rather than by the URL being secret.
+      const publicBaseUrl = process.env.PUBLIC_BASE_URL || "";
+      if (normalized.includes("/")) {
+        // /entry/<code> is one path segment, and a slash is still a slash
+        // after the server decodes the path. Rather than print a URL that
+        // fails only when a patient scans it, say so now: the code works
+        // perfectly well typed into the form.
+        console.log("scan URL: none -- this code contains a slash, so it cannot be put in a link.");
+      } else {
+        console.log(`scan URL: ${publicBaseUrl}/entry/${encodeURIComponent(normalized)}`);
+        if (!publicBaseUrl) {
+          console.log("  (PUBLIC_BASE_URL is not set, so that is a path, not a URL.)");
+        }
+      }
       // Printed from what came back, not from what was asked for: an
       // unlimited code and a single-use one look identical until somebody
       // tries to redeem one, so the confirmation has to reflect the row.

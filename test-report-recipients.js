@@ -2,7 +2,8 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   parseReportRecipients,
-  recipientForGrant,
+  institutionForEntrance,
+  recipientForInstitution,
   applyReportRecipient,
   MAX_LABEL_LENGTH
 } = require("./lib/report-recipients");
@@ -13,62 +14,144 @@ const {
 // a request -- decides that, and that a misconfiguration is visible rather than
 // quiet.
 
+const SHUANGHO = { email: "reports@example.org", label: "雙和醫院" };
 const GOOD = JSON.stringify({
-  61: { email: "reports@example.org", label: "雙和醫院" }
+  shuangho: { ...SHUANGHO, codes: ["egshuangho2026"], grants: [61] }
 });
 
+// The two together, since every caller does both: which institution this
+// entrance belongs to, and where that institution's reports go.
+function resolve(whitelist, entrance) {
+  return recipientForInstitution(whitelist, institutionForEntrance(whitelist, entrance));
+}
+
 test("a configured entrance resolves to its mailbox", () => {
-  const { recipients, problems } = parseReportRecipients(GOOD);
-  assert.deepEqual(problems, []);
-  assert.deepEqual(recipientForGrant(recipients, 61), { email: "reports@example.org", label: "雙和醫院" });
+  const whitelist = parseReportRecipients(GOOD);
+  assert.deepEqual(whitelist.problems, []);
+  assert.deepEqual(resolve(whitelist, { code: "egshuangho2026" }), { slug: "shuangho", ...SHUANGHO });
+  assert.deepEqual(resolve(whitelist, { grantId: 61 }), { slug: "shuangho", ...SHUANGHO });
   // The grant id arrives from the signed cookie as a number and is configured
-  // as a JSON key, which is a string. A lookup that only worked for one of
+  // as a JSON value, which may be either. A lookup that only worked for one of
   // those would fail in production and nowhere else.
-  assert.deepEqual(recipientForGrant(recipients, "61"), recipientForGrant(recipients, 61));
+  assert.deepEqual(resolve(whitelist, { grantId: "61" }), resolve(whitelist, { grantId: 61 }));
+});
+
+// The reason the whitelist is keyed on the institution and not on the grant:
+// codes get re-minted, and the old key would quietly stop matching.
+test("a second code for the same institution reaches the same mailbox", () => {
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, codes: ["egshuangho2026", "egshuangho2027"] }
+  }));
+  assert.deepEqual(whitelist.problems, []);
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2026" }), "shuangho");
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2027" }), "shuangho");
+});
+
+test("a code is matched the way a typed one is normalized", () => {
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, codes: ["  EGShuangHo2026 "] }
+  }));
+  // Configured with stray case and spaces, presented however the scanner or
+  // the person produced it. Both go through normalizeCode, or the whitelist
+  // would miss a code the gate itself accepted.
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2026" }), "shuangho");
+  assert.equal(institutionForEntrance(whitelist, { code: "EGSHUANGHO2026" }), "shuangho");
+});
+
+test("the code decides, and the grant is only the fallback", () => {
+  // A single-use /access/<token> link has no code at all; the typed, scanned
+  // and partner entrances all have one.
+  const whitelist = parseReportRecipients(GOOD);
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2026", grantId: 999 }), "shuangho");
+  assert.equal(institutionForEntrance(whitelist, { code: "not-a-listed-code", grantId: 61 }), "shuangho");
+  assert.equal(institutionForEntrance(whitelist, { grantId: 61 }), "shuangho");
 });
 
 test("an entrance with no entry is left alone", () => {
-  const { recipients } = parseReportRecipients(GOOD);
-  assert.equal(recipientForGrant(recipients, 58), null);
-  assert.equal(recipientForGrant(recipients, null), null);
-  assert.equal(recipientForGrant(recipients, undefined), null);
+  const whitelist = parseReportRecipients(GOOD);
+  assert.equal(institutionForEntrance(whitelist, { grantId: 58 }), null);
+  assert.equal(institutionForEntrance(whitelist, { code: "egsomeoneelse" }), null);
+  assert.equal(institutionForEntrance(whitelist, { grantId: null }), null);
+  assert.equal(institutionForEntrance(whitelist, {}), null);
+  assert.equal(institutionForEntrance(whitelist), null);
+  assert.equal(recipientForInstitution(whitelist, "nobody"), null);
+  assert.equal(recipientForInstitution(whitelist, null), null);
 });
 
 test("no configuration at all is not an error", () => {
   for (const raw of ["", "   ", null, undefined]) {
-    const { recipients, problems } = parseReportRecipients(raw);
-    assert.equal(recipients.size, 0);
-    assert.deepEqual(problems, [], `${JSON.stringify(raw)} was reported as a problem`);
+    const whitelist = parseReportRecipients(raw);
+    assert.equal(whitelist.institutions.size, 0);
+    assert.deepEqual(whitelist.problems, [], `${JSON.stringify(raw)} was reported as a problem`);
   }
 });
 
 test("a malformed entry is dropped and reported, never guessed at", () => {
   const cases = [
     ["{not json", /not valid JSON/],
-    ["[]", /object keyed by grant id/],
-    ['{"abc":{"email":"a@b.co","label":"X"}}', /not a number/],
-    ['{"61":{"email":"notanemail","label":"X"}}', /no usable email/],
-    ['{"61":{"email":"a@b.co"}}', /no usable label/],
-    ['{"61":{"email":"a@b.co","label":""}}', /no usable label/],
-    [`{"61":{"email":"a@b.co","label":"${"x".repeat(MAX_LABEL_LENGTH + 1)}"}}`, /no usable label/],
-    ['{"61":"reports@example.org"}', /no usable email/]
+    ["[]", /keyed by institution slug/],
+    ['{"Shuang Ho":{"email":"a@b.co","label":"X","codes":["egcode"]}}', /must be 1-32 lowercase/],
+    ['{"shuangho":{"email":"notanemail","label":"X","codes":["egcode"]}}', /no usable email/],
+    ['{"shuangho":{"email":"a@b.co","codes":["egcode"]}}', /no usable label/],
+    ['{"shuangho":{"email":"a@b.co","label":"","codes":["egcode"]}}', /no usable label/],
+    [`{"shuangho":{"email":"a@b.co","label":"${"x".repeat(MAX_LABEL_LENGTH + 1)}","codes":["egcode"]}}`, /no usable label/],
+    ['{"shuangho":"reports@example.org"}', /no usable email/],
+    // Listed, and nothing can ever match it: configuration that looks finished.
+    ['{"shuangho":{"email":"a@b.co","label":"X"}}', /no codes and no grants/],
+    ['{"shuangho":{"email":"a@b.co","label":"X","codes":["abc"]}}', /not a usable access code/],
+    ['{"shuangho":{"email":"a@b.co","label":"X","grants":["sixty-one"]}}', /not a grant id/]
   ];
   for (const [raw, expected] of cases) {
-    const { recipients, problems } = parseReportRecipients(raw);
-    assert.equal(recipients.size, 0, `${raw} produced a recipient`);
-    assert.equal(problems.length >= 1, true, `${raw} was dropped silently`);
-    assert.match(problems.join(" "), expected);
+    const whitelist = parseReportRecipients(raw);
+    assert.equal(whitelist.institutions.size, 0, `${raw} produced a recipient`);
+    assert.equal(whitelist.problems.length >= 1, true, `${raw} was dropped silently`);
+    assert.match(whitelist.problems.join(" "), expected);
   }
 });
 
 test("one bad entry does not take the good ones with it", () => {
-  const { recipients, problems } = parseReportRecipients(JSON.stringify({
-    61: { email: "reports@example.org", label: "雙和醫院" },
-    62: { email: "broken", label: "另一家" }
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, codes: ["egshuangho2026"] },
+    other: { email: "broken", label: "另一家", codes: ["egother"] }
   }));
-  assert.equal(recipients.size, 1);
-  assert.equal(recipientForGrant(recipients, 61).email, "reports@example.org");
-  assert.equal(problems.length, 1);
+  assert.equal(whitelist.institutions.size, 1);
+  assert.equal(resolve(whitelist, { code: "egshuangho2026" }).email, "reports@example.org");
+  assert.equal(whitelist.problems.length, 1);
+});
+
+// The worst thing this module could do is address a health report to the wrong
+// hospital, so an ambiguous code routes to neither.
+test("a code claimed by two institutions routes to neither", () => {
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, codes: ["shared-code", "egshuangho2026"] },
+    other: { email: "other@example.org", label: "另一家", codes: ["shared-code"] }
+  }));
+  assert.equal(institutionForEntrance(whitelist, { code: "shared-code" }), null);
+  assert.match(whitelist.problems.join(" "), /claimed by more than one institution/);
+  // The institutions' own, undisputed codes still work.
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2026" }), "shuangho");
+  // 另一家 had nothing else, so it is gone entirely rather than left as a slug
+  // an old cookie could still resolve against.
+  assert.equal(recipientForInstitution(whitelist, "other"), null);
+});
+
+test("a grant claimed by two institutions routes to neither", () => {
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, grants: [61] },
+    other: { email: "other@example.org", label: "另一家", grants: [61] }
+  }));
+  assert.equal(institutionForEntrance(whitelist, { grantId: 61 }), null);
+  assert.equal(whitelist.institutions.size, 0);
+  assert.match(whitelist.problems.join(" "), /claimed by more than one institution/);
+});
+
+test("a single code or grant need not be written as a list", () => {
+  const whitelist = parseReportRecipients(JSON.stringify({
+    shuangho: { ...SHUANGHO, codes: "egshuangho2026", grants: 61 }
+  }));
+  assert.deepEqual(whitelist.problems, []);
+  assert.equal(institutionForEntrance(whitelist, { code: "egshuangho2026" }), "shuangho");
+  assert.equal(institutionForEntrance(whitelist, { grantId: 61 }), "shuangho");
 });
 
 test("both places the address lives are overwritten", () => {
@@ -98,7 +181,7 @@ test("no recipient means nothing is touched", () => {
   assert.equal(submission.contact_row.email, "patient@example.com");
 });
 
-test("the server takes the grant from the session, never from the body", () => {
+test("the server takes the entrance from the session, never from the body", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
@@ -106,10 +189,30 @@ test("the server takes the grant from the session, never from the body", () => {
   // must not be able to redirect anybody's report.
   assert.match(
     source,
-    /const forcedRecipient = recipientForGrant\(reportRecipients, sessionGrantId\);/,
-    "the override no longer reads the grant from the session"
+    /const forcedRecipient = recipientForSession\(sessionPayload\);/,
+    "the override no longer reads the entrance from the session"
   );
-  assert.match(source, /const sessionGrantId = sessionPayload \? sessionPayload\.grantId : null;/);
+  // recipientForSession reads the slug and the grant out of the signed cookie
+  // and takes nothing else.
+  const start = source.indexOf("function recipientForSession(");
+  assert.ok(start >= 0, "recipientForSession not found");
+  const body = source.slice(start, source.indexOf("\n}", start));
+  assert.match(body, /sessionPayload\.inst/);
+  assert.match(body, /grantId: sessionPayload\.grantId/);
+  assert.doesNotMatch(body, /submission|req\.|body/, "the override reads something other than the session");
+});
+
+// Both halves of the same promise go through one function: the page tells the
+// respondent where their report is going, and the submission handler sends it
+// there. Resolved separately they could drift, and the drift would be a person
+// told their report goes to the clinic while it goes to them, or the reverse.
+test("the page and the submission ask the same question", () => {
+  const fs = require("node:fs");
+  const path = require("node:path");
+  const source = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
+  const callers = source.match(/recipientForSession\(/g) || [];
+  assert.equal(callers.length, 3, "expected the definition plus the two callers");
+  assert.match(source, /const recipient = recipientForSession\(payload\);/, "the delivery endpoint resolves it some other way");
 });
 
 // ---------------------------------------------------------------------------

@@ -21,6 +21,7 @@ const {
   getClientIp,
   isExemptFromGate,
   SSO_ENTRANCE_PATH,
+  parseEntryCode,
   parseCookies,
   buildCookieHeader,
   buildExpiredCookieHeader,
@@ -39,7 +40,8 @@ const {
 const { createReplayGuard } = require("./lib/sso-token");
 const {
   parseReportRecipients,
-  recipientForGrant,
+  institutionForEntrance,
+  recipientForInstitution,
   applyReportRecipient
 } = require("./lib/report-recipients");
 const { createAnthropicClassifier, DEFAULT_MODEL, DEFAULT_EFFORT } = require("./lib/classifier");
@@ -172,9 +174,8 @@ setInterval(() => ssoReplayGuard.sweep(), 5 * 60 * 1000).unref();
 const ssoLimiter = createFixedWindowLimiter({ windowMs: 10 * 60 * 1000, maxAttempts: 60 });
 setInterval(() => ssoLimiter.sweep(), 30 * 60 * 1000).unref();
 
-const { recipients: reportRecipients, problems: reportRecipientProblems } =
-  parseReportRecipients(process.env.INSTITUTION_REPORT_RECIPIENTS);
-for (const problem of reportRecipientProblems) {
+const reportRecipients = parseReportRecipients(process.env.INSTITUTION_REPORT_RECIPIENTS);
+for (const problem of reportRecipients.problems) {
   console.error("INSTITUTION_REPORT_RECIPIENTS: " + problem);
 }
 
@@ -507,7 +508,7 @@ async function receiveSubmission(req, res, sessionPayload) {
   // email, and prints the reports itself. Taken from the grant in the signed
   // cookie for the same reason delivery_mode is: the entrance decides, not
   // the request body. See lib/report-recipients.js.
-  const forcedRecipient = recipientForGrant(reportRecipients, sessionGrantId);
+  const forcedRecipient = recipientForSession(sessionPayload);
   if (forcedRecipient) applyReportRecipient(submission, forcedRecipient);
 
   const validFullName = getValidSubmissionFullName(submission);
@@ -718,22 +719,56 @@ function applyDeliveryFields(submission, { deliveryMode, grantId, recordId, tick
   return submission;
 }
 
-function buildAccessSessionCookie(grantId, deliveryMode) {
+// Takes the redemption result whole, rather than its pieces, so that reading
+// deliveryMode out of it happens in exactly one place. Spread across the four
+// doors it was a thing each new door had to remember, and forgetting it would
+// have minted an institution session for a public code.
+//
+// `code` is what was presented at the door, when the door had one: typed,
+// carried in an /entry/ link, or resolved from a partner's hand-off token. A
+// single-use /access/<token> link has none, and passes null.
+function buildAccessSessionCookie(result, code = null) {
   const expiresAtSeconds = Math.floor(Date.now() / 1000) + ACCESS_GATE_SESSION_TTL_SECONDS;
   // sid identifies this one redemption, not the grant -- a shared
   // institution code hands the same grantId to many independent sessions,
   // and only the specific session that submits should be cut off (see
   // consumeSessionAndGetClearHeaders).
   const sid = crypto.randomBytes(16).toString("hex");
+  const grantId = result.grantId;
   // The mode is decided once, here, by the grant that was actually redeemed,
   // and sealed into the signed cookie. The submission handler then reads it
   // without a second lookup, and cannot be talked out of it by the browser:
   // forging it means forging the HMAC.
-  const mode = normalizeDeliveryMode(deliveryMode);
-  const cookieValue = signSessionCookie({ grantId, mode, sid, exp: expiresAtSeconds }, ACCESS_GATE_SESSION_SECRET);
+  const mode = normalizeDeliveryMode(result.deliveryMode);
+  // And so is the institution, for the same reason and in the same breath: the
+  // entrance decides where its reports go, and the browser cannot argue. The
+  // slug is carried rather than the code itself -- the code is a credential
+  // and has no business sitting in a cookie once it has been spent.
+  const inst = institutionForEntrance(reportRecipients, { code, grantId });
+  const cookieValue = signSessionCookie(
+    { grantId, mode, inst, sid, exp: expiresAtSeconds },
+    ACCESS_GATE_SESSION_SECRET
+  );
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
     secure: ACCESS_GATE_COOKIE_SECURE
   });
+}
+
+// Where this session's report goes, or null for the ordinary case of sending
+// it to the person who answered. Both callers -- the submission handler and
+// the page asking what to show on the email question -- go through here, so
+// the page cannot promise one thing while the submission does another.
+//
+// The slug comes from the signed cookie. The fall back to the grant covers
+// two cases: an institution listed by `grants` rather than by a code, and a
+// cookie signed before the slug existed, which is a half-hour window after a
+// deploy. Both are as trustworthy as the slug -- grantId is sealed in the same
+// HMAC -- so this is a second place to look, not a weaker one.
+function recipientForSession(sessionPayload) {
+  if (!sessionPayload) return null;
+  const slug = sessionPayload.inst
+    || institutionForEntrance(reportRecipients, { grantId: sessionPayload.grantId });
+  return recipientForInstitution(reportRecipients, slug);
 }
 
 async function handleAccessRedemption(req, res, rawToken) {
@@ -768,7 +803,7 @@ async function handleAccessRedemption(req, res, rawToken) {
   }
 
   res.writeHead(302, {
-    "Set-Cookie": buildAccessSessionCookie(result.grantId, result.deliveryMode),
+    "Set-Cookie": buildAccessSessionCookie(result),
     Location: "/"
   });
   res.end();
@@ -817,7 +852,7 @@ async function handleSsoEntrance(req, res, token) {
 
   res.writeHead(302, {
     Location: "/",
-    "Set-Cookie": buildAccessSessionCookie(result.grantId, result.deliveryMode),
+    "Set-Cookie": buildAccessSessionCookie(result, resolved.code),
     "Cache-Control": "no-store"
   });
   res.end();
@@ -884,8 +919,69 @@ async function handleCodeRedemption(req, res) {
     return;
   }
 
-  res.setHeader("Set-Cookie", buildAccessSessionCookie(result.grantId, result.deliveryMode));
+  res.setHeader("Set-Cookie", buildAccessSessionCookie(result, normalized));
   sendJson(res, 200, { ok: true });
+}
+
+// An institution's printed entrance: GET /entry/<code>. The same credential
+// the code-entry form takes, redeemed the same way against the same row --
+// the only difference is that a phone camera types it instead of a person
+// standing at a clinic desk.
+//
+// It always answers with a redirect to "/", whether it worked or not. On
+// success that is what gets the code out of the address bar; on failure it is
+// the home page, which for an unauthenticated visitor IS the code-entry form,
+// so someone whose scan failed lands somewhere they can still get in. Neither
+// outcome says which it was, for the same reason /access/<token> does not.
+//
+// What this cannot do is make a shared code secret. It is printed on a poster
+// in a waiting room: anyone who photographs it can spend the institution's
+// quota, and the quota, not the URL, is what bounds that.
+async function handleEntryCode(req, res, rawCode) {
+  if (ACCESS_GATE_MODE !== "enforced") {
+    redirectToHome(res);
+    return;
+  }
+
+  // The same limiter as the typed form. One credential, one abuse surface:
+  // metering the form while leaving the link open would just move the
+  // guessing to the link.
+  const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
+  if (!codeRedeemLimiter.check(clientIp)) {
+    redirectToHome(res);
+    return;
+  }
+
+  const normalized = normalizeCode(rawCode);
+  if (!normalized) {
+    redirectToHome(res);
+    return;
+  }
+
+  await accessGateReady;
+  if (!accessGateClient || accessGateClientError) {
+    redirectToHome(res);
+    return;
+  }
+
+  let result;
+  try {
+    result = await accessGateClient.redeemAccessGrant({ tokenHash: hashToken(normalized) });
+  } catch (error) {
+    redirectToHome(res);
+    return;
+  }
+  if (!result.ok) {
+    redirectToHome(res);
+    return;
+  }
+
+  res.writeHead(302, {
+    "Set-Cookie": buildAccessSessionCookie(result, normalized),
+    Location: "/",
+    "Cache-Control": "no-store"
+  });
+  res.end();
 }
 
 function getSessionPayload(req) {
@@ -1040,6 +1136,16 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
+  // An institution's printed QR, below the gate block for the same reason and
+  // let through by the same list.
+  if (req.method === "GET") {
+    const entryCode = parseEntryCode(pathname);
+    if (entryCode) {
+      await handleEntryCode(req, res, entryCode);
+      return;
+    }
+  }
+
   // The two below sit AFTER the gate block for the opposite reason, and that
   // placement is the whole protection -- not the comment above them, and not
   // their absence from isExemptFromGate. Registered before it, as they first were, they ran for
@@ -1052,7 +1158,7 @@ const server = http.createServer(async (req, res) => {
   // Answers only for the session asking, about that session's own entrance.
   if (req.method === "GET" && pathname === "/api/session/delivery") {
     const payload = getSessionPayload(req);
-    const recipient = recipientForGrant(reportRecipients, payload ? payload.grantId : null);
+    const recipient = recipientForSession(payload);
     sendJson(res, 200, recipient
       ? { ok: true, forced: true, label: recipient.label, email: recipient.email }
       : { ok: true, forced: false });

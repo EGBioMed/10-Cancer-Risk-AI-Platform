@@ -133,16 +133,23 @@ test("the submission handler takes the mode from the cookie, not the body", () =
 
 test("the redeemed grant's mode is sealed into the signed cookie", () => {
   // Inside signSessionCookie's payload, so forging it means forging the HMAC.
-  assert.match(serverSource, /signSessionCookie\(\{ grantId, mode, sid, exp: expiresAtSeconds \}/);
-  // EVERY door -- the link, the typed code, the partner hand-off -- must pass
-  // it on, or one of them silently mints an institution session for a public
-  // code. Written as "all call sites agree" rather than a fixed count, because
-  // the count is not the rule: a fourth door added without the mode has to
-  // fail this, and one added correctly has to pass.
-  const everyCall = serverSource.match(/buildAccessSessionCookie\(/g) || [];
-  const withMode = serverSource.match(/buildAccessSessionCookie\(result\.grantId, result\.deliveryMode\)/g) || [];
-  assert(everyCall.length >= 4, "expected the declaration plus the link, the code and the SSO hand-off");
-  assert.equal(withMode.length, everyCall.length - 1, "every redemption path must pass the delivery mode");
+  assert.match(serverSource, /signSessionCookie\(\s*\{ grantId, mode, inst, sid, exp: expiresAtSeconds \}/);
+
+  // The mode is read off the redemption result in exactly one place. It used
+  // to be each door's job to pass it on, checked here by counting call sites;
+  // a door that forgot would have minted an institution session for a public
+  // code. Taking the whole result instead makes forgetting impossible, so what
+  // is checked now is that nobody reintroduced a second reader.
+  const readers = serverSource.match(/result\.deliveryMode/g) || [];
+  assert.equal(readers.length, 1, "deliveryMode is read in more than one place");
+  assert.match(serverSource, /const mode = normalizeDeliveryMode\(result\.deliveryMode\);/);
+
+  // And every door goes through that one place.
+  const calls = serverSource.match(/buildAccessSessionCookie\([^)]*\)/g) || [];
+  assert(calls.length >= 5, "expected the declaration plus the link, the typed code, the QR entrance and the SSO hand-off");
+  for (const call of calls.slice(1)) {
+    assert.match(call, /^buildAccessSessionCookie\(result\b/, `${call} does not pass the redemption result`);
+  }
 });
 
 // Falling back to the institution webhook would send a free user's

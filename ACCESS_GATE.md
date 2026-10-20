@@ -158,6 +158,76 @@ them.
    endpoint. Link redemption is unaffected — no rate limiter there, unchanged
    justification (256-bit entropy makes brute force infeasible).
 
+## Scanning a code instead of typing it: `GET /entry/<code>`
+
+An institution that collects in person would rather print a QR than have
+people type a code at a desk. `/entry/<code>` carries the code in the link:
+
+```
+https://<host>/entry/egshuangho2026
+```
+
+`npm run access:grant -- --type code ...` prints this URL next to the code it
+just minted, so nobody assembles it by hand.
+
+- It is **the same credential and the same row** as the typed form: same
+  `normalizeCode`, same hash, same `redeemAccessGrant`, same quota and the
+  same `use_count`. The only difference is what does the typing.
+- It shares the typed form's rate limiter. One credential, one abuse surface.
+- It always answers `302 → /`, whether the code worked or not. On success that
+  is what gets the code out of the address bar; on failure `/` is the
+  code-entry page, so a failed scan still lands somewhere a person can get in.
+  Neither outcome says which it was.
+- **It does not make a shared code secret.** It is printed on a poster in a
+  waiting room: anyone who photographs it can spend the institution's quota,
+  and the URL stays in the scanner's browser history. The quota is what bounds
+  that, not the link. So mint a code per institution with a real `--max-uses`
+  and top it up, rather than treating the URL as private.
+
+## Where an institution's reports go: `INSTITUTION_REPORT_RECIPIENTS`
+
+Some entrances deliver every report to one institutional mailbox instead of to
+the person who answered — 雙和醫院 collects at a clinic, many respondents have
+no email, and the hospital prints the reports and hands them over.
+
+One JSON entry per institution, listing the codes that institution enters
+under:
+
+```json
+{
+  "shuangho": {
+    "label": "雙和醫院",
+    "email": "reports@example.org",
+    "codes": ["egshuangho2026"]
+  }
+}
+```
+
+- The key is a slug: 1–32 lowercase letters, digits, `-` or `_`. It is sealed
+  into the signed session cookie at redemption and never shown to anyone.
+- `label` is what the respondent is shown on the email question — "your report
+  will be sent to 雙和醫院" — so it is required. An address alone tells someone
+  standing in a clinic nothing.
+- `codes` are matched through the same `normalizeCode` as a typed code. List
+  more than one when a code is re-minted; that is the reason the whitelist is
+  keyed on the institution rather than on a `grant_id`, which would quietly
+  stop matching the day a new code was issued.
+- `grants` (optional, a list of `grant_id`s) covers the one entrance with no
+  code at all: a single-use `/access/<token>` link.
+- A code or grant claimed by two institutions routes to **neither**, and the
+  problem is logged at startup. Guessing would address a health report to the
+  wrong hospital.
+- A malformed entry is dropped and logged; it never stops the server starting.
+  That entrance then asks the respondent for an address as usual, which is
+  visibly wrong rather than quietly wrong.
+- The whitelist decides **where reports go**, not who may enter. An
+  institution code that is not listed still works; its respondents are simply
+  asked for their own email.
+
+⚠ Reports from these entrances do not go to the person who answered, so the
+consent text on the form has to say so. That is an IRB question, not a
+configuration one.
+
 ## Environment variables
 
 | Variable | Purpose | Default |
@@ -167,6 +237,7 @@ them.
 | `ACCESS_GATE_SESSION_TTL_HOURS` | How long a redeemed session lasts. | `0.5` (30 min) |
 | `ACCESS_GATE_COOKIE_SECURE` | Set `false` only for local HTTP testing without TLS. | `true` |
 | `PUBLIC_BASE_URL` | Base URL `scripts/grant-access.js` prints links against. | — |
+| `INSTITUTION_REPORT_RECIPIENTS` | Institution whitelist: which entrances deliver their reports to an institutional mailbox. See above. | — |
 
 Generate a session secret:
 
