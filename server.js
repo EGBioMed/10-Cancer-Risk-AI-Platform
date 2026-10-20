@@ -852,30 +852,7 @@ const server = http.createServer(async (req, res) => {
     return;
   }
 
-  // What the page needs in order to tell the respondent the truth about where
-  // their report goes. Behind the gate: it answers only for the session asking,
-  // and only about that session's own entrance.
-  //
-  // It exists because the alternative is silence. The server overwrites the
-  // address anyway, so the questionnaire would work without this -- the person
-  // would simply be asked for an email, give one, and never learn that the
-  // report went to the clinic instead. Being asked for something that is then
-  // disregarded is not a small UI wrinkle on a consent form.
-  if (req.method === "GET" && pathname === "/api/session/delivery") {
-    const payload = getSessionPayload(req);
-    const recipient = recipientForGrant(reportRecipients, payload ? payload.grantId : null);
-    sendJson(res, 200, recipient
-      ? { ok: true, forced: true, label: recipient.label, email: recipient.email }
-      : { ok: true, forced: false });
-    return;
-  }
 
-  // Deliberately not in isExemptFromGate: this endpoint spends money, so it
-  // stays behind the gate like everything else that is not the door itself.
-  if (req.method === "POST" && pathname === "/api/chat/classify") {
-    await handleChatClassify(req, res);
-    return;
-  }
 
   if (req.method === "GET" && pathname === "/api/health") {
     await postgresReady;
@@ -953,6 +930,32 @@ const server = http.createServer(async (req, res) => {
     } else {
       sendJson(res, 403, { ok: false, error: "Access requires a valid payment confirmation link." });
     }
+    return;
+  }
+
+  // Both of these sit AFTER the gate block, and that placement is the whole
+  // protection -- not the comment above them, and not their absence from
+  // isExemptFromGate. Registered before it, as they first were, they ran for
+  // anyone: /api/chat/classify was reachable with no session at all, and
+  // would have spent money on behalf of whoever found it the moment a key
+  // was configured. The test that was supposed to cover this checked the
+  // exemption list and the route's existence, neither of which is
+  // reachability; test-gate-coverage.js asks the running server instead.
+
+  // Answers only for the session asking, about that session's own entrance.
+  if (req.method === "GET" && pathname === "/api/session/delivery") {
+    const payload = getSessionPayload(req);
+    const recipient = recipientForGrant(reportRecipients, payload ? payload.grantId : null);
+    sendJson(res, 200, recipient
+      ? { ok: true, forced: true, label: recipient.label, email: recipient.email }
+      : { ok: true, forced: false });
+    return;
+  }
+
+  // Every call is a billed model request, so an open endpoint is an open
+  // invoice.
+  if (req.method === "POST" && pathname === "/api/chat/classify") {
+    await handleChatClassify(req, res);
     return;
   }
 

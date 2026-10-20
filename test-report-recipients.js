@@ -179,7 +179,8 @@ test("an unreachable or malformed answer leaves the question as it was", async (
   }
 });
 
-test("the delivery endpoint is behind the gate", () => {
+// Reachability is tested against a running server in test-gate-coverage.js.
+test("the delivery endpoint is not in the gate exemption list", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   // It answers about a session, so it must have one. isExemptFromGate is the

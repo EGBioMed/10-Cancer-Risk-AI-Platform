@@ -213,7 +213,12 @@ test("the questionnaire is read once and reused", async () => {
 // 4. Wired into the server.
 // ---------------------------------------------------------------------------
 
-test("server.js routes the endpoint behind the gate", () => {
+// Reachability is tested against a running server in test-gate-coverage.js.
+// This only pins the exemption list, which is necessary and nowhere near
+// sufficient: the first version of this file asserted the path was absent
+// from isExemptFromGate and that the route existed, and both were true while
+// the endpoint answered anyone who asked.
+test("the endpoint is not in the gate exemption list", () => {
   const fs = require("node:fs");
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
