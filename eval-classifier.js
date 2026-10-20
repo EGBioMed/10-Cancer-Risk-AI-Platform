@@ -190,14 +190,26 @@ async function main() {
   const total = selected.length;
   const harmful = tally.wrong + tally.overconfident;
   const cost = classifierModule.priceOf(model, { input_tokens: inputTokens, output_tokens: outputTokens });
-  const pct = (value) => `${((value / total) * 100).toFixed(1)}%`;
+
+  // Rates are over the calls that came back, not over the cases attempted. A
+  // run where every call failed divides zero harmful answers by the full case
+  // count and reports 0.0% -- which reads as a perfect score, and this is the
+  // number that gets quoted upwards. Seen on the first dry run, with no API
+  // key: 49 failures, "有害率 0.0%".
+  const scored = total - tally.errors;
+  const pct = (value) => (scored > 0 ? `${((value / scored) * 100).toFixed(1)}%` : "—");
 
   console.log("\n" + "=".repeat(64));
-  console.log(`有害率            ${String(harmful).padStart(3)} / ${total}  ${pct(harmful)}   ← 看這個`);
+  if (tally.errors > 0) {
+    console.log(`⚠ ${tally.errors} / ${total} 筆呼叫失敗，沒有結果。`);
+    console.log(`  以下比率只以成功回來的 ${scored} 筆計算${scored === 0 ? "——沒有任何一筆成功，下面的數字沒有意義" : ""}。`);
+    console.log("-".repeat(64));
+  }
+  console.log(`有害率            ${String(harmful).padStart(3)} / ${scored}  ${pct(harmful)}   ← 看這個`);
   console.log(`  選錯選項        ${String(tally.wrong).padStart(3)}`);
   console.log(`  該棄權卻選了    ${String(tally.overconfident).padStart(3)}`);
   console.log("-".repeat(64));
-  console.log(`完全正確          ${String(tally.correct + tally.abstained_right).padStart(3)} / ${total}  ${pct(tally.correct + tally.abstained_right)}`);
+  console.log(`完全正確          ${String(tally.correct + tally.abstained_right).padStart(3)} / ${scored}  ${pct(tally.correct + tally.abstained_right)}`);
   console.log(`  選對            ${String(tally.correct).padStart(3)}`);
   console.log(`  該棄權且棄權了  ${String(tally.abstained_right).padStart(3)}`);
   console.log(`該選卻棄權        ${String(tally.abstained_wrong).padStart(3)}  （保守，不危險：會再問一次）`);
@@ -205,7 +217,7 @@ async function main() {
   console.log("-".repeat(64));
   console.log(`token             輸入 ${inputTokens}  輸出 ${outputTokens}`);
   if (cost !== null) {
-    console.log(`花費              US$${cost.toFixed(4)}  （每題 US$${(cost / total).toFixed(5)}）`);
+    console.log(`花費              US${cost.toFixed(4)}  （每成功一題 US${scored > 0 ? (cost / scored).toFixed(5) : "—"}）`);
   } else {
     console.log(`花費              ${model} 不在價目表裡，無法計價`);
   }
