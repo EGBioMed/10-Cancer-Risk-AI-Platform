@@ -15,6 +15,7 @@ const {
 const {
   POWER_AUTOMATE_CONTRACT_VERSION,
   POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS,
+  POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS,
   buildPowerAutomatePayload
 } = require("./lib/power-automate-adapter");
 
@@ -146,6 +147,11 @@ test("Power Automate adapter converts the validated 1.2 payload to the deployed 
   }
   assert.equal(payload.rows, submission.rows);
   assert.equal(payload.optimized_feature_row, submission.optimized_feature_row);
+  // Forwarded, not stripped: this is the only record of which questions were
+  // skipped, and the Flow is what carries it to the research table.
+  for (const field of POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS) {
+    assert.equal(payload[field], submission[field], `${field} must reach the Flow unchanged`);
+  }
   assert.equal(Object.keys(payload).length, Object.keys(submission).length - POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.length);
   assert.deepEqual(validateTransitionalSubmission(submission), []);
 });
@@ -189,7 +195,38 @@ test("generated deployed-flow trigger schema is synchronized with the adapter", 
     assert(!(field in deployedSchema.properties), `${field} must not appear in the deployed Flow trigger schema`);
     assert(!deployedSchema.required.includes(field), `${field} must not be required by the deployed Flow trigger schema`);
   }
+
+  // Accepted but not demanded. additionalProperties is false, so a field
+  // missing from properties is rejected outright -- and a field listed in
+  // required is rejected while this service is still not sending it, or after
+  // a rollback. Only "present and optional" validates both payloads, which is
+  // what lets the Flow and Render be changed on different days.
+  for (const field of POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS) {
+    assert(field in deployedSchema.properties, `${field} must be accepted by the deployed Flow trigger schema`);
+    assert(!deployedSchema.required.includes(field), `${field} must not be required by the deployed Flow trigger schema`);
+  }
+
   assert.deepEqual(deployedSchema.properties.contract_version.enum, [POWER_AUTOMATE_CONTRACT_VERSION]);
+});
+
+// The internal contract pins answer_code_rows to exactly one entry per
+// canonical question. That number has already moved twice (76, 77, 78), and
+// each move would otherwise mean: add a question, and every submission is
+// rejected at the trigger until someone re-pastes a schema into the Flow that
+// serves paying customers. The Flow does not look inside the array -- it
+// forwards it -- so the Flow's copy carries no count and no item shape.
+test("the Flow's copy of answer_code_rows is not pinned to today's question count", () => {
+  const source = require("./contracts/power-automate/transitional-submission.schema.json");
+  assert.equal(typeof source.properties.answer_code_rows.minItems, "number", "the internal contract stopped pinning the count");
+
+  for (const file of ["deployed-flow-trigger.schema.json", "deployed-flow-trigger-public.schema.json"]) {
+    const flow = require(`./contracts/power-automate/${file}`);
+    const field = flow.properties.answer_code_rows;
+    assert.equal(field.type, "array", `${file}: answer_code_rows must still be an array`);
+    assert.equal("minItems" in field, false, `${file}: a question count at the trigger is a future outage`);
+    assert.equal("maxItems" in field, false, `${file}: a question count at the trigger is a future outage`);
+    assert.equal("items" in field, false, `${file}: the Flow does not look inside this array`);
+  }
 });
 
 test("backend mapping covers the frozen 71 features and references valid answer codes", () => {

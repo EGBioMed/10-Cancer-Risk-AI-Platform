@@ -491,6 +491,19 @@ if (deliveryMode === "public") {
 
 流程 A 因此**連觸發 schema 都不需要重貼**,這是「流程 A 零修改」的最後一塊。
 
+> **2026-10-27 更新:這句話不再成立。** 為了讓機構線的送件也帶著「哪幾題被跳過」
+> (`answer_code_rows`,見 `UNKNOWN_ANSWER_AUDIT.md`),流程 A 的觸發 schema 必須
+> 重貼一次。`additionalProperties: false` 沒有留下別的路:要嘛重貼,要嘛機構線
+> 永遠分不出「跳過」與「回答否」。
+>
+> 這次重貼的風險是有界的,而且貼之前可以自己確認:**新增一個選填欄位,沒有刪除任何
+> 欄位,沒有任何欄位變嚴格**——
+> `git log -p --follow contracts/power-automate/deployed-flow-trigger.schema.json`。
+> 因為是選填,重貼之後、Render 尚未部署之前,流程 A 的行為完全不變。
+>
+> 步驟與先後順序見 `POWER_AUTOMATE_RUNBOOK.md`「Sending `answer_code_rows` to the
+> Flow」。下面這節描述的仍然是當時的決定,不是現狀。
+
 schema 檔案相應拆成兩份:
 
 | 檔案 | 對應流程 | 內容 |

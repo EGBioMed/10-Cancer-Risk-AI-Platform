@@ -89,8 +89,9 @@ for `country` in the HTTP action's inputs, not just in the questionnaire answers
 internal contract that Render validates browser submissions against. It is
 **not** what the deployed Flow's trigger receives. Every outbound request is
 passed through `buildPowerAutomatePayload()` (`lib/power-automate-adapter.js`)
-first, which strips `answer_code_schema_version`, `consent_record`, and
-`answer_code_rows`, and rewrites `contract_version` to
+first, which strips `answer_code_schema_version` and `consent_record`
+(`answer_code_rows` was stripped too until 2026-10-27; see "Sending
+`answer_code_rows` to the Flow" below), and rewrites `contract_version` to
 `POWER_AUTOMATE_CONTRACT_VERSION` (currently `assessment-submission/1.0.0`)
 before the Flow ever sees the request. Pasting the full schema into the
 Flow's trigger or Parse JSON action makes it require fields the adapter never
@@ -150,9 +151,12 @@ declared versions or ordered field lists do not match the frozen contract.
 Contract `assessment-submission/1.1.0` adds language-neutral coded answers, but
 this is an **internal** version between the browser and Render only. The
 deployed Flow still only ever receives the older adapted shape described
-above -- do not expect (or require) it to accept `answer_code_schema_version`,
-`consent_record`, or `answer_code_rows` until the Flow itself is migrated off
+above -- do not expect (or require) it to accept `answer_code_schema_version`
+or `consent_record` until the Flow itself is migrated off
 `buildPowerAutomatePayload()`'s downgrade path, which has not happened yet.
+`answer_code_rows` left that list on 2026-10-27 and is now forwarded; it is
+**optional** in both generated trigger schemas, which is what allows the Flow
+and this service to be changed on different days. See below.
 
 Do not use `Generate from sample` after installing this schema. A single sample may
 infer optional or empty fields incorrectly and cause the trigger and Parse JSON
@@ -161,6 +165,86 @@ definitions to drift again.
 Before replacing either Power Automate schema, run `npm test` locally. After saving
 the Flow, submit one Chinese and one English response and confirm that both Excel
 scripts, the current model HTTP action, and both report-language branches succeed.
+
+## Sending `answer_code_rows` to the Flow (2026-10-27)
+
+### Why
+
+A skipped question reaches the model as a `0`. For thirteen questions --
+smoking, betel nut, secondhand smoke, radiation, cooking fumes, air pollution,
+weight change, personal and family cancer history, and four diet questions --
+that is byte-identical to an explicit "no" (`UNKNOWN_ANSWER_AUDIT.md`). Only
+the derived row was ever stored, so **every submission taken before this change
+is permanently ambiguous**. The column to fix it
+(`research_submissions.answer_code_rows_json`) has existed since 2026-10-07 and
+is still NULL in every row, because the adapter was stripping the field before
+the Flow could see it. Nothing about this is recoverable in hindsight; the only
+question is when it stops getting worse.
+
+### Order of operations
+
+The trigger schemas are `additionalProperties: false`, so sending a field the
+Flow has not been told about fails **every** submission with
+`TriggerInputSchemaMismatch` (this is what happened on 2026-08-19). The field
+is therefore optional in the generated schemas, which means each step below is
+safe on its own and safe to stop after:
+
+1. **Paste the regenerated schema into the Flow's two actions**, for each Flow
+   that should carry the field. Institution line (Flow A):
+   `contracts/power-automate/deployed-flow-trigger.schema.json`. Free line
+   (Flow B): `...-public.schema.json`. Nothing changes yet -- the Flow merely
+   stops refusing a field it is not yet being sent.
+2. **Deploy this service.** The field now arrives. The Flow ignores it.
+3. **Add it to the HTTP action that posts to `/api/research-rows`**, as one
+   more line in that action's body:
+
+   ```text
+   "answer_code_rows": @{triggerBody()?['answer_code_rows']}
+   ```
+
+   `body('Parse_JSON')?['answer_code_rows']` resolves to the same value, since
+   Parse JSON's Content is `triggerBody()`. **Match whatever that action's other
+   lines already use** rather than choosing from this page -- open the action and
+   look, do not assume which one is there.
+4. **Verify** from the data API's SSH console:
+   `node /home/site/wwwroot/check-answer-status.js`. It reports whether rows
+   are arriving with the field filled in, and how often a question was skipped.
+
+**Step 1 must come before step 2.** That is the whole point of the ordering:
+`additionalProperties: false` means a Flow that has not been shown the field
+rejects the submission carrying it, so deploying this service first takes
+production down until someone finishes pasting. In that direction the steps are
+otherwise independent -- days apart is fine, each is safe to stop after, and
+rolling this service back is safe at any time because the field is optional.
+
+Step 3 without steps 1-2 stores `null`, silently -- which looks exactly like
+"nobody skipped anything".
+
+### Flow A has to be re-pasted, and that was supposed to never happen
+
+`FREEMIUM_SPEC.md` §7.6 promised the institution Flow would never need its
+trigger schema re-pasted, and this change breaks that promise. It is the price
+of institution-line training data: `additionalProperties: false` admits no
+other route. The diff is bounded and worth checking before pasting --
+**one added optional property, nothing removed, nothing made stricter**:
+
+```bash
+git log -p --follow contracts/power-automate/deployed-flow-trigger.schema.json
+```
+
+Skipping step 1 for Flow A is a legitimate choice: the free line then carries
+answer status and the institution line does not. Do not skip it by forgetting.
+
+### Why the Flow's copy of the field is loose
+
+The internal contract pins `answer_code_rows` to exactly one entry per
+canonical question. That count has already moved twice (76 → 77 → 78). Pinned
+at the trigger, it would turn "a question was added" into "every submission is
+rejected until someone re-pastes a schema into the Flow serving paying
+customers". Render validates the full shape before sending and the Flow only
+forwards the array, so the generated copy carries no item shape and no count --
+the same reasoning that leaves the feature row objects unexpanded. A test
+enforces this (`test-contract.js`).
 
 ## QA Flow
 
@@ -191,9 +275,9 @@ Production Flow should parse the incoming submission and route rows by purpose:
 | Restricted contact Excel / Office Script | `string(body('Parse_JSON')?['contact_row'])` |
 | Email/report content | Report result plus `full_name`, `email`, and human-readable rows as needed |
 
-`answer_code_rows` is reserved for the future backend mapping service. Do not flatten
-it into the current model HTTP body and do not replace `ai_api_feature_row` until
-backend parity testing has been completed.
+`answer_code_rows` goes to the data API's `/api/research-rows` action and nowhere
+else. Do not flatten it into the current model HTTP body and do not replace
+`ai_api_feature_row` until backend parity testing has been completed.
 
 Do not send `optimized_feature_row` directly to the AI API unless the AI API schema accepts all platform encodings.
 

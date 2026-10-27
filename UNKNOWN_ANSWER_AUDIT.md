@@ -145,9 +145,38 @@ anxiety_freq: mapFrequency(anxiety),                                        // ?
 - 重試用 `COALESCE` 而非 `VALUES()`，所以一次沒帶該欄位的重試不會抹掉先前存下的
 - `answer_code_rows` 不含自由文字、姓名或 Email，只有題號、狀態與答案碼——所以放在研究資料表是安全的
 
-**還需要人手動做一件事：** 流程 B／C 送往 `/api/research-rows` 的 HTTP body 要加上
-`"answer_code_rows": @{triggerBody()?['answer_code_rows']}`。
-在那之前，新送件的這個欄位是 NULL，而 NULL 的意思是「這筆早於本次變更」，與「沒有人跳過」是不同的事。
+### 2026-10-27：平台端補上，流程端待手動
+
+上面那句「流程改一行就好」當時是錯的。`buildPowerAutomatePayload()` 會在送出前把
+`answer_code_rows` **整個拿掉**，流程根本收不到這個欄位——真照那句話去改，
+`triggerBody()?['answer_code_rows']` 取到的是 `null`，資料 API 存進去的還是 NULL，
+而且不會有任何錯誤訊息。
+
+平台端已經改好：
+
+- `lib/power-automate-adapter.js` 不再剝除 `answer_code_rows`
+- 兩份觸發 schema 都新增這個欄位，而且是**選填**——因為頂層是
+  `additionalProperties: false`，流程必須先接受這個欄位，Render 才能開始送；
+  選填則讓兩邊可以分開、相隔幾天也沒關係，中間不存在壞掉的時間窗。
+  **但順序是固定的：先貼 schema，再部署 Render。** 反過來做，流程會拒收每一筆送件
+- 流程那份故意不帶題數與逐項結構（題數已經從 76→77→78 變過兩次，釘在觸發程序上
+  等於「以後加一題，全線送件被拒」）
+
+**還需要人手動做三件事，有先後順序：**
+
+1. 把重新產生的 schema 貼進流程的 HTTP 觸發程序與 Parse JSON 兩處
+   （機構線 A：`deployed-flow-trigger.schema.json`；免費線 B：`...-public.schema.json`）
+2. 部署 Render
+3. 流程送往 `/api/research-rows` 的 HTTP body 加上
+   `"answer_code_rows": @{triggerBody()?['answer_code_rows']}`
+
+只做第 3 步而沒有前兩步，存進去的是 `null`——看起來與「沒有人跳過」完全一樣。
+完整步驟、流程 A 要重貼 schema 的代價、以及驗證方式，見
+`POWER_AUTOMATE_RUNBOOK.md`「Sending `answer_code_rows` to the Flow」。
+
+驗證：資料 API 的 SSH 主控台執行 `node /home/site/wwwroot/check-answer-status.js`。
+在那之前，新送件的這個欄位仍是 NULL，而 NULL 的意思是「這筆早於本次變更」，
+與「沒有人跳過」是不同的事。
 
 ---
 

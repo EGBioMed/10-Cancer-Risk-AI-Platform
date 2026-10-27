@@ -65,6 +65,10 @@
     "report_language": {
       "type": "string"
     },
+    "answer_code_rows": {
+      "type": "array",
+      "description": "Per-question coded answers with status answered|unknown|not_applicable. Validated in full by the Render intermediary; forwarded here verbatim, so this copy deliberately omits the item shape and the entry count. Pass it on unexamined: body('Parse_JSON')?['answer_code_rows']."
+    },
     "rows": {
       "type": "array",
       "minItems": 1,

@@ -2,7 +2,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   POWER_AUTOMATE_CONTRACT_VERSION,
-  POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS
+  POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS,
+  POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS
 } = require("../lib/power-automate-adapter");
 
 const root = path.resolve(__dirname, "..");
@@ -73,7 +74,47 @@ stripUnsupportedSchemaKeywords(schema);
 POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.forEach((field) => {
   delete schema.properties[field];
 });
-schema.required = schema.required.filter((field) => !POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.includes(field));
+
+// The optional fields stay in properties -- additionalProperties is false, so
+// a field absent from the schema is a field the Flow refuses -- but they are
+// removed from required, so the same schema validates a payload sent before
+// this service forwards them and one sent after.
+//
+// Their constraints are dropped with them. answer_code_rows is pinned to
+// exactly 78 entries in the internal contract, and that number has moved twice
+// already (76, 77, 78). A count pinned at the trigger turns "a question was
+// added" into "every submission is rejected until someone re-pastes a schema
+// into the Flow serving paying customers". Render validates the full shape
+// before sending; the Flow only forwards the array, so it does not need to
+// re-check what it will not look inside. Same reasoning as the feature row
+// objects left unexpanded above.
+const OPTIONAL_FIELD_FLOW_SCHEMA = {
+  answer_code_rows: {
+    type: "array",
+    description:
+      "Per-question coded answers with status answered|unknown|not_applicable. " +
+      "Validated in full by the Render intermediary; forwarded here verbatim, so " +
+      "this copy deliberately omits the item shape and the entry count. Pass it on " +
+      "unexamined: body('Parse_JSON')?['answer_code_rows']."
+  }
+};
+
+POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS.forEach((field) => {
+  const flowSchema = OPTIONAL_FIELD_FLOW_SCHEMA[field];
+  if (!flowSchema) {
+    throw new Error(
+      `${field} is optional at the trigger but has no Flow-facing schema here. ` +
+      "Decide what the Flow should be shown before adding it to the list -- copying " +
+      "the internal contract's constraints is usually wrong, see the comment above."
+    );
+  }
+  schema.properties[field] = JSON.parse(JSON.stringify(flowSchema));
+});
+schema.required = schema.required.filter(
+  (field) =>
+    !POWER_AUTOMATE_UNSUPPORTED_ROOT_FIELDS.includes(field)
+    && !POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS.includes(field)
+);
 schema.properties.contract_version.enum = [POWER_AUTOMATE_CONTRACT_VERSION];
 schema.title = "EG BioMed deployed Power Automate Flow trigger (adapted shape)";
 
