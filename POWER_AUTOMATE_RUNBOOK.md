@@ -183,10 +183,36 @@ question is when it stops getting worse.
 
 ### Order of operations
 
-The trigger schemas are `additionalProperties: false`, so sending a field the
-Flow has not been told about fails **every** submission with
-`TriggerInputSchemaMismatch` (this is what happened on 2026-08-19). The field
-is therefore optional in the generated schemas, which means each step below is
+There are two `additionalProperties: false` schemas between the browser and the
+research table, at opposite ends, and a field that one end has not been told
+about is **rejected outright, not ignored**:
+
+- the Flow's trigger schema -- an unknown field fails every submission with
+  `TriggerInputSchemaMismatch` (2026-08-19);
+- the data API's `research-row.schema.json` -- an unknown field returns
+  `400 Invalid research row schema`, and the research row is **not stored at
+  all** (2026-10-27; see step 0).
+
+So the field has to be accepted at both ends before either end sends it.
+
+0. **Check that the deployed data API accepts the field**, before touching any
+   Flow. In the data API's Azure SSH console:
+
+   ```bash
+   grep -c answer_code_rows /home/site/wwwroot/server.js
+   ```
+
+   `0` means the deployed copy predates the column and **step 3 will destroy
+   research rows rather than enrich them**. That is what happened on
+   2026-10-27: `egbiomed-ai-data-api` has no CI/CD, every file is uploaded by
+   hand, and the commit adding the column (`05950bb`, 2026-10-07) had been in
+   git for twenty days without ever reaching the box, which was still running
+   `a20fcae` from 2026-09-18. Nothing in either repository said so; the only
+   way to know is to look at the box. See that repo's `DEPLOYMENT.md`.
+
+   If it prints `0`, deploy the data API first and come back.
+
+The field is optional in the generated trigger schemas, so each step below is
 safe on its own and safe to stop after:
 
 1. **Paste the regenerated schema into the Flow's two actions**, for each Flow
@@ -202,10 +228,51 @@ safe on its own and safe to stop after:
    "answer_code_rows": @{triggerBody()?['answer_code_rows']}
    ```
 
-   `body('Parse_JSON')?['answer_code_rows']` resolves to the same value, since
-   Parse JSON's Content is `triggerBody()`. **Match whatever that action's other
-   lines already use** rather than choosing from this page -- open the action and
-   look, do not assume which one is there.
+   The Parse JSON action in the deployed Flows is named **`剖析_JSON`**, not
+   `Parse_JSON`, so the other form of this is
+   `@{body('剖析_JSON')?['answer_code_rows']}`. Both resolve to the same value,
+   because that action's Content is `triggerBody()`. **Match whatever that
+   action's other lines already use** rather than choosing from this page --
+   open the action and look. Action names are editable, so a renamed Parse JSON
+   breaks every `body('...')` reference in the Flow at once.
+
+   **This is not the `/predict` or `/generate_report` action.** Those two share
+   a body that reads
+   `addProperty(addProperty(coalesce(...ai_api_feature_row, ...excel_row), 'lang', ...), 'name', ...)`
+   -- if that is what you are looking at, you are in the wrong action.
+   `answer_code_rows` must not reach the model request: the model schema takes
+   `model-features/1.0.0` plus `country`, and `addProperty` throws outright when
+   the key already exists (the 2026-09-08 outage). The action to edit is the one
+   whose URI ends in `/api/research-rows`.
+
+   **What that action's body looks like** (read off the deployed Flow on
+   2026-10-27; `PIPELINE_READ_FIRST.md`'s diagram predates it and still shows
+   research rows going to Excel Online via 執行指令碼). The action's own name is
+   not recorded here yet -- find it by URI, not by name:
+
+   ```json
+   {
+     "record_id": @{body('剖析_JSON')?['optimized_feature_row']?['record_id']},
+     "submitted_at": @{body('剖析_JSON')?['submitted_at']},
+     "language": @{body('剖析_JSON')?['language']},
+     "report_language": @{body('剖析_JSON')?['report_language']},
+     "contract_version": @{body('剖析_JSON')?['contract_version']},
+     "questionnaire_version": @{body('剖析_JSON')?['questionnaire_version']},
+     "excel_row": @{body('剖析_JSON')?['excel_row']},
+     "answer_code_rows": @{body('剖析_JSON')?['answer_code_rows']}
+   }
+   ```
+
+   The last line is the one being added; `excel_row` gains a trailing comma.
+
+   **No quotes around the token**, matching every other line in this body.
+   Quoting it sends the array as a string, `Array.isArray` in `storeResearchRow`
+   is then false, and the column is written as NULL -- silently, and
+   indistinguishably from a Flow that was never edited. `excel_row` on the line
+   above posts an object through the same unquoted form, which is the reason to
+   expect the array survives as an array; `check-answer-status.js` is what
+   settles it. A Flow run with no red marks is not evidence: the API accepts the
+   request either way.
 4. **Verify** from the data API's SSH console:
    `node /home/site/wwwroot/check-answer-status.js`. It reports whether rows
    are arriving with the field filled in, and how often a question was skipped.
