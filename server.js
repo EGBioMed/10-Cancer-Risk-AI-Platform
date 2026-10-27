@@ -802,8 +802,16 @@ async function handleAccessRedemption(req, res, rawToken) {
     return;
   }
 
+  // The raw token is passed as the presented credential, even though this
+  // entrance usually carries a random single-use token that no whitelist will
+  // ever list. The case it is here for is 雙和's: a 32-character lowercase
+  // alphanumeric code satisfies both this path's pattern and normalizeCode, so
+  // the same credential can arrive at /access/<it> or at /entry/<it>. Leaving
+  // this null made the institution resolve at one URL and not the other, which
+  // is the kind of difference nobody finds until a hospital's reports go to
+  // the wrong place.
   res.writeHead(302, {
-    "Set-Cookie": buildAccessSessionCookie(result),
+    "Set-Cookie": buildAccessSessionCookie(result, rawToken),
     Location: "/"
   });
   res.end();

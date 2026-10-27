@@ -22,7 +22,7 @@ const { parseEntryCode, isExemptFromGate, hashToken, normalizeCode } = require("
 // all, as in test-gate-coverage.js -- makes every redemption fail, which is
 // indistinguishable from an entrance that does not work.
 
-const SHUANGHO_CODE = "egshuangho2026";
+const SHUANGHO_CODE = "egshuangho2026xxxxxxxxxxxxxxxxxx";
 const UNLISTED_CODE = "egsomeoneelse9";
 const WHITELIST = {
   shuangho: {
@@ -233,6 +233,21 @@ test("a refused scan and a successful one are told apart only by the cookie", as
   const bad = await scan("egnotarealcode");
   assert.equal(good.status, bad.status);
   assert.equal(good.headers.get("location"), bad.headers.get("location"));
+});
+
+// 雙和's own code is 32 lowercase alphanumerics, which satisfies both
+// /access/<token> and normalizeCode. So the QR may point at either path, and
+// both have to reach the same mailbox -- the alternative is an institution
+// whose reports depend on which URL got printed.
+test("a code that is also a valid access token reaches the same mailbox either way", async () => {
+  const viaEntry = await scan(SHUANGHO_CODE);
+  const viaAccess = await fetch(`${base}/access/${SHUANGHO_CODE}`, { redirect: "manual" });
+  assert.equal(viaAccess.status, 302, "the 32-character code is not accepted as an access token");
+
+  const fromEntry = await deliveryFor(sessionFrom(viaEntry));
+  const fromAccess = await deliveryFor(sessionFrom(viaAccess));
+  assert.deepEqual(fromAccess.body, fromEntry.body);
+  assert.equal(fromAccess.body.label, "雙和醫院");
 });
 
 // ------------------------------------------------------------------ the gate
