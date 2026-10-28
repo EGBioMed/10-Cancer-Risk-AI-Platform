@@ -9,7 +9,7 @@
     },
     "questionnaire_version": {
       "type": "string",
-      "enum": ["questionnaire/2026-09-08-v19.9-phase1"]
+      "enum": ["questionnaire/2026-10-27-v19.10-phase1"]
     },
     "consent_version": {
       "type": "string"
@@ -78,8 +78,8 @@
     },
     "answer_code_rows": {
       "type": "array",
-      "minItems": 78,
-      "maxItems": 78,
+      "minItems": 81,
+      "maxItems": 81,
       "items": {
         "type": "object",
         "additionalProperties": false,

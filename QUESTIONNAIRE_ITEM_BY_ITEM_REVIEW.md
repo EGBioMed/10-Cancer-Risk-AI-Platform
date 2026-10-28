@@ -1,10 +1,10 @@
 # 問卷逐題審核文字與邏輯規格
 
-問卷版本：`questionnaire/2026-09-08-v19.9-phase1`  
+問卷版本：`questionnaire/2026-10-27-v19.10-phase1`  
 答案代碼版本：`question-answer-codes/1.0.0`  
 知情同意版本：`consent/2026-08-26`  
-審核範圍：受試者實際會被詢問的 82 個題目定義（含知情同意、姓名與人種題）。
-其中 78 題納入正式資料契約（answer_code_rows）；其餘 4 題分別為知情同意紀錄、聯絡用途（姓名、Email）與刻意排除於契約外的人種題，皆不進入模型特徵或規則引擎運算。各題「資料處理方式」欄已個別註明。
+審核範圍：受試者實際會被詢問的 85 個題目定義（含知情同意、姓名與人種題）。
+其中 81 題納入正式資料契約（answer_code_rows）；其餘 4 題分別為知情同意紀錄、聯絡用途（姓名、Email）與刻意排除於契約外的人種題，皆不進入模型特徵或規則引擎運算。各題「資料處理方式」欄已個別註明。
 
 ## 共通規則
 
@@ -251,6 +251,7 @@
 | `country.option_05` | 日本 | Japan |
 | `country.option_06` | 加拿大 | Canada |
 | `country.option_07` | 馬來西亞 | Malaysia |
+| `country.option_08` | 越南 | Vietnam |
 
 **審核結果**
 
@@ -2236,7 +2237,112 @@
 
 ---
 
-## 68. 以下哪一項最接近您平常的飲食方式？
+## 68. 過去一個月，我會反覆回想已經發生的事，想著當時應該怎麼說或怎麼做才對。
+
+- **段落**：心理健康
+- **question_id**：`psych_rumination`
+- **資料欄位**：`mental_health.psych_rumination`
+- **中文題目**：過去一個月，我會反覆回想已經發生的事，想著當時應該怎麼說或怎麼做才對。
+- **English**：In the past month, I have replayed past events in my mind, thinking about what I should have said or done differently.
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `psych_rumination.option_01` | 從不 | Never |
+| `psych_rumination.option_02` | 很少 | Rarely |
+| `psych_rumination.option_03` | 有時 | Sometimes |
+| `psych_rumination.option_04` | 經常 | Often |
+| `psych_rumination.option_05` | 總是 | Always |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 69. 當我遇到困難或需要幫助時，身邊有人可以依靠。
+
+- **段落**：心理健康
+- **question_id**：`psych_social_support`
+- **資料欄位**：`mental_health.psych_social_support`
+- **中文題目**：當我遇到困難或需要幫助時，身邊有人可以依靠。
+- **English**：When I have problems or need help, there is someone I can rely on.
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `psych_social_support.option_01` | 從不 | Never |
+| `psych_social_support.option_02` | 很少 | Rarely |
+| `psych_social_support.option_03` | 有時 | Sometimes |
+| `psych_social_support.option_04` | 經常 | Often |
+| `psych_social_support.option_05` | 總是 | Always |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 70. 身邊的人（家人、朋友、同事）曾說過我容易緊張、想太多，或太容易受影響。
+
+- **段落**：心理健康
+- **question_id**：`psych_neuroticism_informant`
+- **資料欄位**：`mental_health.psych_neuroticism_informant`
+- **中文題目**：身邊的人（家人、朋友、同事）曾說過我容易緊張、想太多，或太容易受影響。
+- **English**：People close to me (family, friends, colleagues) have told me that I worry too much, overthink, or take things too hard.
+- **資料處理方式**：去識別化後納入研究資料；依對應欄位進入模型特徵或文獻規則引擎輸入。
+- **題型**：單選
+- **必填性**：適用時必填，但可使用「不確定怎麼回答」
+- **出現條件**：無額外條件，依題序顯示。
+- **作答文字規則**：依題目文字與選項作答。
+- **後續追問／影響**：無直接觸發的額外畫面追問。
+- **儲存規則**：以固定答案代碼儲存；不確定為 null；條件不適用為 null。
+
+**選項與固定代碼**
+
+| code | 中文選項 | English |
+|---|---|---|
+| `psych_neuroticism_informant.option_01` | 從不 | Never |
+| `psych_neuroticism_informant.option_02` | 很少 | Rarely |
+| `psych_neuroticism_informant.option_03` | 有時 | Sometimes |
+| `psych_neuroticism_informant.option_04` | 經常 | Often |
+| `psych_neuroticism_informant.option_05` | 總是 | Always |
+
+**審核結果**
+
+- [ ] 保留
+- [ ] 修改
+- [ ] 刪除
+- [ ] 待臨床／模型／法規確認
+- 修改說明：
+
+---
+
+## 71. 以下哪一項最接近您平常的飲食方式？
 
 - **段落**：飲食習慣
 - **question_id**：`diet_type`
@@ -2271,7 +2377,7 @@
 
 ---
 
-## 69. 肉類、加工及高溫烹調食物
+## 72. 肉類、加工及高溫烹調食物
 
 - **段落**：飲食習慣
 - **question_id**：`meat_processed_foods`
@@ -2306,7 +2412,7 @@
 
 ---
 
-## 70. 高糖與高脂食物
+## 73. 高糖與高脂食物
 
 - **段落**：飲食習慣
 - **question_id**：`sugar_fat_foods`
@@ -2340,7 +2446,7 @@
 
 ---
 
-## 71. 蔬果、豆類與乳製品
+## 74. 蔬果、豆類與乳製品
 
 - **段落**：飲食習慣
 - **question_id**：`plant_dairy_habits`
@@ -2376,7 +2482,7 @@
 
 ---
 
-## 72. 飲品習慣
+## 75. 飲品習慣
 
 - **段落**：飲食習慣
 - **question_id**：`beverage_habits`
@@ -2410,7 +2516,7 @@
 
 ---
 
-## 73. 您目前是否正在罹患癌症，或過去曾被診斷為癌症？
+## 76. 您目前是否正在罹患癌症，或過去曾被診斷為癌症？
 
 - **段落**：病史與家族史
 - **question_id**：`personal_cancer`
@@ -2443,7 +2549,7 @@
 
 ---
 
-## 74. 目前或過去曾被診斷的癌別為何？
+## 77. 目前或過去曾被診斷的癌別為何？
 
 - **段落**：病史與家族史
 - **question_id**：`personal_cancer_types`
@@ -2485,7 +2591,7 @@
 
 ---
 
-## 75. 是否有以下慢性疾病？
+## 78. 是否有以下慢性疾病？
 
 - **段落**：病史與家族史
 - **question_id**：`chronic_conditions`
@@ -2531,7 +2637,7 @@
 
 ---
 
-## 76. 您曾被診斷的肝病種類為何？
+## 79. 您曾被診斷的肝病種類為何？
 
 - **段落**：病史與家族史
 - **question_id**：`liver_disease_etiology`
@@ -2568,7 +2674,7 @@
 
 ---
 
-## 77. 是否曾有以下經醫療人員確認的病史或事件？
+## 80. 是否曾有以下經醫療人員確認的病史或事件？
 
 - **段落**：病史與家族史
 - **question_id**：`vnext_diagnosed_conditions`
@@ -2605,7 +2711,7 @@
 
 ---
 
-## 78. 醫師是否曾診斷您有睪丸炎或副睪炎？
+## 81. 醫師是否曾診斷您有睪丸炎或副睪炎？
 
 - **段落**：病史與家族史
 - **question_id**：`orchitis_epididymitis`
@@ -2638,7 +2744,7 @@
 
 ---
 
-## 79. 您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？
+## 82. 您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？
 
 - **段落**：病史與家族史
 - **question_id**：`psa_history`
@@ -2672,7 +2778,7 @@
 
 ---
 
-## 80. 家族成員（一等親內）是否有癌症史？
+## 83. 家族成員（一等親內）是否有癌症史？
 
 - **段落**：病史與家族史
 - **question_id**：`family_cancer`
@@ -2705,7 +2811,7 @@
 
 ---
 
-## 81. 承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？
+## 84. 承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？
 
 - **段落**：病史與家族史
 - **question_id**：`family_self_types`
@@ -2747,7 +2853,7 @@
 
 ---
 
-## 82. 請填寫您的 Email
+## 85. 請填寫您的 Email
 
 - **段落**：聯絡資料
 - **question_id**：`email`

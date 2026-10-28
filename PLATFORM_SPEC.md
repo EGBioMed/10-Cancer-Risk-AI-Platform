@@ -228,7 +228,7 @@
 
 ```
 contract_version              assessment-submission/1.2.0
-questionnaire_version         questionnaire/2026-09-08-v19.9-phase1
+questionnaire_version         questionnaire/2026-10-27-v19.10-phase1
 consent_version               consent/2026-08-26
 feature_schema_version        model-features/1.0.0
 rule_input_schema_version     high-risk-rules/19.5

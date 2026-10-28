@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-09-08-v19.9-phase1",
+  questionnaire_version: "questionnaire/2026-10-27-v19.10-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -572,6 +572,12 @@ const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) 
   ...(followUpsAfterSymptomGroup[question.id] || [])
 ]);
 
+// Five-point frequency scale, shared by the three psychological items added
+// 2026-10-27. Defined once: the answer codes are derived from this array's
+// order by scripts/generate-answer-code-manifest.js, so a copy that drifted
+// would silently renumber one question's codes and not the others'.
+const psychFrequencyOptions = ["從不", "很少", "有時", "經常", "總是"];
+
 const questions = [
   {
     id: "consent_acknowledgement",
@@ -623,6 +629,10 @@ const questions = [
   { id: "stress", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "感到緊張或焦慮", matrixLabelEn: "Feeling tense or anxious", title: "過去一個月，每週感到緊張或焦慮的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_stress_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
   { id: "sleep_problem", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "睡不好或失眠", matrixLabelEn: "Poor sleep or insomnia", title: "過去一個月，每週睡不好或失眠的頻率", note: "請以最近一個月的一般狀況回答。", field: "mental_health.weekly_sleep_problem_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
   { id: "low_mood", module: "mental", type: "single", required: true, displayInComposite: true, matrixLabel: "情緒低落或憂鬱", matrixLabelEn: "Feeling low or depressed", title: "過去一個月，每週情緒低落或憂鬱的頻率", note: "此題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.weekly_low_mood_frequency", options: ["不到 1 天", "2-3 天", "4-5 天", "幾乎每天"] },
+
+  { id: "psych_rumination", module: "mental", type: "single", required: true, title: "過去一個月，我會反覆回想已經發生的事，想著當時應該怎麼說或怎麼做才對。", note: "請以最近一個月的一般狀況回答。本題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.psych_rumination", options: psychFrequencyOptions },
+  { id: "psych_social_support", module: "mental", type: "single", required: true, title: "當我遇到困難或需要幫助時，身邊有人可以依靠。", note: "請依您平常的實際狀況回答。本題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.psych_social_support", options: psychFrequencyOptions },
+  { id: "psych_neuroticism_informant", module: "mental", type: "single", required: true, title: "身邊的人（家人、朋友、同事）曾說過我容易緊張、想太多，或太容易受影響。", note: "請依他人曾對您說過的話回答，不是您對自己的評價。本題僅作為健康風險因子整理，不是心理診斷。", field: "mental_health.psych_neuroticism_informant", options: psychFrequencyOptions },
 
   { id: "diet_type", module: "diet", type: "single", required: true, title: "以下哪一項最接近您平常的飲食方式？", note: "請依長期飲食型態選擇一項。若主要吃蔬食但仍會吃肉類或海鮮，請選「蔬食為主」。", field: "diet.current_diet_type", options: ["一般飲食（平常會吃肉類或海鮮）", "蔬食為主（主要吃植物性食物，但仍會吃肉類或海鮮）", "魚素（不吃肉類，但會吃魚類或海鮮）", "蛋奶素（不吃肉類及海鮮，但會吃蛋或乳製品）", "全素（不吃肉類、海鮮、蛋及乳製品）"] },
   { id: "diet_frequency_matrix", module: "diet", type: "diet-matrix", required: true, isComposite: true, title: "過去三個月的飲食頻率", titleEn: "Diet frequency during the past three months", note: "各項目預設為未達標示頻率；請將符合日常狀況的項目改選為「達到頻率」，再儲存並繼續。", noteEn: "Items default to below the stated frequency. Change the items that match your usual habits to “Meets frequency,” then save and continue.", rowQuestionIds: ["meat_processed_foods", "sugar_fat_foods", "plant_dairy_habits", "beverage_habits"] },
@@ -824,6 +834,9 @@ const i18n = {
       stress: ["In the past month, how often did you feel tense or anxious each week?", "Please answer based on your general situation in the past month."],
       sleep_problem: ["In the past month, how often did you sleep poorly or have insomnia each week?", "Please answer based on your general situation in the past month."],
       low_mood: ["In the past month, how often did you feel low or depressed each week?", "This is only for health risk factor organization and is not a mental health diagnosis."],
+      psych_rumination: ["In the past month, I have replayed past events in my mind, thinking about what I should have said or done differently.", "Answer based on your general situation in the past month. This is only for health risk factor organization and is not a mental health diagnosis."],
+      psych_social_support: ["When I have problems or need help, there is someone I can rely on.", "Answer based on your usual situation. This is only for health risk factor organization and is not a mental health diagnosis."],
+      psych_neuroticism_informant: ["People close to me (family, friends, colleagues) have told me that I worry too much, overthink, or take things too hard.", "Answer based on what others have said to you, not on how you see yourself. This is only for health risk factor organization and is not a mental health diagnosis."],
       mental_frequency_matrix: ["Emotional wellbeing and sleep frequency in the past month", "Select the closest weekly frequency for every row. This is used only to organize health risk factors and is not a mental health diagnosis."],
       diet_type: ["Which option best describes your usual dietary pattern?", "Choose one long-term pattern. If you mainly eat plant-based foods but still consume meat or seafood, select Mostly plant-based."],
       meat_processed_foods: ["Meat, processed foods, and high-temperature cooking", "Answer based on your usual diet during the past 3 months. In this question, “frequent consumption” means an average of at least 3 times per week; each eating occasion counts as one time. You may select multiple."],
@@ -843,6 +856,7 @@ const i18n = {
       "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name and email address to identify the participant and deliver the result report.",
       "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。": "I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer.",
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
+      "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
@@ -2528,6 +2542,9 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
     country: getAnswerValue(answers, "demographics.country") || "",
+    psych_rumination: getAnswerValue(answers, "mental_health.psych_rumination") || "",
+    psych_social_support: getAnswerValue(answers, "mental_health.psych_social_support") || "",
+    psych_neuroticism_informant: getAnswerValue(answers, "mental_health.psych_neuroticism_informant") || "",
     personal_cancer_types: personalCancerTypes,
     symptom_positive_count: Object.values(symptomFeatureRow).filter((value) => value === 1).length,
     symptom_answers_json: JSON.stringify(symptomAnswers),

@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-08-19-v19.5-phase1",
+  "questionnaire_version": "questionnaire/2026-10-27-v19.10-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 80,
-  "canonical_answer_question_count": 78,
+  "question_count": 83,
+  "canonical_answer_question_count": 81,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -1994,6 +1994,114 @@
           "code": "low_mood.option_04",
           "label_zh": "幾乎每天",
           "label_en": "Almost every day"
+        }
+      ]
+    },
+    {
+      "question_id": "psych_rumination",
+      "field": "mental_health.psych_rumination",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "過去一個月，我會反覆回想已經發生的事，想著當時應該怎麼說或怎麼做才對。",
+      "title_en": "In the past month, I have replayed past events in my mind, thinking about what I should have said or done differently.",
+      "options": [
+        {
+          "code": "psych_rumination.option_01",
+          "label_zh": "從不",
+          "label_en": "Never"
+        },
+        {
+          "code": "psych_rumination.option_02",
+          "label_zh": "很少",
+          "label_en": "Rarely"
+        },
+        {
+          "code": "psych_rumination.option_03",
+          "label_zh": "有時",
+          "label_en": "Sometimes"
+        },
+        {
+          "code": "psych_rumination.option_04",
+          "label_zh": "經常",
+          "label_en": "Often"
+        },
+        {
+          "code": "psych_rumination.option_05",
+          "label_zh": "總是",
+          "label_en": "Always"
+        }
+      ]
+    },
+    {
+      "question_id": "psych_social_support",
+      "field": "mental_health.psych_social_support",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "當我遇到困難或需要幫助時，身邊有人可以依靠。",
+      "title_en": "When I have problems or need help, there is someone I can rely on.",
+      "options": [
+        {
+          "code": "psych_social_support.option_01",
+          "label_zh": "從不",
+          "label_en": "Never"
+        },
+        {
+          "code": "psych_social_support.option_02",
+          "label_zh": "很少",
+          "label_en": "Rarely"
+        },
+        {
+          "code": "psych_social_support.option_03",
+          "label_zh": "有時",
+          "label_en": "Sometimes"
+        },
+        {
+          "code": "psych_social_support.option_04",
+          "label_zh": "經常",
+          "label_en": "Often"
+        },
+        {
+          "code": "psych_social_support.option_05",
+          "label_zh": "總是",
+          "label_en": "Always"
+        }
+      ]
+    },
+    {
+      "question_id": "psych_neuroticism_informant",
+      "field": "mental_health.psych_neuroticism_informant",
+      "module": "mental",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "身邊的人（家人、朋友、同事）曾說過我容易緊張、想太多，或太容易受影響。",
+      "title_en": "People close to me (family, friends, colleagues) have told me that I worry too much, overthink, or take things too hard.",
+      "options": [
+        {
+          "code": "psych_neuroticism_informant.option_01",
+          "label_zh": "從不",
+          "label_en": "Never"
+        },
+        {
+          "code": "psych_neuroticism_informant.option_02",
+          "label_zh": "很少",
+          "label_en": "Rarely"
+        },
+        {
+          "code": "psych_neuroticism_informant.option_03",
+          "label_zh": "有時",
+          "label_en": "Sometimes"
+        },
+        {
+          "code": "psych_neuroticism_informant.option_04",
+          "label_zh": "經常",
+          "label_en": "Often"
+        },
+        {
+          "code": "psych_neuroticism_informant.option_05",
+          "label_zh": "總是",
+          "label_en": "Always"
         }
       ]
     },

@@ -16,6 +16,7 @@ const sandbox = { EGAnswerCodes: answerCodeApi };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
 globalThis.__manifestSource = {
+  versions: SUBMISSION_VERSIONS,
   questions,
   symptomOptionTranslations,
   englishOptions: i18n.en.options || {},
@@ -23,6 +24,7 @@ globalThis.__manifestSource = {
 };`, sandbox);
 
 const {
+  versions,
   questions,
   symptomOptionTranslations,
   englishOptions,
@@ -81,8 +83,12 @@ for (const question of manifestQuestions) {
 }
 
 const manifest = {
-  schema_version: "question-answer-codes/1.0.0",
-  questionnaire_version: "questionnaire/2026-08-19-v19.5-phase1",
+  schema_version: versions.answer_code_schema_version,
+  // Read from app.js rather than written here. The hardcoded copy this
+  // replaced said v19.5 while the questionnaire had moved to v19.9 -- four
+  // versions of drift in a file whose whole job is to say which questionnaire
+  // these codes belong to.
+  questionnaire_version: versions.questionnaire_version,
   status_values: ["answered", "unknown", "not_applicable"],
   display_labels_are_data_values: false,
   question_count: manifestQuestions.length,

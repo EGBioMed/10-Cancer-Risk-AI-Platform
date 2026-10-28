@@ -38,7 +38,7 @@ const RECORD_ID = "123e4567-e89b-12d3-a456-426614174000";
 function makeSubmission() {
   return {
     contract_version: "assessment-submission/1.2.0",
-    questionnaire_version: "questionnaire/2026-09-08-v19.9-phase1",
+    questionnaire_version: "questionnaire/2026-10-27-v19.10-phase1",
     full_name: "王小明",
     email: "patient@example.com",
     ai_api_feature_row: { record_id: RECORD_ID, age: 52 },

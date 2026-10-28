@@ -144,7 +144,11 @@ test("interval-day number fields provide an English placeholder", () => {
 
 test("submission validation count follows the canonical questionnaire definitions", () => {
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
-  assert.equal(canonicalAnswerQuestions.length, 78);
+  // A literal on purpose: adding a question should have to be stated here, not
+  // absorbed silently. 76 -> 77 -> 78 -> 81 (2026-10-27, three psychological
+  // items). The three contracts that pin the same number are cross-checked
+  // against this manifest in test-contract.js.
+  assert.equal(canonicalAnswerQuestions.length, 81);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

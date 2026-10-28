@@ -240,3 +240,65 @@ test("an unanswered country question still submits and falls back to the Taiwan 
   const posted = JSON.parse(JSON.stringify(submission));
   assert.deepEqual(validateTransitionalSubmission(sanitizeLegacyDirectIdentifiers(posted)), []);
 });
+
+// 2026-10-27 新增的三題心理題。這一段擋的是這個 repo 反覆出現的同一種故障：題目
+// 加了、受試者答了，值卻沒有到達目的地，而且沒有任何錯誤訊息。country 就是這樣
+// 過了一次（v19.6 問了國家，值只進 excel_row，API 從來沒看到），症狀題組也是。
+//
+// 這三題刻意只進研究資料，不進模型請求：71 欄的模型特徵與 33 欄的 vNext 候選欄位
+// 都在流程觸發 schema 裡以筆數釘死，走那兩條路會讓每次問卷改版都變成一次對付費
+// 客戶流程的編輯。所以下面同時驗「有到研究列」與「沒有混進模型請求」。
+const PSYCH_FIELDS = [
+  ["psych_rumination", "mental_health.psych_rumination"],
+  ["psych_social_support", "mental_health.psych_social_support"],
+  ["psych_neuroticism_informant", "mental_health.psych_neuroticism_informant"]
+];
+
+test("the three psychological items reach the research row with the answer, not a placeholder", () => {
+  const picked = "經常";
+  for (const [, field] of PSYCH_FIELDS) {
+    const question = app.questions.find((item) => item.field === field);
+    assert(question, `${field} 這一題不存在`);
+    // JSON 先過一次：vm realm 回來的陣列原型不同，deepEqual 會以「結構相同但
+    // 不是同一個參考」拒絕，與這支檔案其他地方同樣的處理。
+    assert.deepEqual(JSON.parse(JSON.stringify(question.options)), ["從不", "很少", "有時", "經常", "總是"]);
+    app.answers[field] = app.makeAnswerEntry(question, picked, "contract_test");
+  }
+
+  const submission = submitAs("臺灣");
+  for (const [column] of PSYCH_FIELDS) {
+    assert.equal(
+      submission.excel_row[column],
+      picked,
+      `excel_row.${column} 不是受試者選的值——題目在、答案在，但值沒有到研究資料表`
+    );
+  }
+});
+
+test("the three psychological items are coded answers, not free text", () => {
+  const submission = submitAs("臺灣");
+  for (const [column, field] of PSYCH_FIELDS) {
+    const row = submission.answer_code_rows.find((entry) => entry.question_id === column);
+    assert(row, `answer_code_rows 裡沒有 ${column}：跳過與回答「從不」將無法分辨`);
+    assert.equal(row.status, "answered");
+    // 答案碼而不是中文標籤：報告語言換成英文時，存下來的值必須是同一個。
+    assert.match(String(row.value), /^psych_[a-z_]+\.option_0[1-5]$/, `${column} 存的是顯示標籤而不是答案碼`);
+    assert.equal(app.questions.find((item) => item.field === field).module, "mental");
+  }
+});
+
+test("the three psychological items stay out of the model request and the frozen vectors", () => {
+  const submission = submitAs("臺灣");
+  for (const [column] of PSYCH_FIELDS) {
+    for (const row of ["ai_api_feature_row", "optimized_feature_row", "vnext_feature_row", "rule_input_row"]) {
+      assert(
+        !(column in submission[row]),
+        `${column} 跑進了 ${row}：模型請求只收 71 欄加 country，而 vNext 與規則層的欄位數在流程觸發 schema 裡釘死，多一欄會讓每一筆送件被拒`
+      );
+    }
+  }
+  // 筆數沒有變，就是上面那句話的憑據。
+  assert.equal(submission.optimized_feature_columns.length, 71);
+  assert.equal(submission.vnext_feature_columns.length, 33);
+  assert.equal(submission.rule_input_columns.length, 30);
+});
