@@ -102,7 +102,7 @@ anxiety_freq: mapFrequency(anxiety),                                        // ?
 | `chronic_conditions` | 慢性疾病 | `chronic_hypertension=0`、`chronic_disease_count=0` |
 | `family_cancer` | 一等親癌症史 | `family_cancer_history=0`、`first_degree_relative_cancer=0` |
 
-### 兩個特別的
+### `_missing` 這組欄位不能當作缺答訊號
 
 **心理三題的方向是反的。**
 
@@ -112,6 +112,23 @@ anxiety_freq: mapFrequency(anxiety),                                        // ?
 | 跳過 | 0 | **0** |
 
 `anxiety_freq_missing` 的名字會誤導——它的定義是 `anxiety === "不到 1 天" ? 1 : 0`，意思是「頻率低於一天」，不是「缺值」。結果是**跳過看起來比真實的最低答案更確定**。`insomnia_*`、`depression_*` 相同。
+
+**`_missing` 這個字尾有三種意思，只有兩個欄位名副其實。**
+
+| 欄位 | 定義 | `1` 代表 | 跳過時的值 |
+|---|---|---|---|
+| `cooking_freq_missing` | `cookingFrequency ? 0 : 1` | 沒有提供 | `1` ✔ |
+| `dairy_missing` | `plantDairyAnswered ? 0 : 1` | 整題沒答 | `1` ✔ |
+| `anxiety_freq_missing` | `anxiety === "不到 1 天" ? 1 : 0` | 答了「不到 1 天」 | `0` ✖ |
+| `insomnia_freq_missing` | 同上 | 答了「不到 1 天」 | `0` ✖ |
+| `depression_freq_missing` | 同上 | 答了「不到 1 天」 | `0` ✖ |
+| `high_fat_food_missing` | `foodList` 含「高脂肪」`? 0 : 1` | 沒勾這一項 | `1`，但「有作答、只是沒勾」也是 `1` ✖ |
+| `coffee_habit_missing` | `foodList` 含「咖啡」`? 0 : 1` | 沒勾這一項 | 同上 ✖ |
+| `tea_habit_missing` | `foodList` 含「茶」`? 0 : 1` | 沒勾這一項 | 同上 ✖ |
+
+所以**不能拿 `*_missing` 當成缺答的替代訊號**。八個欄位裡六個做不到，而且三種錯法各不相同。
+
+2026-10-28 讀 10/19 匯出檔時就是這樣誤判的：看到 `tea_habit_missing` 四筆是 `1 1 0 1`，結論是「三個人跳過了這題」，實際上是「三個人沒有勾茶」；`anxiety_freq_missing` 的 `1 1 0 1` 更是完全相反，那三個 `1` 是**答了**「不到 1 天」。唯一能判斷跳過與否的來源是 `answer_code_rows`，而 2026-10-27 之前的填答沒有這份資料。
 
 ---
 
