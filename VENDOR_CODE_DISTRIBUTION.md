@@ -92,6 +92,8 @@ node /home/site/wwwroot/check-access-events.js
 | （內部驗證） | `qafaq5k5wvcn` | 56 | 1/5 | 2026-09-21 |  |  |  | 流程 A 分級修正驗證用。備註寫著驗證用，但不在 `check-training-inventory.js` 的 `TEST_GRANTS` 清單裡 |
 | ASUS | `asusq20gzmnz6` | 62 | 1/20 | 2026-10-08 |  |  |  | ASUS 廠商推廣（PDF 版）。與免費線 `EGASUSMZ5` 是兩條線的兩組碼 |
 | 成大 | `nckuq20jayqw3` | 65 | 0/20 | 2026-10-21 |  |  |  | 成大推廣版，持碼者免費取得完整 PDF 報告。**鑄好了還沒發出去** |
+| 陽光診所 | `sunq5jzsuyr` | 67 | 0/5 | 2026-10-28 | | | | 陽光診所 機構線推廣，持碼者免費取得完整 PDF 報告。掃碼入口 `/entry/sunq5jzsuyr`。**報告預設寄給受檢者本人**；若院方要統一收，需設 `INSTITUTION_REPORT_RECIPIENTS` |
+| 品惟惟 | `pwwq5446zy3` | 68 | 0/5 | 2026-10-28 | | | | 品惟惟 機構線推廣，持碼者免費取得完整 PDF 報告。掃碼入口 `/entry/pwwq5446zy3` |
 
 上表於 2026-10-28 依 `check-access-events.js` 2026-10-27 的輸出補齊，在那之前它一直是空的。三件事要先知道：
 
