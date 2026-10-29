@@ -1,0 +1,47 @@
+{
+  "schema": "asr-eval/1",
+  "about": "Format example for eval-asr.js. Copy to eval/asr/recordings/manifest.json (git-ignored) next to the audio files. `audio` is relative to the manifest. `expect` holds option indices for a choice question ([] = the honest reading is 'cannot tell'); a number question uses `expect_number` (null = cannot tell). `reference_text` is a person's transcription of what was actually said; without it a mistake cannot be attributed to the ASR or to the resolver.",
+  "provenance": "Example only -- no audio exists for these entries.",
+  "recordings": [
+    {
+      "id": "s01-smoking-ever",
+      "audio": "s01/smoking_ever.wav",
+      "question_id": "smoking_ever",
+      "expect": [0],
+      "reference_text": "以前有抽啦，十年前就戒了",
+      "language": "zh",
+      "environment": "clinic",
+      "speaker": { "code": "s01", "age_band": "60-69", "sex": "M" }
+    },
+    {
+      "id": "s02-betel-nut",
+      "audio": "s02/betel_nut.wav",
+      "question_id": "betel_nut",
+      "expect": [1],
+      "reference_text": "無啦，我無咧食檳榔",
+      "language": "nan",
+      "environment": "clinic",
+      "speaker": { "code": "s02", "age_band": "70+", "sex": "M" }
+    },
+    {
+      "id": "s02-height",
+      "audio": "s02/height_cm.wav",
+      "question_id": "height_cm",
+      "expect_number": 165,
+      "reference_text": "一百六十五公分",
+      "language": "zh",
+      "environment": "quiet",
+      "speaker": { "code": "s02", "age_band": "70+", "sex": "M" }
+    },
+    {
+      "id": "s03-family-cancer",
+      "audio": "s03/family_cancer.wav",
+      "question_id": "family_cancer",
+      "expect": [],
+      "reference_text": "我毋知欸，應該無吧",
+      "language": "nan",
+      "environment": "clinic",
+      "speaker": { "code": "s03", "age_band": "60-69", "sex": "F" }
+    }
+  ]
+}

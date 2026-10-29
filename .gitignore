@@ -7,3 +7,6 @@ runtime/
 !.env.example
 *.log
 node_modules/
+# ASR evaluation: recordings and transcripts are personal health data.
+eval/asr/recordings/
+eval/asr/results/
