@@ -29,9 +29,14 @@ test("the schema enumerates exactly this question's indices", () => {
 });
 
 test("a single-choice question cannot be answered with two indices", () => {
-  assert.equal(classifier.buildSchema(questionById("sex")).properties.indices.maxItems, 1);
+  // The API rejects maxItems on arrays with a 400, so the cap lives in
+  // parseVerdict. Keep it out of the schema: putting it back breaks every call.
+  const sex = questionById("sex");
+  assert.equal("maxItems" in classifier.buildSchema(sex).properties.indices, false);
+  assert.equal(classifier.parseVerdict(sex, { indices: [0, 1] }), null);
+  assert.equal(classifier.parseVerdict(sex, { indices: [1] }), 1);
   const multi = questionById("chronic_conditions");
-  assert.equal(classifier.buildSchema(multi).properties.indices.maxItems, multi.options.length);
+  assert.deepEqual(classifier.parseVerdict(multi, { indices: [0, 2] }), [0, 2]);
 });
 
 test("every question with options can be given a schema", () => {
@@ -54,7 +59,8 @@ test("the request carries the structured-output format and a low effort", () => 
   assert.equal(request.output_config.format.type, "json_schema");
   assert.equal(request.output_config.effort, "low");
   assert.equal(request.model, "claude-opus-5-5");
-  assert.equal(request.max_tokens, 256);
+  // Thinking shares this budget; 256 truncated real replies mid-JSON.
+  assert.ok(request.max_tokens >= 2048);
 });
 
 test("the prompt shows the options with the indices the answer is given in", () => {

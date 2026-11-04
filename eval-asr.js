@@ -42,7 +42,13 @@ function resolverInput(question, text) {
 
 async function resolveText(app, question, text, classifier) {
   const options = { numberBounds: app.getNumberBounds, classifier };
-  return resolver.resolveAsync(question, resolverInput(question, text), options);
+  const result = await resolver.resolveAsync(question, resolverInput(question, text), options);
+  // The resolver turns a classifier that threw into an abstention, which is
+  // right for a respondent (ask again) and wrong for a measurement: a bad key
+  // or an unreachable API would otherwise score as "the model could not tell"
+  // on every item. Make it a failed recording so the run says so.
+  if (result.via === "classifier_threw") throw new Error(`classifier failed: ${result.detail || "unknown error"}`);
+  return result;
 }
 
 function createClassifier() {
@@ -70,6 +76,9 @@ async function scoreOne(app, item, transcript, classifier) {
     text: transcript.text,
     latencyMs: transcript.latencyMs,
     via: heardResult.via,
+    // What was picked, so a wrong answer can be told apart from a missed one
+    // (a dropped symptom and an added one are both "wrong").
+    picked: Array.isArray(heardResult.value) ? heardResult.value : (heardResult.value ?? null),
     heard,
     reference,
     attribution: scoring.attribute(reference, heard),
@@ -157,9 +166,15 @@ async function main() {
       console.log(`  ✖ ${outcome.id}  失敗：${outcome.error}`);
       continue;
     }
-    if (!scoring.HARMFUL.has(outcome.heard) && outcome.attribution !== "asr_caused_abstain") continue;
+    // Every answer that did not land is listed, not only the harmful ones: on a
+    // small run the abstentions are where the next fix is.
+    if (!scoring.HARMFUL.has(outcome.heard) && outcome.heard !== "abstained_wrong") continue;
     const mark = scoring.HARMFUL.has(outcome.heard) ? "✖" : "·";
     console.log(`  ${mark} ${outcome.id} [${outcome.language}] ${outcome.question_id}  聽到「${outcome.text}」→ ${outcome.heard}（${outcome.attribution}）`);
+    if (outcome.picked !== null) {
+      const picked = Array.isArray(outcome.picked) ? outcome.picked.join("；") : outcome.picked;
+      console.log(`      選了：${picked}`);
+    }
   }
 
   console.log("\n" + "=".repeat(72));

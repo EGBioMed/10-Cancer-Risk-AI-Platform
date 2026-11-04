@@ -91,6 +91,12 @@ test("scoreOne runs a transcript through the chat page's resolver and attributes
   assert.equal(misheard.attribution, "asr_caused_harm");
 });
 
+test("scoreOne reports a classifier that threw as a failure, not as an abstention", async () => {
+  const item = { id: "x", question_id: "betel_nut", expect: [1], language: "nan", environment: "quiet" };
+  const broken = async () => { throw new Error("401 invalid x-api-key"); };
+  await assert.rejects(scoreOne(app, item, { text: "無喔", latencyMs: 10 }, broken), /classifier failed: 401 invalid x-api-key/);
+});
+
 function stubResponse(status, body) {
   return {
     ok: status >= 200 && status < 300,
