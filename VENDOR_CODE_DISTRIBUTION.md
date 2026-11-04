@@ -123,10 +123,10 @@ https://ai-cancer-risk.eg-bio.com/access/021x29d312fc5yj9vkajrht90gpc3mkc
 
 ### 報告統一寄送
 
-雙和的報告不寄給受檢者，統一寄到院方信箱由他們列印。這是伺服器端的機構白名單，設在 Render 的環境變數：
+雙和的報告不寄給受檢者，統一寄到院方信箱由他們列印。這是伺服器端的機構白名單，設在 Render 的環境變數。**2026-11-04 已設定上線**，值如下（單行，不可換行）：
 
 ```
-INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"<雙和的收件信箱>","codes":["021x29d312fc5yj9vkajrht90gpc3mkc"],"grants":[63]}}
+INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@s.tmu.edu.tw","codes":["021x29d312fc5yj9vkajrht90gpc3mkc"],"grants":[63]}}
 ```
 
 ⚠ **2026-10-20 改過格式。** 之前這裡寫的是用 grant_id 當 key 的 `{"63":{...}}`，那個形狀現在不會被解析，啟動時會記一筆錯誤然後整筆丟掉——症狀是受檢者照常被問 Email。改用上面這個：key 是機構代號，底下列這家機構用的代碼。`codes` 和 `grants` 擇一即可（這裡兩個都寫是因為雙和那組 32 字元代碼兩條路都能進，寫滿最省事）。
@@ -134,6 +134,8 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"<雙�
 為什麼改：代碼會重鑄，grant_id 就跟著變，用 grant_id 當 key 的白名單會安靜地失效。改成機構為單位之後，新代碼只是加進同一筆的 `codes`。
 
 沒設的話受檢者仍會被問 Email（伺服器沒有對應表就不覆寫）——是看得見的錯，不是安靜的錯。設好之後 Email 那一題會變成唯讀，並告訴受檢者報告寄去哪裡。細節見 `lib/report-recipients.js` 與 `ACCESS_GATE.md`。
+
+改這個值之後怎麼確認有生效：先看 Render 的 Logs 有沒有 `INSTITUTION_REPORT_RECIPIENTS` 開頭的錯誤（格式壞掉不會擋啟動，是整筆丟掉，症狀和沒設一樣）；再用該入口進一次，同一個瀏覽器打 `/api/session/delivery`，應回 `{"ok":true,"forced":true,"label":"雙和醫院",...}`。
 
 **同意書那句「使用我提供的姓名與 Email 辨識受試者及寄送結果報告」對這個入口不成立**，要 IRB 補件。
 
