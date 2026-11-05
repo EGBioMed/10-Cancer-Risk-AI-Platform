@@ -51,10 +51,37 @@ async function resolveText(app, question, text, classifier) {
   return result;
 }
 
-function createClassifier() {
+// Every model call reports its usage here, so a run can print what it cost
+// instead of leaving that to the Console. Calls that failed before the model
+// answered report nothing, which is also what they are billed.
+function createUsageTally() {
+  return { calls: 0, inputTokens: 0, outputTokens: 0, model: null };
+}
+
+function addUsage(tally, usage, model) {
+  tally.calls += 1;
+  tally.inputTokens += Number(usage.input_tokens || 0);
+  tally.outputTokens += Number(usage.output_tokens || 0);
+  if (model) tally.model = model;
+}
+
+function usageLines(tally, defaultModel, priceOf) {
+  const model = tally.model || defaultModel;
+  const lines = [`模型呼叫         ${tally.calls} 次（${model}）`];
+  lines.push(`token            輸入 ${tally.inputTokens}  輸出 ${tally.outputTokens}`);
+  const cost = priceOf(model, { input_tokens: tally.inputTokens, output_tokens: tally.outputTokens });
+  if (cost === null) lines.push(`花費             —（${model} 不在 lib/classifier.js 的價目表裡）`);
+  else lines.push(`花費             US$${cost.toFixed(4)}（每次呼叫 US$${tally.calls > 0 ? (cost / tally.calls).toFixed(5) : "—"}；以牌價估算，帳單以 Console 為準）`);
+  return lines;
+}
+
+function createClassifier(tally) {
   const classifierModule = require("./lib/classifier");
   const Anthropic = require("@anthropic-ai/sdk").default || require("@anthropic-ai/sdk");
-  return classifierModule.createAnthropicClassifier({ client: new Anthropic() });
+  return classifierModule.createAnthropicClassifier({
+    client: new Anthropic(),
+    onUsage: (usage, model) => addUsage(tally, usage, model)
+  });
 }
 
 async function scoreOne(app, item, transcript, classifier) {
@@ -134,7 +161,8 @@ async function main() {
     if (!asrName) throw new Error("--asr is required (transcript / taiwan-tongues / myvoca), or --reuse a results file");
   }
   const adapter = reuse ? null : createAdapter(asrName);
-  const classifier = flag("--classifier") ? createClassifier() : undefined;
+  const usage = createUsageTally();
+  const classifier = flag("--classifier") ? createClassifier(usage) : undefined;
   const audioRoot = path.dirname(manifestPath);
 
   console.log(`ASR ${asrName}${reuse ? "（重算已存的逐字稿）" : ""}  判讀 ${classifier ? "規則＋模型" : "只有規則"}  錄音 ${selected.length} 筆`);
@@ -190,6 +218,11 @@ async function main() {
   console.log(`判讀層本身的極限 ${summary.resolverLimit}   （連人工逐字稿都判不出來，不能算在 ASR 頭上）`);
   if (summary.unattributed) console.log(`無法歸因         ${summary.unattributed}   （沒有 reference_text）`);
   if (summary.meanLatencyMs !== null) console.log(`平均處理時間     ${(summary.meanLatencyMs / 1000).toFixed(2)} 秒（檔案模式，含排隊；不是串流延遲）`);
+  if (classifier) {
+    const { DEFAULT_MODEL, priceOf } = require("./lib/classifier");
+    console.log("-".repeat(72));
+    for (const line of usageLines(usage, DEFAULT_MODEL, priceOf)) console.log(line);
+  }
 
   if (!reuse) {
     fs.mkdirSync(RESULTS_DIR, { recursive: true });
@@ -207,4 +240,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { loadManifest, scoreOne };
+module.exports = { loadManifest, scoreOne, createUsageTally, addUsage, usageLines };

@@ -5,7 +5,8 @@ const path = require("node:path");
 const { loadApp } = require("./lib/load-app-sandbox");
 const scoring = require("./lib/asr-eval");
 const adapters = require("./lib/asr-adapters");
-const { loadManifest, scoreOne } = require("./eval-asr");
+const { loadManifest, scoreOne, createUsageTally, addUsage, usageLines } = require("./eval-asr");
+const classifierModule = require("./lib/classifier");
 
 const app = loadApp();
 const question = (id) => app.questions.find((candidate) => candidate.id === id);
@@ -159,4 +160,41 @@ test("adapters refuse to run half-configured rather than guess", async () => {
   assert.throws(() => adapters.createAdapter("whisper", {}), /unknown ASR/);
   await assert.rejects(adapters.createAdapter("myvoca", {}).transcribe({}, "a.wav"), /API specification/);
   await assert.rejects(adapters.createAdapter("transcript", {}).transcribe({}), /reference_text/);
+});
+
+test("a run tallies every model call's tokens and prints what it cost", async () => {
+  const tally = createUsageTally();
+  // A fake client shaped like the SDK's: the tally is fed through the real
+  // classifier's onUsage, not by calling addUsage directly.
+  const client = {
+    messages: {
+      parse: async () => ({
+        model: "claude-opus-5-5",
+        stop_reason: "end_turn",
+        usage: { input_tokens: 600, output_tokens: 40 },
+        parsed_output: { indices: [0] }
+      })
+    }
+  };
+  const classify = classifierModule.createAnthropicClassifier({
+    client,
+    onUsage: (usage, model) => addUsage(tally, usage, model)
+  });
+  await classify(question("sex"), "查某");
+  await classify(question("sex"), "查某");
+  assert.deepEqual(tally, { calls: 2, inputTokens: 1200, outputTokens: 80, model: "claude-opus-5-5" });
+
+  const lines = usageLines(tally, classifierModule.DEFAULT_MODEL, classifierModule.priceOf).join("\n");
+  assert.match(lines, /2 次/);
+  assert.match(lines, /輸入 1200  輸出 80/);
+  // 1200 × $4/M + 80 × $20/M = $0.0064
+  assert.match(lines, /US\$0\.0064/);
+});
+
+test("a model missing from the price table says so instead of printing $0", () => {
+  const tally = createUsageTally();
+  addUsage(tally, { input_tokens: 10, output_tokens: 1 }, "claude-unknown-model");
+  const lines = usageLines(tally, classifierModule.DEFAULT_MODEL, classifierModule.priceOf).join("\n");
+  assert.match(lines, /不在 lib\/classifier\.js 的價目表裡/);
+  assert.doesNotMatch(lines, /US\$0\.0000/);
 });
