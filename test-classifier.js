@@ -54,6 +54,42 @@ test("a question with no options is refused rather than sent", () => {
   assert.throws(() => classifier.buildSchema({ id: "blank", options: [] }), /no options/);
 });
 
+test("a number question gets its own instructions and a number-only schema", () => {
+  const height = questionById("height_cm");
+  const request = classifier.buildRequest(height, "百六");
+  assert.equal(request.system, classifier.NUMBER_SYSTEM_PROMPT);
+  assert.deepEqual(request.output_config.format.schema, classifier.buildNumberSchema());
+  assert.deepEqual(request.output_config.format.schema.properties.values.items, { type: "number" });
+  // Same API limit as the index schema: no maxItems on arrays.
+  assert.equal("maxItems" in request.output_config.format.schema.properties.values, false);
+  assert.ok(request.max_tokens >= 2048);
+  const prompt = request.messages[0].content;
+  assert.ok(prompt.includes(height.title));
+  assert.ok(prompt.includes("百六"));
+  // The instructions carry the conversions the rules cannot do, and say that
+  // abstaining is right when the number cannot be told.
+  for (const phrase of ["百六", "民國", "空清單"]) {
+    assert.ok(classifier.NUMBER_SYSTEM_PROMPT.includes(phrase), `number prompt lost ${phrase}`);
+  }
+});
+
+test("every number question can be sent", () => {
+  const numbers = app.questions.filter((question) => question.type === "number");
+  assert.ok(numbers.length >= 3);
+  for (const question of numbers) {
+    assert.doesNotThrow(() => classifier.buildRequest(question, "一百"), question.id);
+  }
+});
+
+test("a number verdict is one finite number, and everything else abstains", () => {
+  const height = questionById("height_cm");
+  assert.equal(classifier.parseVerdict(height, { values: [160] }), 160);
+  assert.equal(classifier.parseVerdict(height, { values: [165.5] }), 165.5);
+  for (const parsed of [null, {}, { values: [] }, { values: [160, 165] }, { values: ["160"] }, { values: null }, { indices: [0] }]) {
+    assert.equal(classifier.parseVerdict(height, parsed), null, `${JSON.stringify(parsed)} was not an abstention`);
+  }
+});
+
 test("the request carries the structured-output format and a low effort", () => {
   const request = classifier.buildRequest(questionById("sex"), "男的");
   assert.equal(request.output_config.format.type, "json_schema");

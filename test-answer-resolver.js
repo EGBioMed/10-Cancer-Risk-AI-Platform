@@ -378,3 +378,77 @@ test("a whole-number question refuses a fraction", () => {
   assert.equal(app.getNumberBounds(height).step, 0.1);
   assert.equal(resolver.resolve(height, "165.5", { numberBounds }).value, "165.5");
 });
+
+// ---------------------------------------------------------------------------
+// 9. Number questions escalate to the classifier.
+// ---------------------------------------------------------------------------
+// The first Taiwanese recording (2026-11-04) lost every birth year, height and
+// weight for both ASRs: spoken numbers are written 百六 or "110百6066十", which
+// the rules cannot read, and numbers never reached a model at all.
+
+test("a number the rules cannot read is handed to the classifier", () => {
+  const numberBounds = app.getNumberBounds;
+  const height = app.questions.find((candidate) => candidate.id === "height_cm");
+  const seen = [];
+  const classifier = (question, utterance) => { seen.push(utterance); return 160; };
+  const result = resolver.resolve(height, "百六", { numberBounds, classifier });
+  assert.equal(result.status, "matched");
+  assert.equal(result.via, "classifier");
+  assert.equal(result.value, "160");
+  assert.deepEqual(seen, ["百六"]);
+});
+
+test("several numbers in one reply go to the classifier, which is shown the question", () => {
+  const numberBounds = app.getNumberBounds;
+  const weight = app.questions.find((candidate) => candidate.id === "weight_kg");
+  // Without a classifier the rules still refuse to pick one.
+  assert.equal(resolver.resolve(weight, "165 公分 60 公斤", { numberBounds }).status, "ambiguous");
+  const result = resolver.resolve(weight, "165 公分 60 公斤", { numberBounds, classifier: () => 60 });
+  assert.equal(result.value, "60");
+  assert.equal(result.via, "classifier");
+});
+
+test("a number the model reads is held to the form's bounds and step", () => {
+  const numberBounds = app.getNumberBounds;
+  const year = app.questions.find((candidate) => candidate.id === "birth_year");
+  // 民國69年 read as 69 is the fabrication the bounds exist to stop, and a
+  // model is not exempt from them.
+  const asSixtyNine = resolver.resolve(year, "民國69年次", { numberBounds, classifier: () => 69 });
+  assert.equal(asSixtyNine.status, "unmatched");
+  assert.equal(asSixtyNine.via, "classifier_out_of_range");
+  assert.equal(resolver.resolve(year, "民國69年次", { numberBounds, classifier: () => 1980 }).value, "1980");
+  assert.equal(resolver.resolve(year, "一九八〇", { numberBounds, classifier: () => 1980.5 }).status, "unmatched");
+});
+
+test("only a finite number is accepted from the classifier, never text", () => {
+  const numberBounds = app.getNumberBounds;
+  const height = app.questions.find((candidate) => candidate.id === "height_cm");
+  for (const verdict of ["160", "一百六", null, undefined, NaN, Infinity, [160], { value: 160 }]) {
+    const result = resolver.resolve(height, "百六", { numberBounds, classifier: () => verdict });
+    assert.equal(result.status, "unmatched", `${String(verdict)} was accepted`);
+  }
+});
+
+test("a number the rules answered, or a declined one, is not sent to the classifier", () => {
+  const numberBounds = app.getNumberBounds;
+  const height = app.questions.find((candidate) => candidate.id === "height_cm");
+  let calls = 0;
+  const classifier = () => { calls += 1; return 170; };
+  assert.equal(resolver.resolve(height, "165", { numberBounds, classifier }).value, "165");
+  assert.equal(resolver.resolve(height, "不記得", { numberBounds, classifier }).status, "declined");
+  assert.equal(calls, 0);
+});
+
+test("the async path reads numbers the same way", async () => {
+  const numberBounds = app.getNumberBounds;
+  const height = app.questions.find((candidate) => candidate.id === "height_cm");
+  const read = await resolver.resolveAsync(height, "百六", { numberBounds, classifier: async () => 160 });
+  assert.equal(read.value, "160");
+  const refused = await resolver.resolveAsync(height, "百六", { numberBounds, classifier: async () => 1600 });
+  assert.equal(refused.via, "classifier_out_of_range");
+  const failed = await resolver.resolveAsync(height, "百六", {
+    numberBounds,
+    classifier: async () => { throw new Error("down"); }
+  });
+  assert.equal(failed.via, "classifier_threw");
+});

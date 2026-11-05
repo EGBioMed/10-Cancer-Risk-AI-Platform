@@ -263,7 +263,19 @@
   // real classifier is a network call and returns a promise; a test's is a
   // plain function. Both have to be held to the same rule about what may come
   // back, and the way to guarantee that is for there to be one copy of it.
-  function applyVerdict(question, verdict) {
+  function applyVerdict(question, verdict, settings) {
+    // A number question's verdict is the number itself. It is held to the same
+    // bounds and step a typed answer is, so a model that reads 民國69年 as 69
+    // is refused exactly as the rules would refuse it, and the stored string is
+    // formatted here, never taken from the model.
+    if (question.type === "number") {
+      if (typeof verdict !== "number" || !Number.isFinite(verdict)) return unmatched("classifier_shape");
+      if (!withinBounds(question, verdict, settings && settings.numberBounds)) {
+        return unmatched("classifier_out_of_range", String(verdict));
+      }
+      return { status: "matched", index: -1, value: String(verdict), via: "classifier" };
+    }
+
     const size = (question.options || []).length;
     const isIndex = (value) => Number.isInteger(value) && value >= 0 && value < size;
 
@@ -283,24 +295,24 @@
     return matched(question, verdict, "classifier");
   }
 
-  function applyClassifier(question, utterance, classifier) {
+  function applyClassifier(question, utterance, settings) {
     let verdict;
     try {
-      verdict = classifier(question, utterance);
+      verdict = settings.classifier(question, utterance);
     } catch (error) {
       return unmatched("classifier_threw", error && error.message);
     }
-    return applyVerdict(question, verdict);
+    return applyVerdict(question, verdict, settings);
   }
 
-  async function applyClassifierAsync(question, utterance, classifier) {
+  async function applyClassifierAsync(question, utterance, settings) {
     let verdict;
     try {
-      verdict = await classifier(question, utterance);
+      verdict = await settings.classifier(question, utterance);
     } catch (error) {
       return unmatched("classifier_threw", error && error.message);
     }
-    return applyVerdict(question, verdict);
+    return applyVerdict(question, verdict, settings);
   }
 
   function resolveByRules(question, utterance, settings) {
@@ -322,9 +334,21 @@
   // sending either to a model invites it to break a tie or to overrule someone
   // who said they did not know. A question with no options has nothing for a
   // classifier to choose between.
+  //
+  // Number questions escalate too, and for one ambiguity as well: several
+  // numbers in one reply. The rules refuse "165 公分 60 公斤" because they
+  // cannot tell which number answers which question; a model is shown the
+  // question, so it can. That case is also what a speech transcript of a
+  // spoken number looks like -- myVoca wrote 百六 as "110百6066十". What
+  // comes back is bounds-checked in applyVerdict, so the model can read a
+  // number but cannot widen what counts as one.
   function shouldEscalate(question, result, settings) {
+    if (typeof settings.classifier !== "function") return false;
+    if (question.type === "number") {
+      return result.status === "unmatched"
+        || (result.status === "ambiguous" && result.via === "multiple_numbers");
+    }
     return result.status === "unmatched"
-      && typeof settings.classifier === "function"
       && Array.isArray(question.options)
       && question.options.length > 0;
   }
@@ -333,7 +357,7 @@
     const settings = options || {};
     const result = resolveByRules(question, utterance, settings);
     if (!shouldEscalate(question, result, settings)) return result;
-    return applyClassifier(question, utterance, settings.classifier);
+    return applyClassifier(question, utterance, settings);
   }
 
   // The same decision, for a classifier that is a network call. Kept as a
@@ -344,7 +368,7 @@
     const settings = options || {};
     const result = resolveByRules(question, utterance, settings);
     if (!shouldEscalate(question, result, settings)) return result;
-    return applyClassifierAsync(question, utterance, settings.classifier);
+    return applyClassifierAsync(question, utterance, settings);
   }
 
   return Object.freeze({

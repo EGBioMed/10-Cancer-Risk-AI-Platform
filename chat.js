@@ -78,7 +78,8 @@
 
   // Escalation goes to the server, which holds the API key and builds the
   // request from its own copy of the questionnaire. This function sends the
-  // question's id and the sentence, and gets back indices -- never text. If
+  // question's id and the sentence, and gets back indices, or a number for a
+  // number question -- never text. If
   // the endpoint is unconfigured, unreachable, rate-limited or slow, it
   // answers null, which the resolver reads as unresolved and the session turns
   // into asking again: the questionnaire works whether or not a model is
@@ -99,6 +100,12 @@
       return null;
     }
 
+    // A number question comes back as { value }: a number, never text, and
+    // the resolver still holds it to the form's bounds.
+    if (question.type === "number") {
+      if (!payload || payload.ok !== true) return null;
+      return typeof payload.value === "number" && Number.isFinite(payload.value) ? payload.value : null;
+    }
     if (!payload || payload.ok !== true || !Array.isArray(payload.indices)) return null;
     if (payload.indices.length === 0) return null;
     if (question.type === "multi") return payload.indices;

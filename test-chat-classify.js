@@ -118,12 +118,21 @@ test("the name and email rule holds even if those questions grow options", async
   assert.equal(api.calls.length, 0);
 });
 
-test("a number question is refused -- the rules own those", async () => {
-  const question = app.questions.find((candidate) => candidate.type === "number" && candidate.field);
-  const api = harness();
-  const { payload } = await api.post({ question_id: question.id, utterance: "民國69年次" });
-  assert.equal(payload.code, "question_not_classifiable");
-  assert.equal(api.calls.length, 0);
+test("a number question is read, and comes back as a number, not indices", async () => {
+  const question = questionById("birth_year");
+  const api = harness({ classify: async () => 1980 });
+  const { status, payload } = await api.post({ question_id: question.id, utterance: "民國69年次" });
+  assert.equal(status, 200);
+  assert.deepEqual(payload, { ok: true, value: 1980 });
+});
+
+test("a number question's verdict crosses the boundary only as a finite number", async () => {
+  const question = questionById("height_cm");
+  for (const verdict of ["160", null, NaN, Infinity, [160], { value: 160 }]) {
+    const api = harness({ classify: async () => verdict });
+    const { payload } = await api.post({ question_id: question.id, utterance: "百六" });
+    assert.deepEqual(payload, { ok: true, value: null }, `${String(verdict)} reached the browser`);
+  }
 });
 
 test("an unknown question id is refused", async () => {
