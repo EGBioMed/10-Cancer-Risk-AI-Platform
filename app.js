@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-10-27-v19.10-phase1",
+  questionnaire_version: "questionnaire/2026-11-11-v19.11-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -578,6 +578,14 @@ const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) 
 // would silently renumber one question's codes and not the others'.
 const psychFrequencyOptions = ["從不", "很少", "有時", "經常", "總是"];
 
+// Who filled the form in, asked right after consent (2026-11-11). Interviewer-
+// administered collection runs on the same institution codes as self-filled,
+// and an institution submission carries no access code or grant id, so the
+// only way analysis can tell the two apart is for the answer itself to say so.
+// The answer codes follow this order (scripts/generate-answer-code-manifest.js):
+// append, never insert.
+const collectionModeOptions = ["自己填寫", "訪員協助代填"];
+
 const questions = [
   {
     id: "consent_acknowledgement",
@@ -590,6 +598,10 @@ const questions = [
     options: consentOptions,
     minSelected: 3
   },
+  // A separate question rather than a fourth consent box: validation requires
+  // exactly the three consent items, and the consent wording is IRB-approved.
+  // The chat page answers it itself (chatDefault) instead of asking.
+  { id: "collection_mode", module: "basic", type: "single", required: true, chatDefault: "自己填寫", title: "這份問卷的填答方式", note: "若由訪員詢問並協助填寫，請選擇「訪員協助代填」。", field: "administration.collection_mode", options: collectionModeOptions },
   { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
@@ -804,6 +816,7 @@ const i18n = {
     },
     questions: {
       consent_acknowledgement: ["Before starting, please confirm that you have read and agree to the following items", "Please read the personal data notice and service information before completing the three confirmations below."],
+      collection_mode: ["How is this questionnaire being completed?", "If an interviewer is asking the questions and filling in the answers, select “Completed with an interviewer.”"],
       birth_year: ["Year of birth", "Please enter a 4-digit year, for example 1980.", "Enter your answer"],
       height_cm: ["Height (cm)", "Please enter your current height.", "For example, 165"],
       weight_kg: ["Weight (kg)", "Please enter your current weight.", "For example, 60"],
@@ -859,6 +872,7 @@ const i18n = {
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
       "男性": "Male", "女性": "Female",
+      "自己填寫": "Self-completed", "訪員協助代填": "Completed with an interviewer",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
       // 本對照表以中文原字串為鍵、全表共用，故泛用詞一旦在別題也拿來當選項就會互相蓋台。
       // 下列國別字串目前全檔僅國別題使用（人種題用的是「其他族群」），新增選項前請先 grep。
@@ -2547,6 +2561,7 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
     country: getAnswerValue(answers, "demographics.country") || "",
+    collection_mode: getAnswerValue(answers, "administration.collection_mode") || "",
     psych_rumination: getAnswerValue(answers, "mental_health.psych_rumination") || "",
     psych_social_support: getAnswerValue(answers, "mental_health.psych_social_support") || "",
     psych_neuroticism_informant: getAnswerValue(answers, "mental_health.psych_neuroticism_informant") || "",

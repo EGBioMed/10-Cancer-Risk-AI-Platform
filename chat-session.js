@@ -71,6 +71,15 @@
     // what a conversation does anyway.
     const askable = app.questions.filter((question) => Boolean(question.field));
 
+    // Questions the conversation answers itself instead of asking -- today only
+    // collection_mode, which on this page is "self-completed" by definition.
+    // Written through the intake like any reply, so the default is held to the
+    // same rule: it has to be one of the question's own options.
+    for (const question of askable) {
+      if (question.chatDefault === undefined || isAnswered(answers, question)) continue;
+      intake.write(answers, question, question.chatDefault, { makeAnswerEntry: app.makeAnswerEntry, source });
+    }
+
     let current = null;
     let attempts = 0;
     let pending = null; // the last unresolved reply, for the caller to act on
