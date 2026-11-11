@@ -103,6 +103,49 @@ button {
   height: auto;
 }
 
+/* Co-branding. Only ever rendered when the entrance carries a partner --
+   see lib/institution-branding.js. The partner mark sits directly on the
+   hero rather than on .brand-mark's white chip, because the hero is dark
+   and partners supply a reversed logo for exactly this. */
+/* currentColor, not a fixed white: .brand-row is near-white over the hero
+   photograph and dark green once the overlay is switched off below 840px,
+   so the rule follows the text instead of needing its own breakpoint. */
+.brand-row__divider {
+  width: 1px;
+  height: 22px;
+  background: currentColor;
+  opacity: 0.3;
+}
+
+.brand-partner {
+  display: inline-flex;
+  align-items: center;
+}
+
+.brand-partner img {
+  display: block;
+  height: 26px;
+  width: auto;
+  /* A wordmark is wide. Without a ceiling it pushes the language switcher
+     off the row on the narrowest phones. */
+  max-width: 170px;
+  object-fit: contain;
+}
+
+/* Which of the two variants is on screen. Above 840px the hero is a dark
+   photograph under a near-black gradient, so the reversed logo shows; the
+   media query below swaps them where the overlay is switched off. A partner
+   who supplied only one file has no .brand-partner__* classes at all and is
+   untouched by either rule.
+
+   Qualified on img, and so is the pair in the media query, because
+   `.brand-partner img` above sets display:block and would otherwise win on
+   specificity -- which it did on the first attempt, showing both logos side
+   by side. */
+.brand-partner img.brand-partner__on-light {
+  display: none;
+}
+
 .language-switcher {
   display: inline-flex;
   gap: 4px;
@@ -1807,6 +1850,29 @@ pre {
     min-height: 92vh;
     align-items: flex-end;
     padding: 22px 18px 52px;
+  }
+
+  /* Two marks and a name do not fit one narrow line. Wrapping is the only
+     option that keeps both logos legible; shrinking them further does not. */
+  .brand-row {
+    flex-wrap: wrap;
+    row-gap: 8px;
+  }
+
+  .brand-partner img {
+    height: 22px;
+    max-width: 140px;
+  }
+
+  /* .hero__overlay is display:none here and the hero is plain white, so the
+     reversed logo would be white on white -- which is exactly how it shipped
+     the first time, rendering perfectly and visible to nobody. */
+  .brand-partner img.brand-partner__on-light {
+    display: block;
+  }
+
+  .brand-partner img.brand-partner__on-dark {
+    display: none;
   }
 
   .hero__overlay {

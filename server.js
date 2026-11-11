@@ -39,6 +39,12 @@ const {
 } = require("./lib/sso-entrance");
 const { createReplayGuard } = require("./lib/sso-token");
 const {
+  parseInstitutionBranding,
+  brandForEntrance,
+  brandForSlug,
+  applyInstitutionBranding
+} = require("./lib/institution-branding");
+const {
   parseReportRecipients,
   institutionForEntrance,
   recipientForInstitution,
@@ -237,6 +243,14 @@ if (ACCESS_GATE_MODE === "enforced" && !ACCESS_GATE_SESSION_SECRET) {
 }
 
 const PUBLIC_DIR = __dirname;
+
+// Partner co-branding. The logo path is checked against the disk here rather
+// than in the parser, so a typo in the variable is found at boot with the
+// filename in the message -- not by a partner looking at a broken image.
+const institutionBranding = parseInstitutionBranding(process.env.INSTITUTION_BRANDING, {
+  logoExists: (logo) => fs.existsSync(path.join(PUBLIC_DIR, logo))
+});
+for (const problem of institutionBranding.problems) console.error("Branding config: " + problem);
 const appAssets = createAppAssetVersioner(PUBLIC_DIR);
 const MIME_TYPES = {
   ".html": "text/html; charset=utf-8",
@@ -661,7 +675,13 @@ function serveStatic(req, res) {
     // HTML 是 no-store，所以每次都重新讀，也每次都把 app.js 的 v= 換成內容雜湊。
     // 只有這樣，剛部署好的 app.js 才會真的被下載——見 lib/asset-version.js 的說明。
     if (ext === ".html") {
-      res.end(appAssets.applyTo(fs.readFileSync(filePath, "utf8")));
+      // Branding is applied here, not in the browser: a page that renders our
+      // mark and then swaps it shows a partner's users the wrong brand on the
+      // first thing they see. no-store above is what makes this safe to vary
+      // per session -- a cached copy would hand one partner's page to the next
+      // visitor.
+      const html = appAssets.applyTo(fs.readFileSync(filePath, "utf8"));
+      res.end(applyInstitutionBranding(html, brandForSession(getSessionPayload(req))));
       return;
     }
     fs.createReadStream(filePath).pipe(res);
@@ -672,7 +692,13 @@ let cachedGatedIndexHtml = null;
 function buildGatedIndexHtml() {
   if (cachedGatedIndexHtml) return cachedGatedIndexHtml;
   const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, "index.html"), "utf8");
-  cachedGatedIndexHtml = renderGatedIndexHtml(appAssets.applyTo(indexHtml));
+  // The gate view is shown to someone with no session, so there is no
+  // entrance to brand yet. Stripping the marker keeps it out of the cached
+  // HTML rather than leaving a comment in the one page strangers can see.
+  cachedGatedIndexHtml = applyInstitutionBranding(
+    renderGatedIndexHtml(appAssets.applyTo(indexHtml)),
+    null
+  );
   return cachedGatedIndexHtml;
 }
 
@@ -745,8 +771,13 @@ function buildAccessSessionCookie(result, code = null) {
   // slug is carried rather than the code itself -- the code is a credential
   // and has no business sitting in a cookie once it has been spent.
   const inst = institutionForEntrance(reportRecipients, { code, grantId });
+  // The partner brand, decided at the same door for the same reason. It is a
+  // separate lookup from inst because the two lists answer different
+  // questions: Numia is co-branded and sends reports to each participant,
+  // 雙和 is unbranded and sends them to the hospital.
+  const brd = brandForEntrance(institutionBranding, { code, grantId });
   const cookieValue = signSessionCookie(
-    { grantId, mode, inst, sid, exp: expiresAtSeconds },
+    { grantId, mode, inst, brd, sid, exp: expiresAtSeconds },
     ACCESS_GATE_SESSION_SECRET
   );
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
@@ -769,6 +800,17 @@ function recipientForSession(sessionPayload) {
   const slug = sessionPayload.inst
     || institutionForEntrance(reportRecipients, { grantId: sessionPayload.grantId });
   return recipientForInstitution(reportRecipients, slug);
+}
+
+// This session's partner brand, or null for an ordinary unbranded entrance.
+// Same shape and the same fall back as recipientForSession: a cookie signed
+// before `brd` existed still resolves through its grantId, which is sealed in
+// the same HMAC and so is no weaker.
+function brandForSession(sessionPayload) {
+  if (!sessionPayload) return null;
+  const slug = sessionPayload.brd
+    || brandForEntrance(institutionBranding, { grantId: sessionPayload.grantId });
+  return brandForSlug(institutionBranding, slug);
 }
 
 async function handleAccessRedemption(req, res, rawToken) {

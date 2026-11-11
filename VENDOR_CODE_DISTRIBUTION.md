@@ -141,6 +141,56 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 
 ---
 
+## 聯合品牌（夥伴 logo）
+
+有些夥伴把人從自己的落地頁送進來，希望頁面不要看起來完全是別人的公司。這跟報
+告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
+
+```
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ"]}}
+```
+
+沒設這個變數，或某一筆壞掉，頁面就是原本的樣子——不會擋啟動，但會在 Logs 記一
+行 `Branding config:` 開頭的錯誤。
+
+| 欄位 | 必要 | 說明 |
+|---|---|---|
+| `name` | 是 | logo 的替代文字，給螢幕報讀軟體用 |
+| `logo` | 是 | 淺色背景用的版本。路徑只能是 `brand/<檔名>.svg` 或 `.png` |
+| `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
+| `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
+
+### 為什麼要兩個 logo 檔
+
+首頁 hero 在 840px 以上是深色照片加近黑漸層，以下則關掉漸層、變成純白底。同一
+個檔案不可能兩邊都看得見。第一版只放了反白版，桌機正常，**手機上是白字白底——
+圖片確實以 42×22 正常算繪，只是沒有人看得到**。兩個檔都送進頁面，由 CSS 決定哪
+一個顯示，切換寫在關掉漸層的那同一條 media query 裡。
+
+### 為什麼 logo 只能是本機路徑
+
+`logo` 是整份設定裡唯一可能變成攻擊面的欄位。填遠端網址等於把每一位受測者的 IP
+和瀏覽紀錄送給第三方，而且對方隨時可以換掉內容、我們這邊不用重新部署；填
+`data:` 或 `javascript:` 就是用環境變數做腳本注入。限定在 `brand/<檔名>` 之後，
+最壞情況只是圖片載不出來。
+
+### 夥伴 logo 不開放給沒有 session 的人
+
+`/brand/` 刻意沒有列進閘門的豁免清單（`/assets/` 有，因為閘門頁自己要用）。沒有
+session 的人看不到聯名頁，自然也不需要那個 logo，而把夥伴的商標放在開放路徑上
+等於替他們公開寄存。
+
+### 品牌是在門口決定的，不是瀏覽器說了算
+
+跟 `delivery_mode`、機構代號一樣，夥伴代號在兌換的那一刻就被簽進 session cookie
+（欄位 `brd`）。改 cookie 要連 HMAC 一起偽造，所以瀏覽器沒辦法自己挑一個品牌來
+顯示。
+
+機制與設計理由見 `lib/institution-branding.js`，測試見
+`test-institution-branding.js`。
+
+---
+
 ## 4. 對帳
 
 查單一代碼：

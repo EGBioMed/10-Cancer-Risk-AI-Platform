@@ -133,7 +133,16 @@ test("the submission handler takes the mode from the cookie, not the body", () =
 
 test("the redeemed grant's mode is sealed into the signed cookie", () => {
   // Inside signSessionCookie's payload, so forging it means forging the HMAC.
-  assert.match(serverSource, /signSessionCookie\(\s*\{ grantId, mode, inst, sid, exp: expiresAtSeconds \}/);
+  //
+  // Checked field by field rather than against the whole literal. Fields get
+  // sealed in as entrances learn to decide more at the door -- inst, then brd
+  // for partner co-branding -- and an assertion that breaks every time one
+  // does teaches the next person to loosen it rather than read it.
+  const sealed = serverSource.match(/signSessionCookie\(\s*(\{[^}]*\})/);
+  assert(sealed, "signSessionCookie's payload object not found");
+  for (const field of ["grantId", "mode", "inst", "sid", "exp: expiresAtSeconds"]) {
+    assert.equal(sealed[1].includes(field), true, `${field} is no longer sealed into the cookie`);
+  }
 
   // The mode is read off the redemption result in exactly one place. It used
   // to be each door's job to pass it on, checked here by counting call sites;
