@@ -988,8 +988,28 @@ async function handleCodeRedemption(req, res) {
 // in a waiting room: anyone who photographs it can spend the institution's
 // quota, and the quota, not the URL, is what bounds that.
 async function handleEntryCode(req, res, rawCode) {
-  if (ACCESS_GATE_MODE !== "enforced") {
+  // Every refusal below lands on the same page as a mistyped code, which is
+  // deliberate -- see above. The cost is that the six ways this can fail are
+  // indistinguishable from outside, and on 2026-11-11 that cost was paid in
+  // full: a partner review link stopped working, and finding out why meant
+  // ruling the six out one at a time against production, because nothing was
+  // written down anywhere. Two of them (the limiter, and a gate that throws)
+  // never reach the gate at all, so not even its access_events table has a
+  // record.
+  //
+  // So the page stays silent and the log does not. Same shape as the SSO
+  // entrance, which has logged its refusals from the start.
+  //
+  // What is never logged is the code itself: it is a live credential, and
+  // logs outlive the incident that needed them. The first eight characters of
+  // its hash identify it across lines without being usable as one.
+  const refuse = (reason, detail) => {
+    console.error(`Entry link refused: ${reason}${detail ? " (" + detail + ")" : ""}`);
     redirectToHome(res);
+  };
+
+  if (ACCESS_GATE_MODE !== "enforced") {
+    refuse("gate_not_enforced");
     return;
   }
 
@@ -998,19 +1018,27 @@ async function handleEntryCode(req, res, rawCode) {
   // guessing to the link.
   const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
   if (!codeRedeemLimiter.check(clientIp)) {
-    redirectToHome(res);
+    // The bucket's key, hashed. Printing the address would put visitors'
+    // IPs in the log; printing nothing leaves the one question this line
+    // exists to answer -- whether every caller is landing in one shared
+    // bucket, which is what getClientIp does when it can see no per-client
+    // header -- unanswerable. The same key on lines from different people
+    // is the answer.
+    refuse("rate_limited", `bucket ${hashToken(clientIp).slice(0, 8)}`);
     return;
   }
 
   const normalized = normalizeCode(rawCode);
   if (!normalized) {
-    redirectToHome(res);
+    refuse("malformed");
     return;
   }
 
+  const fingerprint = hashToken(normalized).slice(0, 8);
+
   await accessGateReady;
   if (!accessGateClient || accessGateClientError) {
-    redirectToHome(res);
+    refuse("gate_unavailable", fingerprint);
     return;
   }
 
@@ -1018,11 +1046,16 @@ async function handleEntryCode(req, res, rawCode) {
   try {
     result = await accessGateClient.redeemAccessGrant({ tokenHash: hashToken(normalized) });
   } catch (error) {
-    redirectToHome(res);
+    // The one failure the gate cannot record for us, because the request
+    // never arrived. Its message is the only account of it that will exist.
+    refuse("gate_error", `${fingerprint}: ${error.message}`);
     return;
   }
   if (!result.ok) {
-    redirectToHome(res);
+    // The gate's own word -- not_found, already_used, expired, revoked --
+    // which is the difference between "nobody minted this" and "the quota
+    // ran out", two things the page shows identically.
+    refuse(result.reason || "gate_refused", fingerprint);
     return;
   }
 

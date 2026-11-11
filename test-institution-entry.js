@@ -53,6 +53,7 @@ function freePort() {
 }
 
 const redemptions = [];
+const stderrLines = [];
 
 function startStubGate(port) {
   const server = http.createServer((req, res) => {
@@ -94,6 +95,11 @@ function startServer(port, gatePort) {
     stdio: ["ignore", "pipe", "pipe"]
   });
 
+  // Collected so the refusal log can be asserted. A scan that fails shows the
+  // same page as one that was mistyped, so the log is the only place the
+  // reason exists -- which makes it part of the behaviour, not a detail.
+  child.stderr.on("data", (chunk) => { stderrLines.push(...String(chunk).split("\n").filter(Boolean)); });
+
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error("server did not start within 20s")), 20000);
     const ready = () => { clearTimeout(timer); resolve(child); };
@@ -101,6 +107,18 @@ function startServer(port, gatePort) {
     child.on("error", (error) => { clearTimeout(timer); reject(error); });
     child.on("exit", (code) => { clearTimeout(timer); reject(new Error(`server exited with ${code}`)); });
   });
+}
+
+// Waits for the line, rather than reading immediately: stderr arrives on its
+// own schedule, and the response can land first.
+async function refusalLine(match, timeoutMs = 3000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const found = stderrLines.find((line) => line.includes("Entry link refused") && line.includes(match));
+    if (found) return found;
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  }
+  return null;
 }
 
 let server;
@@ -213,6 +231,36 @@ test("a code the gate refuses opens nothing", async () => {
   assert.equal(response.status, 302, "a refused scan should look like any other");
   assert.equal(response.headers.get("location"), "/");
   assert.equal(sessionFrom(response), null, "a refused code was given a session");
+});
+
+// The page says the same thing however a scan fails, so the log is where the
+// six reasons live. Without it, 2026-11-11 was spent ruling them out one at a
+// time against production -- and two of them never reach the gate, so its own
+// access_events table had nothing either.
+test("a refusal names its reason in the log, and never the code", async () => {
+  const code = "egnotarealcode";
+  await scan(code);
+
+  const line = await refusalLine("not_found");
+  assert(line, "a refused scan wrote no log line");
+  // The gate's own word, so "nobody minted this" is distinguishable from
+  // "the quota ran out" -- which the page shows identically.
+  assert.match(line, /Entry link refused: not_found/);
+
+  // The code is a live credential and logs outlive the incident. Its hash
+  // prefix identifies it across lines without being usable as one.
+  assert.equal(line.includes(code), false, "the log printed the access code itself");
+  assert.match(line, new RegExp(hashToken(code).slice(0, 8)));
+});
+
+test("a scan that cannot be a code says so without naming the gate", async () => {
+  await scan("abc");
+  const line = await refusalLine("malformed");
+  assert(line, "an unusable scan wrote no log line");
+  // Distinct from not_found on purpose: one never left this process, the
+  // other is the gate's answer. Collapsing them would hide which half of the
+  // system was involved.
+  assert.equal(line.includes("not_found"), false);
 });
 
 test("a scan that is not a usable code is refused without asking the gate", async () => {
