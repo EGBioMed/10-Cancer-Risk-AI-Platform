@@ -202,7 +202,7 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 ### 頁尾的夥伴資訊
 
 ```
-"footer": {"summary":"At-home blood work, Vancouver.","website":"https://numiahealth.ca/","email":"...","phone":"..."}
+"footer": {"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/","email":"...","phone":"..."}
 ```
 
 四個欄位全部選填，而且是**各自**檢查、各自捨棄的——只給網址沒給電話，就是一個
