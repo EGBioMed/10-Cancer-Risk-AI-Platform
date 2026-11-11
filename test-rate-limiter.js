@@ -40,6 +40,48 @@ test("createFixedWindowLimiter tracks independent buckets per key", () => {
   assert.equal(limiter.check("b", 200), true);
 });
 
+// The 2026-11-11 split. `check` asks and counts in one step, which is right
+// for something every call costs us. For a credential it is wrong: a code
+// that works would meter itself, and on that day twenty link-preview fetches
+// of one working link filled the window for everybody, the typed form
+// included, because they share a bucket.
+test("allow asks without counting", () => {
+  const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 2 });
+  for (let i = 0; i < 50; i += 1) assert.equal(limiter.allow("a", 0), true);
+  // Fifty questions later the bucket is still empty, so two real attempts
+  // remain -- which is the whole point.
+  assert.equal(limiter.check("a", 0), true);
+  assert.equal(limiter.check("a", 0), true);
+  assert.equal(limiter.allow("a", 0), false);
+});
+
+test("record counts without asking, and stays per key", () => {
+  const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 2 });
+  limiter.record("a", 0);
+  assert.equal(limiter.allow("a", 0), true);
+  limiter.record("a", 0);
+  assert.equal(limiter.allow("a", 0), false);
+  assert.equal(limiter.allow("b", 0), true, "one key's failures blocked another key");
+});
+
+// A caller that is already blocked keeps knocking. If each knock extended the
+// window, the window would never empty and the block would be permanent.
+test("recording while blocked does not extend the window", () => {
+  const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 1 });
+  limiter.record("a", 0);
+  assert.equal(limiter.allow("a", 0), false);
+  for (const t of [100, 300, 600, 900]) limiter.record("a", t);
+  assert.equal(limiter.allow("a", 999), false);
+  assert.equal(limiter.allow("a", 1000), true, "the window did not end on time");
+});
+
+test("allow after the window has elapsed sees a fresh bucket", () => {
+  const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 1 });
+  limiter.record("a", 0);
+  assert.equal(limiter.allow("a", 500), false);
+  assert.equal(limiter.allow("a", 1500), true);
+});
+
 test("createFixedWindowLimiter sweep removes expired buckets", () => {
   const limiter = createFixedWindowLimiter({ windowMs: 1000, maxAttempts: 1 });
   limiter.check("a", 0);

@@ -919,10 +919,15 @@ function serveSsoError(res, statusCode) {
 
 async function handleCodeRedemption(req, res) {
   const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
-  if (!codeRedeemLimiter.check(clientIp)) {
+  if (!codeRedeemLimiter.allow(clientIp)) {
     sendJson(res, 429, { ok: false, error: "Too many attempts. Please wait and try again." });
     return;
   }
+
+  // Counted only where the code was the problem -- see handleEntryCode, which
+  // shares this bucket and this rule. Our own failures (503/500 below) are
+  // not the caller's doing, and a success is not a guess.
+  const countAttempt = () => codeRedeemLimiter.record(clientIp);
 
   if (ACCESS_GATE_MODE !== "enforced") {
     sendJson(res, 200, { ok: true });
@@ -944,6 +949,7 @@ async function handleCodeRedemption(req, res) {
 
   const normalized = normalizeCode(body && body.code);
   if (!normalized) {
+    countAttempt();
     // Same generic wording as every other denial reason -- don't reveal
     // whether the issue was format/length vs. simply not found.
     sendJson(res, 403, { ok: false, error: "Code not recognized. Please check it and try again." });
@@ -965,6 +971,7 @@ async function handleCodeRedemption(req, res) {
   }
 
   if (!result.ok) {
+    countAttempt();
     sendJson(res, 403, { ok: false, error: "Code not recognized. Please check it and try again." });
     return;
   }
@@ -1003,28 +1010,37 @@ async function handleEntryCode(req, res, rawCode) {
   // What is never logged is the code itself: it is a live credential, and
   // logs outlive the incident that needed them. The first eight characters of
   // its hash identify it across lines without being usable as one.
-  const refuse = (reason, detail) => {
+  // The same limiter as the typed form. One credential, one abuse surface:
+  // metering the form while leaving the link open would just move the
+  // guessing to the link.
+  const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
+
+  // `counts` is the whole of the 2026-11-11 fix. Only what the caller got
+  // wrong meters them: a bad code, a code nobody minted, a code whose quota
+  // ran out. A redemption that works is not a guess, and our own failures --
+  // the gate unreachable, the gate throwing -- are not the caller's doing. If
+  // those counted, an Azure outage would lock the door behind itself.
+  const refuse = (reason, detail, { counts = true } = {}) => {
+    if (counts) codeRedeemLimiter.record(clientIp);
     console.error(`Entry link refused: ${reason}${detail ? " (" + detail + ")" : ""}`);
     redirectToHome(res);
   };
 
   if (ACCESS_GATE_MODE !== "enforced") {
-    refuse("gate_not_enforced");
+    refuse("gate_not_enforced", null, { counts: false });
     return;
   }
 
-  // The same limiter as the typed form. One credential, one abuse surface:
-  // metering the form while leaving the link open would just move the
-  // guessing to the link.
-  const clientIp = getClientIp(req.headers["x-forwarded-for"], req.socket.remoteAddress, req.headers["cf-connecting-ip"]);
-  if (!codeRedeemLimiter.check(clientIp)) {
+  if (!codeRedeemLimiter.allow(clientIp)) {
     // The bucket's key, hashed. Printing the address would put visitors'
     // IPs in the log; printing nothing leaves the one question this line
     // exists to answer -- whether every caller is landing in one shared
     // bucket, which is what getClientIp does when it can see no per-client
     // header -- unanswerable. The same key on lines from different people
     // is the answer.
-    refuse("rate_limited", `bucket ${hashToken(clientIp).slice(0, 8)}`);
+    // Not counted: a refusal that fed itself would turn a full window into a
+    // window that never empties.
+    refuse("rate_limited", `bucket ${hashToken(clientIp).slice(0, 8)}`, { counts: false });
     return;
   }
 
@@ -1038,7 +1054,7 @@ async function handleEntryCode(req, res, rawCode) {
 
   await accessGateReady;
   if (!accessGateClient || accessGateClientError) {
-    refuse("gate_unavailable", fingerprint);
+    refuse("gate_unavailable", fingerprint, { counts: false });
     return;
   }
 
@@ -1048,7 +1064,7 @@ async function handleEntryCode(req, res, rawCode) {
   } catch (error) {
     // The one failure the gate cannot record for us, because the request
     // never arrived. Its message is the only account of it that will exist.
-    refuse("gate_error", `${fingerprint}: ${error.message}`);
+    refuse("gate_error", `${fingerprint}: ${error.message}`, { counts: false });
     return;
   }
   if (!result.ok) {

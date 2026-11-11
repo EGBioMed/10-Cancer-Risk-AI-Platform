@@ -146,8 +146,15 @@ function sessionFrom(response) {
   return header ? header.split(";")[0] : null;
 }
 
-async function scan(code) {
-  return fetch(`${base}/entry/${encodeURIComponent(code)}`, { redirect: "manual" });
+// `from` becomes the rate limiter's bucket key: with no cf-connecting-ip in
+// these tests, getClientIp takes the last x-forwarded-for entry. Each test
+// that exercises the limiter uses its own, so filling one bucket cannot
+// strand the tests that run after it.
+async function scan(code, from) {
+  return fetch(`${base}/entry/${encodeURIComponent(code)}`, {
+    redirect: "manual",
+    headers: from ? { "x-forwarded-for": from } : {}
+  });
 }
 
 async function deliveryFor(cookie) {
@@ -311,6 +318,41 @@ test("the entrance does not become a way past the gate", async () => {
   const nested = await fetch(`${base}/entry/${SHUANGHO_CODE}/x`, { redirect: "manual" });
   assert.equal([302, 403].includes(nested.status), true);
   assert.equal(sessionFrom(nested), null, "a nested path issued a session");
+});
+
+// The incident this pair exists for. The limiter is 60 attempts per ten
+// minutes and the entrance shares its bucket with the typed form. While every
+// redemption counted, twenty link-preview fetches of one working partner link
+// filled the window, and for the rest of it nobody could get in by either
+// route -- which the page reports as "code not recognized".
+test("a code that works does not meter itself", async () => {
+  const from = "203.0.113.11";
+  // Comfortably past the 60-attempt ceiling. Every one of these succeeds, so
+  // under the old behaviour the last forty would have been refused.
+  for (let i = 0; i < 100; i += 1) {
+    const response = await scan(SHUANGHO_CODE, from);
+    assert.equal(sessionFrom(response) !== null, true, `scan ${i + 1} was refused`);
+  }
+});
+
+test("guessing is still metered, and only for the one guessing", async () => {
+  const guesser = "203.0.113.22";
+  const bystander = "203.0.113.33";
+
+  // Scanned first, read after: refusalLine waits for stderr, and waiting
+  // inside the loop costs three seconds per attempt that has not tripped it
+  // yet. The ceiling is 60, so 61 wrong codes is one past it.
+  for (let i = 0; i < 61; i += 1) await scan(`egnotarealcode${i}`, guesser);
+
+  assert(await refusalLine("rate_limited"), "a flood of wrong codes was never rate limited");
+  // And it stays shut for that caller, not just for the one attempt.
+  assert.equal(sessionFrom(await scan(SHUANGHO_CODE, guesser)), null,
+    "a caller who just exhausted the limiter was let straight back in");
+
+  // The bucket is the caller's, not the site's. A second visitor arriving
+  // mid-flood still gets in -- which is what did not happen on 2026-11-11.
+  const response = await scan(SHUANGHO_CODE, bystander);
+  assert(sessionFrom(response), "one caller's guessing locked out everybody else");
 });
 
 test("the delivery endpoint says nothing without a session", async () => {
