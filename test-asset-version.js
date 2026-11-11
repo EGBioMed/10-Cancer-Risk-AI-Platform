@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {
   VERSIONED_SCRIPTS,
+  VERSIONED_STYLESHEETS,
   computeAssetVersion,
   withVersionedScripts,
   createAppAssetVersioner
@@ -52,6 +53,63 @@ test("every served page asks for its cached scripts with their current content h
   for (const fileName of VERSIONED_SCRIPTS) {
     assert(referenced.has(fileName), `${fileName} is versioned but no served page loads it`);
   }
+});
+
+// 2026-11-11 的重演，這次是樣式表。夥伴聯名的標記進了 index.html，把 logo 縮到
+// 26px 的規則進了 styles.css，但 styles.css 仍帶著手寫的
+// `?v=20260724-diet-frequency-v2`。瀏覽器拿到新 HTML、配一小時前的 CSS，於是兩張
+// 2048px 的 logo 把版面整個擠爛——程式是對的，使用者看到的是壞的。
+test("every served page asks for its stylesheet with its current content hash", () => {
+  const versioner = createAppAssetVersioner(__dirname);
+
+  for (const page of SERVED_PAGES) {
+    const source = fs.readFileSync(path.join(__dirname, page), "utf8");
+    const rewritten = versioner.applyTo(source);
+
+    for (const fileName of VERSIONED_STYLESHEETS) {
+      if (!new RegExp(`href="${fileName.replace(".", "\\.")}(\\?|")`).test(source)) continue;
+      const expected = computeAssetVersion(fs.readFileSync(path.join(__dirname, fileName)));
+      assert.equal(versioner.styleVersions()[fileName], expected);
+      assert(
+        rewritten.includes(`href="${fileName}?v=${expected}"`),
+        `${page} must request ${fileName} with its content hash`
+      );
+    }
+
+    // 手寫的字串一個都不準留下。chat.html 送的是 `?v=local`，index.html 送的是一個
+    // 2026-07 的日期——兩個都永遠不會變，所以兩個都會把舊 CSS 釘在瀏覽器裡。
+    assert.match(
+      rewritten,
+      /href="styles\.css\?v=[0-9a-f]{12}"/,
+      `${page} must serve styles.css with a content hash, not a hand-written token`
+    );
+    for (const stale of ["?v=local", "?v=20260724-diet-frequency-v2"]) {
+      assert.equal(
+        rewritten.includes(`styles.css${stale}`),
+        false,
+        `${page} still serves styles.css${stale}`
+      );
+    }
+  }
+
+  // 每一個被納管的樣式表都要真的有頁面載入它，否則不是清單過期就是頁面漏載。
+  const loaded = SERVED_PAGES.map((page) => fs.readFileSync(path.join(__dirname, page), "utf8")).join("");
+  for (const fileName of VERSIONED_STYLESHEETS) {
+    assert(loaded.includes(`href="${fileName}`), `${fileName} is versioned but no served page loads it`);
+  }
+});
+
+test("a stylesheet rewrite does not disturb the scripts, or vice versa", () => {
+  const versioner = createAppAssetVersioner(__dirname);
+  const html = '<link rel="stylesheet" href="styles.css?v=old" /><script src="app.js?v=old"></script>';
+  const rewritten = versioner.applyTo(html);
+
+  assert.match(rewritten, /href="styles\.css\?v=[0-9a-f]{12}"/);
+  assert.match(rewritten, /src="app\.js\?v=[0-9a-f]{12}"/);
+  assert.equal(rewritten.includes("?v=old"), false);
+  // href 的規則不得碰到 src 的檔案，反之亦然。
+  assert.equal(rewritten.includes('href="app.js'), false);
+  assert.equal(rewritten.includes('src="styles.css'), false);
 });
 
 test("a changed file necessarily changes the URL the browser requests", () => {
