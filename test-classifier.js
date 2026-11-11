@@ -303,3 +303,38 @@ test("the intake would accept every label the eval expects", () => {
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// The question as actually asked.
+// ---------------------------------------------------------------------------
+
+test("the question as actually asked reaches the prompt, and only when it differs", () => {
+  const sex = questionById("sex");
+  const led = classifier.buildRequest(sex, "著", undefined, { asked: "你是查某乎？" }).messages[0].content;
+  assert.ok(led.includes("實際的問法：你是查某乎？"), "the interviewer's wording is missing from the prompt");
+  assert.ok(led.includes("受訪者的回答：著"));
+
+  // The questionnaire's own wording adds nothing, so it is not repeated.
+  const same = classifier.buildRequest(sex, "女", undefined, { asked: sex.title }).messages[0].content;
+  assert.ok(!same.includes("實際的問法"));
+  const none = classifier.buildRequest(sex, "女").messages[0].content;
+  assert.ok(!none.includes("實際的問法"));
+
+  // Capped: it is text a client sends.
+  const long = classifier.buildRequest(sex, "著", undefined, { asked: "問".repeat(1000) }).messages[0].content;
+  assert.ok(!long.includes("問".repeat(classifier.MAX_ASKED_LENGTH + 1)));
+
+  const weight = classifier.buildRequest(questionById("weight_kg"), "著", undefined, { asked: "你是四十六公斤乎？" });
+  assert.ok(weight.messages[0].content.includes("實際的問法：你是四十六公斤乎？"));
+  for (const prompt of [classifier.SYSTEM_PROMPT, classifier.NUMBER_SYSTEM_PROMPT]) {
+    assert.ok(prompt.includes("實際的問法"), "the instructions do not say what the asked wording is for");
+  }
+});
+
+test("the classifier passes the asked wording through to the request", async () => {
+  let sent = null;
+  const client = { messages: { parse: async (request) => { sent = request; return { parsed_output: { indices: [1] } }; } } };
+  const classify = classifier.createAnthropicClassifier({ client });
+  assert.equal(await classify(questionById("sex"), "著", { asked: "你是查某乎？" }), 1);
+  assert.ok(sent.messages[0].content.includes("你是查某乎？"));
+});

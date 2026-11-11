@@ -95,14 +95,20 @@
   // into asking again: the questionnaire works whether or not a model is
   // behind it, and a bad day for the model is a slightly more repetitive
   // conversation rather than a broken one.
-  async function classifyRemotely(question, utterance) {
+  async function classifyRemotely(question, utterance, context) {
     const text = Array.isArray(utterance) ? utterance.join("；") : String(utterance ?? "");
+    const body = { question_id: question.id, utterance: text };
+    // What the page actually said, when that was not the question itself --
+    // "您的意思比較接近哪一個？" after an ambiguity, say. The server caps it.
+    if (context && typeof context.asked === "string" && context.asked.trim()) {
+      body.asked = context.asked.slice(0, 300);
+    }
     let payload;
     try {
       const response = await fetch(CLASSIFY_ENDPOINT, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question_id: question.id, utterance: text })
+        body: JSON.stringify(body)
       });
       if (!response.ok) return null;
       payload = await response.json();
@@ -259,6 +265,13 @@
     }
     if (turn.kind === "correct") say(copy.corrected, "bot");
 
+    // The words the reply will be answering, for the classifier. After an
+    // ambiguity that is the follow-up and the readings offered, not the
+    // original question.
+    lastAsked = turn.kind === "disambiguate" && turn.pending && turn.pending.candidates
+      ? `${copy.disambiguate} ${turn.pending.candidates.join("／")}`
+      : questionText(turn.question);
+
     // The generic retry line points at options. On a question that has none,
     // that is an instruction the page cannot honour, so it gets its own wording.
     if (turn.kind === "retry") {
@@ -281,6 +294,7 @@
   // while it does: without that, pressing send twice attributes the second
   // sentence to whichever question the first one advanced to.
   let inFlight = false;
+  let lastAsked = "";
   async function reply(utterance, shown) {
     if (inFlight) return;
     inFlight = true;
@@ -290,7 +304,7 @@
 
     let result;
     try {
-      result = await session.receiveAsync(utterance);
+      result = await session.receiveAsync(utterance, { asked: lastAsked });
     } finally {
       inFlight = false;
       input.disabled = false;

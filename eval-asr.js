@@ -40,8 +40,12 @@ function resolverInput(question, text) {
   return question.type === "multi" ? [text] : text;
 }
 
-async function resolveText(app, question, text, classifier) {
+// `asked` is the question as the respondent actually heard it, when the
+// recording's manifest gives one: an interviewer's "你是查某乎？" rather than
+// "您的性別？". It reaches the classifier only, as on the chat page.
+async function resolveText(app, question, text, classifier, asked) {
   const options = { numberBounds: app.getNumberBounds, classifier };
+  if (typeof asked === "string" && asked.trim()) options.asked = asked;
   const result = await resolver.resolveAsync(question, resolverInput(question, text), options);
   // The resolver turns a classifier that threw into an abstention, which is
   // right for a respondent (ask again) and wrong for a measurement: a bad key
@@ -86,12 +90,12 @@ function createClassifier(tally) {
 
 async function scoreOne(app, item, transcript, classifier) {
   const question = app.questions.find((candidate) => candidate.id === item.question_id);
-  const heardResult = await resolveText(app, question, transcript.text, classifier);
+  const heardResult = await resolveText(app, question, transcript.text, classifier, item.asked);
   const heard = scoring.verdictFor(item, question, scoring.answerFromResolution(question, heardResult));
 
   let reference = null;
   if (typeof item.reference_text === "string" && item.reference_text.trim()) {
-    const refResult = await resolveText(app, question, item.reference_text, classifier);
+    const refResult = await resolveText(app, question, item.reference_text, classifier, item.asked);
     reference = scoring.verdictFor(item, question, scoring.answerFromResolution(question, refResult));
   }
 

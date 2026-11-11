@@ -198,3 +198,16 @@ test("a model missing from the price table says so instead of printing $0", () =
   assert.match(lines, /不在 lib\/classifier\.js 的價目表裡/);
   assert.doesNotMatch(lines, /US\$0\.0000/);
 });
+
+test("a recording's asked wording reaches the classifier, and a malformed one is refused", async () => {
+  const seen = [];
+  const item = { id: "x", question_id: "sex", expect: [1], language: "nan", environment: "quiet", asked: "你是查某乎？" };
+  const result = await scoreOne(app, item, { text: "著", latencyMs: null }, async (q, u, context) => { seen.push(context); return 1; });
+  assert.equal(result.heard, "correct");
+  assert.deepEqual(seen, [{ asked: "你是查某乎？" }]);
+
+  const problems = scoring.validateRecordings([
+    { id: "a", audio: "a.wav", question_id: "sex", expect: [1], language: "nan", asked: "" }
+  ], app.questions);
+  assert.equal(problems.length, 1);
+});

@@ -452,3 +452,13 @@ test("the async path reads numbers the same way", async () => {
   });
   assert.equal(failed.via, "classifier_threw");
 });
+
+test("the question as asked reaches the classifier, and only when the caller gives it", async () => {
+  const sex = app.questions.find((candidate) => candidate.id === "sex");
+  const seen = [];
+  const classifier = (question, utterance, context) => { seen.push(context); return 1; };
+  resolver.resolve(sex, "著乎", { classifier, asked: "你是查某乎？" });
+  resolver.resolve(sex, "著乎", { classifier });
+  await resolver.resolveAsync(sex, "著乎", { classifier: async (q, u, c) => { seen.push(c); return 1; }, asked: "你是查某乎？" });
+  assert.deepEqual(seen, [{ asked: "你是查某乎？" }, undefined, { asked: "你是查某乎？" }]);
+});

@@ -295,10 +295,20 @@
     return matched(question, verdict, "classifier");
   }
 
+  // What the classifier is told besides the question and the reply: the
+  // question as the person actually heard it, when the caller knows it. Only
+  // the classifier sees it -- the rules above match the reply against the
+  // question's own options, and a rephrasing does not change what those are.
+  function classifierContext(settings) {
+    return typeof settings.asked === "string" && settings.asked.trim()
+      ? { asked: settings.asked }
+      : undefined;
+  }
+
   function applyClassifier(question, utterance, settings) {
     let verdict;
     try {
-      verdict = settings.classifier(question, utterance);
+      verdict = settings.classifier(question, utterance, classifierContext(settings));
     } catch (error) {
       return unmatched("classifier_threw", error && error.message);
     }
@@ -308,7 +318,7 @@
   async function applyClassifierAsync(question, utterance, settings) {
     let verdict;
     try {
-      verdict = await settings.classifier(question, utterance);
+      verdict = await settings.classifier(question, utterance, classifierContext(settings));
     } catch (error) {
       return unmatched("classifier_threw", error && error.message);
     }

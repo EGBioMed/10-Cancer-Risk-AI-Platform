@@ -216,10 +216,13 @@ const handleChatClassify = createChatClassifyHandler({
   // disagree with what the browser just showed the respondent.
   loadQuestions: () => require("./lib/load-app-sandbox").loadApp().questions,
   classify: ANTHROPIC_API_KEY
-    ? (question, utterance) => {
+    ? (question, utterance, context) => {
         const classify = anthropicClassifier();
         if (!classify) throw new Error("classifier unavailable");
-        return classify(question, utterance);
+        // Only the wording the person heard is passed on; nothing else the
+        // handler knows reaches the prompt.
+        const asked = context && typeof context.asked === "string" ? context.asked : "";
+        return classify(question, utterance, asked ? { asked } : undefined);
       }
     : undefined,
   limiter: classifyLimiter,

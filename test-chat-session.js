@@ -646,3 +646,12 @@ test("read-back understands Taiwanese and Mandarin yes and no, and nothing else"
   for (const no of ["不對", "毋著", "不是", "錯", "No"]) assert.equal(confirmIntent(no), "no", no);
   for (const other of ["1997", "我想一下", "", "應該吧"]) assert.equal(confirmIntent(other), null, other);
 });
+
+test("a reply can carry the words it was answering, and the classifier gets them", () => {
+  const seen = [];
+  const { session } = freshSession({ classifier: (question, utterance, context) => { seen.push(context); return 1; } });
+  walkTo(session, "sex");
+  const result = session.receive("著乎", { asked: "你是查某乎？" });
+  assert.equal(result.status, "answered");
+  assert.deepEqual(seen, [{ asked: "你是查某乎？" }]);
+});

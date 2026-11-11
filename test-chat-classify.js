@@ -243,3 +243,17 @@ test("the endpoint is not in the gate exemption list", () => {
     "the classify endpoint was added to the gate exemptions"
   );
 });
+
+test("the question as asked is forwarded, capped, and optional", async () => {
+  const seen = [];
+  const api = harness({ classify: async (question, utterance, context) => { seen.push(context); return 1; } });
+  await api.post({ question_id: "sex", utterance: "著", asked: "您的意思比較接近哪一個？ 男性／女性" });
+  await api.post({ question_id: "sex", utterance: "著" });
+  assert.equal(seen[0].asked, "您的意思比較接近哪一個？ 男性／女性");
+  assert.equal("asked" in seen[1], false);
+
+  const { status, payload } = await api.post({ question_id: "sex", utterance: "著", asked: "問".repeat(301) });
+  assert.equal(status, 400);
+  assert.equal(payload.code, "asked_too_long");
+  assert.equal(seen.length, 2, "an over-long asked reached the classifier");
+});

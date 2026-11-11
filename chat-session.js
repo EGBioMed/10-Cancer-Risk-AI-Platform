@@ -237,23 +237,31 @@
       return { status: "corrected", question, value };
     }
 
-    function receive(utterance) {
+    // `context` is optional: { asked } -- the words the person was actually
+    // asked, when the caller rephrased the question or asked a follow-up. It
+    // reaches the classifier only; see answer-resolver.js.
+    function optionsFor(context) {
+      const asked = context && typeof context.asked === "string" ? context.asked : "";
+      return asked ? { ...(resolverOptions || {}), asked } : resolverOptions;
+    }
+
+    function receive(utterance, context) {
       if (awaiting) return receiveConfirmation(utterance);
       const question = questionForReply();
       if (!question) return { status: "done", question: null };
-      const resolution = resolver.resolve(question, utterance, resolverOptions);
+      const resolution = resolver.resolve(question, utterance, optionsFor(context));
       return applyResolution(question, resolution);
     }
 
     // The same turn, for a classifier that is a network call.
-    async function receiveAsync(utterance) {
+    async function receiveAsync(utterance, context) {
       if (awaiting) return receiveConfirmation(utterance);
       const question = questionForReply();
       if (!question) return { status: "done", question: null };
       const resolution = await resolver.resolveAsync(
         question,
         utterance,
-        resolverOptions
+        optionsFor(context)
       );
       return applyResolution(question, resolution);
     }
