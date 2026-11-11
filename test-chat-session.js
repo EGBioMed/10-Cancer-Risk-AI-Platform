@@ -536,3 +536,113 @@ test("an unknown symptom group is omitted from the model's input, not sent as 0"
     );
   }
 });
+
+// ---------------------------------------------------------------------------
+// Read-back. An understood answer is said back before it counts. Off unless
+// the caller passes a policy; the chat page passes readBackPolicy.
+// ---------------------------------------------------------------------------
+
+const { readBackPolicy, confirmIntent } = require("./chat-session");
+
+// Walks the conversation cooperatively, confirming every read-back, until the
+// question with this id is the one being asked.
+function walkTo(session, questionId) {
+  for (let step = 0; step < 500; step += 1) {
+    const turn = session.next();
+    if (turn.done) throw new Error(`${questionId} was never asked`);
+    if (turn.kind === "confirm") { session.receive("對"); continue; }
+    if (turn.question.id === questionId) return turn;
+    session.receive(cooperativeReply(turn.question));
+  }
+  throw new Error(`${questionId} not reached within 500 turns`);
+}
+
+test("a number is read back, and only counts once the person says it is right", () => {
+  const { app, session } = freshSession({ readBack: readBackPolicy });
+  walkTo(session, "birth_year");
+
+  const heard = session.receive("1997");
+  assert.equal(heard.status, "confirm");
+  assert.equal(heard.value, "1997");
+  const turn = session.next();
+  assert.equal(turn.kind, "confirm", "the read-back was not offered as the next turn");
+  assert.equal(turn.question.id, "birth_year");
+  assert.equal(session.isComplete(), false);
+
+  const confirmed = session.receive("著");
+  assert.equal(confirmed.status, "answered");
+  assert.equal(confirmed.confirmed, true);
+  assert.equal(app.answers["demographics.birth_year"].value, "1997");
+  assert.notEqual(session.next().question.id, "birth_year", "a confirmed answer was asked again");
+});
+
+test("a rejected read-back discards the answer and asks the question again", () => {
+  const { app, session } = freshSession({ readBack: readBackPolicy });
+  walkTo(session, "weight_kg");
+
+  assert.equal(session.receive("40").status, "confirm");
+  const rejected = session.receive("毋著");
+  assert.equal(rejected.status, "corrected");
+  assert.equal(app.answers["demographics.weight_kg"], undefined, "a rejected answer stayed in the store");
+
+  const again = session.next();
+  assert.equal(again.question.id, "weight_kg");
+  assert.equal(again.kind, "correct");
+  assert.equal(session.receive("46").status, "confirm");
+  assert.equal(session.receive("對").status, "answered");
+  assert.equal(app.answers["demographics.weight_kg"].value, "46");
+});
+
+test("an unclear reply to a read-back asks it again, then gives the answer up", () => {
+  const { app, session } = freshSession({ readBack: readBackPolicy });
+  walkTo(session, "height_cm");
+
+  assert.equal(session.receive("155").status, "confirm");
+  assert.equal(session.receive("我想一下").status, "confirm_unclear");
+  assert.equal(session.next().kind, "confirm");
+  // Unclear twice: not confirmed, so not kept.
+  assert.equal(session.receive("嗯⋯⋯不知道").status, "corrected");
+  assert.equal(app.answers["demographics.height_cm"], undefined);
+});
+
+test("an answer rejected again and again is recorded as unknown, not looped", () => {
+  const { app, session } = freshSession({ readBack: readBackPolicy, maxAttempts: 2 });
+  walkTo(session, "height_cm");
+
+  let last;
+  for (let round = 0; round < 3; round += 1) {
+    assert.equal(session.receive("155").status, "confirm");
+    last = session.receive("不對");
+  }
+  assert.equal(last.status, "gave_up");
+  assert.equal(app.answers["demographics.height_cm"].source, intake.UNCERTAIN_SOURCE);
+  assert.notEqual(session.next().question.id, "height_cm");
+});
+
+test("a tapped option is not read back, but a model's reading of free text is", () => {
+  const tapped = freshSession({ readBack: readBackPolicy });
+  const sex = walkTo(tapped.session, "sex");
+  assert.equal(tapped.session.receive(sex.question.options[1]).status, "answered");
+
+  const interpreted = freshSession({ readBack: readBackPolicy, classifier: () => 1 });
+  walkTo(interpreted.session, "sex");
+  const result = interpreted.session.receive("我是查某人");
+  assert.equal(result.status, "confirm");
+  assert.equal(result.via, "classifier");
+  assert.equal(result.value, "女性");
+});
+
+test("a whole conversation with read-back on completes and still produces a valid submission", () => {
+  const { app, session } = freshSession({ readBack: readBackPolicy });
+  const reply = (question, turn) => (turn.kind === "confirm" ? "對" : cooperativeReply(question));
+  const asked = runToCompletion(session, reply);
+  assert.equal(session.isComplete(), true);
+  assert(asked.some((turn) => turn.kind === "confirm"), "no number was read back");
+  assert.doesNotThrow(() => app.validateSubmissionBeforeSend(app.storeSubmissionForIntegration()));
+});
+
+test("read-back understands Taiwanese and Mandarin yes and no, and nothing else", () => {
+  for (const yes of ["對", "著", "是", "沒錯", "著啊", "Yes"]) assert.equal(confirmIntent(yes), "yes", yes);
+  for (const no of ["不對", "毋著", "不是", "錯", "No"]) assert.equal(confirmIntent(no), "no", no);
+  for (const other of ["1997", "我想一下", "", "應該吧"]) assert.equal(confirmIntent(other), null, other);
+});

@@ -27,6 +27,42 @@
 
   const DEFAULT_MAX_ATTEMPTS = 2;
 
+  // Read-back. An understood answer is said back before it counts: "you were
+  // born in 1997, is that right?". In the two Taiwanese role-play tests
+  // (2026-11) the worst errors -- a weight of 46 heard as 40, a joking "有有有"
+  // taken at its word -- were both ones a read-back catches on the spot, and
+  // neither raised any error anywhere.
+  //
+  // Which answers get read back is a policy the caller passes in; this is the
+  // one the chat page uses. Numbers, because a misheard number slips past every
+  // option list straight into the model. And anything a model had to interpret,
+  // because that is where a confident wrong reading comes from. An option the
+  // person tapped, or typed word for word, is not read back: asking someone to
+  // confirm the button they just pressed teaches them to say yes to everything.
+  function readBackPolicy(question, resolution) {
+    return question.type === "number" || resolution.via === "classifier";
+  }
+
+  // What counts as "yes, that's right" and "no" to a read-back. Taiwanese and
+  // Mandarin forms both, since that is how the people this page is for answer.
+  // Anything else is neither, and the read-back is asked again rather than
+  // guessed at.
+  const CONFIRM_YES = new Set([
+    "對", "是", "著", "有", "沒錯", "正確", "對的", "是的", "著啊", "著著著", "嗯", "好", "沒問題",
+    "yes", "y", "correct", "right", "ok", "okay"
+  ]);
+  const CONFIRM_NO = new Set([
+    "不對", "不是", "毋著", "毋是", "錯", "錯了", "否", "不", "無", "沒有",
+    "no", "n", "wrong", "incorrect"
+  ]);
+
+  function confirmIntent(utterance) {
+    const key = resolver.normalizeText(Array.isArray(utterance) ? utterance.join("") : String(utterance ?? ""));
+    if (CONFIRM_YES.has(key)) return "yes";
+    if (CONFIRM_NO.has(key)) return "no";
+    return null;
+  }
+
   function isAnswered(answers, question) {
     return Object.prototype.hasOwnProperty.call(answers, question.field);
   }
@@ -65,6 +101,9 @@
     const numberBounds = typeof settings.numberBounds === "function" ? settings.numberBounds : undefined;
     const resolverOptions = (classifier || numberBounds) ? { classifier, numberBounds } : undefined;
     const source = settings.source || "chat";
+    // Off unless the caller asks for it, so a session built without the option
+    // behaves exactly as it always has.
+    const shouldReadBack = typeof settings.readBack === "function" ? settings.readBack : null;
 
     // The composite containers carry no field of their own; their rows are
     // separate questions in the same list, and asking those one at a time is
@@ -83,6 +122,11 @@
     let current = null;
     let attempts = 0;
     let pending = null; // the last unresolved reply, for the caller to act on
+    // An answer that has been written but not yet confirmed. While it is set,
+    // the next reply is a yes or no to the read-back, not an answer.
+    let awaiting = null;
+    let confirmAttempts = 0;
+    let corrections = 0;
 
     // Scanned from the start every time rather than walked with a cursor: an
     // answer can make an earlier question applicable that was skipped when we
@@ -110,8 +154,12 @@
     }
 
     function next() {
+      if (awaiting) {
+        return { ...describe(awaiting.question, "confirm"), value: awaiting.value };
+      }
       if (current && !isAnswered(answers, current) && isApplicable(current, answers)) {
-        const kind = pending && pending.status === "ambiguous" ? "disambiguate"
+        const kind = pending && pending.status === "corrected" ? "correct"
+          : pending && pending.status === "ambiguous" ? "disambiguate"
           : attempts > 0 ? "retry"
           : "ask";
         return describe(current, kind);
@@ -141,7 +189,56 @@
       return upcoming.done ? null : current;
     }
 
+    // The reply to a read-back. "Yes" keeps the answer; "no" discards it and
+    // asks the question again; anything else asks the read-back again. Both
+    // loops are bounded like every other: after maxAttempts unclear replies the
+    // answer is treated as not confirmed, and after maxAttempts corrections the
+    // question is recorded as unknown -- an answer the person kept rejecting is
+    // not one to keep.
+    function receiveConfirmation(utterance) {
+      const { question, value, via } = awaiting;
+      const intent = confirmIntent(utterance);
+
+      if (intent === "yes") {
+        awaiting = null;
+        confirmAttempts = 0;
+        corrections = 0;
+        attempts = 0;
+        pending = null;
+        current = null;
+        return { status: "answered", question, value, via, confirmed: true };
+      }
+
+      if (intent === null) {
+        confirmAttempts += 1;
+        if (confirmAttempts < maxAttempts) {
+          return { status: "confirm_unclear", question, value, attempts: confirmAttempts };
+        }
+      }
+
+      // Not confirmed: "no", or unclear too many times.
+      delete answers[question.field];
+      awaiting = null;
+      confirmAttempts = 0;
+      corrections += 1;
+      if (corrections > maxAttempts) {
+        corrections = 0;
+        attempts = 0;
+        pending = null;
+        current = null;
+        // A question that cannot fall back to unknown (consent, name, email)
+        // is never read back by the policy, so recording unknown is safe here.
+        recordUnknown(question);
+        return { status: "gave_up", question, attempts: 0, pending: { reason: "not_confirmed" } };
+      }
+      attempts = 0;
+      current = question;
+      pending = { status: "corrected", via: "read_back", reason: null, detail: null, candidates: null };
+      return { status: "corrected", question, value };
+    }
+
     function receive(utterance) {
+      if (awaiting) return receiveConfirmation(utterance);
       const question = questionForReply();
       if (!question) return { status: "done", question: null };
       const resolution = resolver.resolve(question, utterance, resolverOptions);
@@ -150,6 +247,7 @@
 
     // The same turn, for a classifier that is a network call.
     async function receiveAsync(utterance) {
+      if (awaiting) return receiveConfirmation(utterance);
       const question = questionForReply();
       if (!question) return { status: "done", question: null };
       const resolution = await resolver.resolveAsync(
@@ -169,6 +267,14 @@
         if (written.status === "answered") {
           pending = null;
           attempts = 0;
+          if (shouldReadBack && shouldReadBack(question, resolution)) {
+            // Written already, so the intake has accepted it; it only counts
+            // once the person says it is right.
+            awaiting = { question, value: resolution.value, via: resolution.via };
+            confirmAttempts = 0;
+            return { status: "confirm", question, value: resolution.value, via: resolution.via };
+          }
+          corrections = 0;
           current = null;
           return { status: "answered", question, value: resolution.value, via: resolution.via };
         }
@@ -266,7 +372,7 @@
     }
 
     function isComplete() {
-      return findNext() === null;
+      return awaiting === null && findNext() === null;
     }
 
     // Discards an answer so the question comes round again. For the checks
@@ -287,6 +393,7 @@
         current = null;
         attempts = 0;
         pending = null;
+        if (awaiting && wanted.has(awaiting.question.id)) awaiting = null;
       }
       return reopened;
     }
@@ -298,9 +405,10 @@
       progress,
       isComplete,
       reopen,
-      get currentQuestion() { return current; }
+      get currentQuestion() { return current; },
+      get awaitingConfirmation() { return awaiting ? { question: awaiting.question, value: awaiting.value } : null; }
     };
   }
 
-  return Object.freeze({ createChatSession, DEFAULT_MAX_ATTEMPTS });
+  return Object.freeze({ createChatSession, DEFAULT_MAX_ATTEMPTS, readBackPolicy, confirmIntent });
 }));

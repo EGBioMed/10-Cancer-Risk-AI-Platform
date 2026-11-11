@@ -48,6 +48,11 @@
       multiHint: "可複選，選好後按「這些就是了」。",
       multiConfirm: "這些就是了",
       skip: "不確定",
+      readBack: (value) => `我記下的是「${value}」，對嗎？`,
+      readBackUnclear: (value) => `想跟您確認：「${value}」，對嗎？請回答「對」或「不對」。`,
+      corrected: "好的，那我們再一次。",
+      confirmYes: "對",
+      confirmNo: "不對",
       send: "送出",
       progress: (done, total) => `已完成 ${done} / ${total} 題`
     },
@@ -69,6 +74,11 @@
       multiHint: "Choose as many as apply, then press \"That's all\".",
       multiConfirm: "That's all",
       skip: "Not sure",
+      readBack: (value) => `I have "${value}". Is that right?`,
+      readBackUnclear: (value) => `Just to check: "${value}" -- is that right? Please answer yes or no.`,
+      corrected: "All right, let's try that one again.",
+      confirmYes: "Yes",
+      confirmNo: "No",
       send: "Send",
       progress: (done, total) => `${done} of ${total} answered`
     }
@@ -116,6 +126,8 @@
     app: { questions, answers, makeAnswerEntry },
     numberBounds: getNumberBounds,
     classifier: classifyRemotely,
+    // Numbers and model-interpreted answers are said back before they count.
+    readBack: EGChatSession.readBackPolicy,
     source: "chat"
   });
 
@@ -220,10 +232,32 @@
     return copy.retry;
   }
 
-  function ask() {
+  function readBackText(value) {
+    return Array.isArray(value) ? value.join("、") : String(value ?? "");
+  }
+
+  // The read-back: the answer as understood, and two buttons. Typing works too
+  // ("著", "毋著", "對", "不對"); the buttons send the same words.
+  function askConfirmation(turn, unclear) {
+    const shown = readBackText(turn.value);
+    say(unclear ? copy.readBackUnclear(shown) : copy.readBack(shown), "bot");
+    clearOptions();
+    optionsArea.appendChild(chip(copy.confirmYes, () => reply(copy.confirmYes, copy.confirmYes)));
+    optionsArea.appendChild(chip(copy.confirmNo, () => reply(copy.confirmNo, copy.confirmNo)));
+    input.disabled = false;
+    input.focus();
+  }
+
+  function ask(previous) {
     renderProgress();
     const turn = session.next();
     if (turn.done) return finish();
+
+    if (turn.kind === "confirm") {
+      askConfirmation(turn, previous && previous.status === "confirm_unclear");
+      return undefined;
+    }
+    if (turn.kind === "correct") say(copy.corrected, "bot");
 
     // The generic retry line points at options. On a question that has none,
     // that is an instruction the page cannot honour, so it gets its own wording.
@@ -233,6 +267,8 @@
         : retryLine(turn.question), "bot");
     }
     else if (turn.kind === "disambiguate") say(copy.disambiguate, "bot");
+    // A correction lands here too: after "好的，那我們再一次。" the question
+    // itself is repeated, not just "try again".
     else say(questionText(turn.question), "bot");
 
     renderOptions(turn.question, turn);
@@ -282,7 +318,7 @@
       return;
     }
 
-    ask();
+    ask(result);
   }
 
   // The two checks app.js runs in renderResult() before it will submit. The
