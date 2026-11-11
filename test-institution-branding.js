@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   BRAND_MARKER,
+  FOOTER_MARKER,
   parseInstitutionBranding,
   brandForEntrance,
   brandForSlug,
@@ -209,6 +210,106 @@ test("a bad logoOnDark is refused rather than quietly ignored", () => {
   const missing = parseInstitutionBranding(NUMIA, { logoExists: (p) => !p.includes("white") });
   assert.match(missing.problems.join(" | "), /numia-health-white\.svg, which is not on disk/);
   assert.equal(missing.brands.size, 0);
+});
+
+// The footer block: who the partner is and how to reach them, at the bottom
+// of the page. Someone who arrived from a partner's landing page and is now
+// looking at a cancer questionnaire should be able to find both companies
+// without scrolling back to the hero.
+test("the footer names the partner and links what was configured", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      footer: {
+        summary: "At-home blood work.",
+        website: "https://numiahealth.ca/",
+        email: "hello@numiahealth.ca",
+        phone: "+1 (604) 555-0100"
+      }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "numia"));
+  assert.match(html, /Numia Health/);
+  assert.match(html, /At-home blood work\./);
+  // The host, not the whole URL: a long path in a footer reads as a tracker.
+  assert.match(html, /href="https:\/\/numiahealth\.ca\/"[^>]*>numiahealth\.ca</);
+  // The questionnaire may be part-answered in the tab this opens from.
+  assert.match(html, /rel="noopener noreferrer"/);
+  assert.match(html, /href="mailto:hello@numiahealth\.ca"/);
+  assert.match(html, /\+1 \(604\) 555-0100/);
+  assert.equal(html.includes(FOOTER_MARKER), false);
+});
+
+test("the footer renders the name alone when nothing else is configured", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: { name: "華康生醫", logo: "brand/numia-health-colour.svg", codes: ["EGHK3FV"] }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "hwakang"));
+  assert.match(html, /華康生醫/);
+  // No empty contact lines: a heading with nothing under it is worse than none.
+  assert.equal(html.includes("site-footer__contact"), false);
+  assert.equal(html.includes("<a "), false);
+});
+
+test("an unbranded page keeps neither marker", () => {
+  const html = `<div>${BRAND_MARKER}</div><footer>${FOOTER_MARKER}</footer>`;
+  assert.equal(applyInstitutionBranding(html, null), "<div></div><footer></footer>");
+});
+
+// A link under a medical questionnaire that a network can rewrite is one the
+// reader has no way to check. http:// and the script-bearing schemes are all
+// refused the same way.
+test("a footer website must be https, and a bad field drops only itself", () => {
+  for (const bad of ["http://numiahealth.ca/", "javascript:alert(1)", "data:text/html,x", "numiahealth.ca"]) {
+    const w = parseInstitutionBranding(JSON.stringify({
+      numia: {
+        name: "Numia Health",
+        logo: "brand/numia-health-colour.svg",
+        codes: ["EGNUMEDJ"],
+        footer: { website: bad }
+      }
+    }));
+    assert.match(w.problems.join(" | "), /footer website must be an https/, `accepted ${bad}`);
+    // The partner survives -- a bad footer field must not cost them their logo.
+    const brand = brandForSlug(w, "numia");
+    assert(brand, `${bad} took the whole partner down`);
+    assert.equal(brand.footer.website, undefined);
+    assert.equal(applyInstitutionBranding(FOOTER_MARKER, brand).includes("<a "), false);
+  }
+});
+
+test("a footer email and phone are validated too", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      footer: { email: "not an address", phone: "call us <script>" }
+    }
+  }));
+  assert.match(w.problems.join(" | "), /footer email is not a usable address/);
+  assert.match(w.problems.join(" | "), /footer phone contains characters/);
+  const brand = brandForSlug(w, "numia");
+  assert.equal(brand.footer.email, undefined);
+  assert.equal(brand.footer.phone, undefined);
+});
+
+test("footer text is escaped", () => {
+  const html = applyInstitutionBranding(FOOTER_MARKER, {
+    slug: "x",
+    name: '<script>alert(1)</script>',
+    logo: "brand/a.svg",
+    footer: { summary: '"><img onerror=alert(1)>' }
+  });
+  assert.equal(html.includes("<script>"), false);
+  assert.equal(html.includes("<img onerror"), false);
+  assert.match(html, /&lt;script&gt;/);
 });
 
 test("a partner name is escaped into the alt attribute", () => {

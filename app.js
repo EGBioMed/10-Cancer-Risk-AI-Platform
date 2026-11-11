@@ -1111,6 +1111,11 @@ function applyStaticText() {
     ? "Personalized organization of cancer-related health risk factors and health education information."
     : "個人化癌症相關健康風險因子整理與健康教育資訊。";
   document.querySelector("#serviceDetailsSummary").textContent = currentLang === "en" ? "Service information and limitations" : "服務說明與使用限制";
+  // Only present on a co-branded entrance -- the server injects this block for
+  // partners and leaves the page untouched for everyone else, so it is looked
+  // up rather than assumed. The partner's own name is never translated.
+  const partnerLabel = document.querySelector("#partnerLabel");
+  if (partnerLabel) partnerLabel.textContent = currentLang === "en" ? "In partnership with" : "合作夥伴";
   document.querySelectorAll("[data-service-copy]").forEach((copy) => {
     copy.hidden = copy.dataset.serviceCopy !== currentLang;
   });

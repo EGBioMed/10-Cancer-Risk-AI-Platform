@@ -146,6 +146,26 @@ button {
   display: none;
 }
 
+/* The partner block at the bottom of the page. Rendered only for an entrance
+   that carries a partner, so the rule costs an unbranded deployment nothing
+   but these few lines. The separator is the same currentColor trick as the
+   divider in the hero: the footer is dark here and light elsewhere. */
+.site-footer__partner {
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid currentColor;
+  /* currentColor at full strength would be a hard rule across the footer. */
+  border-color: color-mix(in srgb, currentColor 22%, transparent);
+}
+
+.site-footer__partner-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
 .language-switcher {
   display: inline-flex;
   gap: 4px;

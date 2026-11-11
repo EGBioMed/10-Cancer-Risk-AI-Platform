@@ -159,6 +159,26 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 | `logo` | 是 | 淺色背景用的版本。路徑只能是 `brand/<檔名>.svg` 或 `.png` |
 | `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
 | `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
+| `footer` | 否 | 頁尾的夥伴區塊，見下 |
+
+### 頁尾的夥伴資訊
+
+```
+"footer": {"summary":"At-home blood work, Vancouver.","website":"https://numiahealth.ca/","email":"...","phone":"..."}
+```
+
+四個欄位全部選填，而且是**各自**檢查、各自捨棄的——只給網址沒給電話，就是一個
+只有網址的頁尾，不會整筆被退。有設 `logo` 就一定會有頁尾區塊，至少印出夥伴名稱；
+沒設的欄位不會留下空的聯絡欄（一個底下什麼都沒有的「聯絡方式」比沒有更糟）。
+
+`website` 只收 `https://`。這裡跟 `logo` 不一樣——它本來就是要連出去的，是使用者
+自己點才會離站，不點就不洩漏任何東西。但它掛在一份醫療問卷底下，允許 http 等於
+允許中間的網路改寫它。連結會加 `rel="noopener noreferrer"`，因為開啟它的那個分頁
+裡可能正放著一份填到一半的問卷。
+
+顯示的是主機名（`numiahealth.ca`）而不是完整網址：頁尾裡一長串路徑看起來像追蹤
+連結。標籤「合作夥伴 / In partnership with」跟著頁面語言切換，由 `app.js` 處理，
+找不到元素就跳過——沒有聯名的頁面根本沒有這個區塊。
 
 ### 為什麼要兩個 logo 檔
 
