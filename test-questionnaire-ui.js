@@ -117,9 +117,7 @@ test("participant name is a required contact-only bilingual field", () => {
   assert.equal(name.type, "name");
   assert.equal(name.required, true);
   assert.equal(name.excludeFromCanonicalContract, true);
-  // collection_mode sits between consent and the name (2026-11-11).
-  assert.equal(questions[consentIndex + 1].id, "collection_mode");
-  assert.equal(questions[consentIndex + 2].id, "full_name");
+  assert.equal(questions[consentIndex + 1].id, "full_name");
   assert.deepEqual([...i18n.en.questions.full_name], [
     "Please enter the participant's full name",
     "The name is used only by the clinic to identify the participant and prepare the report. It is stored with the email in a restricted contact record and is not used as a model feature or research data.",
@@ -148,9 +146,9 @@ test("submission validation count follows the canonical questionnaire definition
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
   // A literal on purpose: adding a question should have to be stated here, not
   // absorbed silently. 76 -> 77 -> 78 -> 81 (2026-10-27, three psychological
-  // items) -> 82 (2026-11-11, collection_mode). The three contracts that pin
-  // the same number are cross-checked against this manifest in test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 82);
+  // items). The three contracts that pin the same number are cross-checked
+  // against this manifest in test-contract.js.
+  assert.equal(canonicalAnswerQuestions.length, 81);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

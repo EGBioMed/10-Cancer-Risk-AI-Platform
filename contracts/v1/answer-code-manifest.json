@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-11-v19.11-phase1",
+  "questionnaire_version": "questionnaire/2026-11-12-v19.12-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 84,
-  "canonical_answer_question_count": 82,
+  "question_count": 83,
+  "canonical_answer_question_count": 81,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -46,27 +46,6 @@
           "code": "non_medical_use",
           "label_zh": "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。",
           "label_en": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination."
-        }
-      ]
-    },
-    {
-      "question_id": "collection_mode",
-      "field": "administration.collection_mode",
-      "module": "basic",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "這份問卷的填答方式",
-      "title_en": "How is this questionnaire being completed?",
-      "options": [
-        {
-          "code": "collection_mode.option_01",
-          "label_zh": "自己填寫",
-          "label_en": "Self-completed"
-        },
-        {
-          "code": "collection_mode.option_02",
-          "label_zh": "訪員協助代填",
-          "label_en": "Completed with an interviewer"
         }
       ]
     },

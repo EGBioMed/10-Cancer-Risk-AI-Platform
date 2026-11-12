@@ -61,10 +61,7 @@ test("a cooperative conversation completes and produces a valid submission", () 
   // conversation asked exactly the questions that ended up applying -- no
   // question asked and then discarded, none applicable and never asked.
   const progress = session.progress();
-  // Questions with a chatDefault (collection_mode) are answered by the session
-  // itself and never asked, so they count as applicable but not as asked.
-  const answeredByDefault = app.questions.filter((question) => question.chatDefault !== undefined).length;
-  assert.equal(asked.length + answeredByDefault, progress.applicable, "asked and applicable disagree");
+  assert.equal(asked.length, progress.applicable, "asked and applicable disagree");
   assert.equal(progress.remaining, 0);
   assert(asked.length > 40, `only ${asked.length} questions were asked`);
   assert.equal(new Set(asked.map((turn) => turn.id)).size, asked.length, "a question was asked twice");
@@ -273,10 +270,9 @@ test("an unevaluatable condition asks the question rather than skipping it", () 
 // ---------------------------------------------------------------------------
 
 test("progress counts against what currently applies, and reaches zero remaining", () => {
-  const { app, session } = freshSession();
+  const { session } = freshSession();
   const start = session.progress();
-  // Only the session's own defaults are answered before anyone says anything.
-  assert.equal(start.answered, app.questions.filter((question) => question.chatDefault !== undefined).length);
+  assert.equal(start.answered, 0);
   assert(start.applicable > 0);
 
   let previous = 0;
@@ -291,19 +287,6 @@ test("progress counts against what currently applies, and reaches zero remaining
   assert.equal(end.remaining, 0);
   assert.equal(end.unknown, 0, "a cooperative conversation produced unknown answers");
   assert.equal(session.isComplete(), true);
-});
-
-test("the chat page records itself as self-completed and never asks how the form is filled in", () => {
-  const { app, session } = freshSession();
-  const mode = app.questions.find((question) => question.id === "collection_mode");
-  assert(mode, "collection_mode is missing from the questionnaire");
-  // The default has to be one of the question's own options, or the intake
-  // would refuse it and the question would be asked after all.
-  assert(mode.options.includes(mode.chatDefault));
-  assert.equal(app.answers[mode.field].value, "自己填寫");
-
-  const asked = runToCompletion(session, cooperativeReply);
-  assert(!asked.some((turn) => turn.id === "collection_mode"), "the chat asked how the form was filled in");
 });
 
 test("progress reports how many answers are unknown rather than hiding them", () => {

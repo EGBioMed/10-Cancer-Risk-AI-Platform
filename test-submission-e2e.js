@@ -302,32 +302,3 @@ test("the three psychological items stay out of the model request and the frozen
   assert.equal(submission.vnext_feature_columns.length, 33);
   assert.equal(submission.rule_input_columns.length, 30);
 });
-
-// collection_mode（2026-11-11）：訪員代填與自填走同一組機構代碼，而機構送件不帶
-// 存取碼或 grant_id，所以分析時唯一能分辨兩者的，就是這一題的答案本身。
-// 這裡驗的是「答了、而且值真的到了」：這個專案反覆出現的錯不是值錯，而是值沒到。
-test("collection_mode reaches the research row and the answer codes", () => {
-  const question = app.questions.find((item) => item.id === "collection_mode");
-  assert(question, "collection_mode 這一題不存在");
-  app.answers[question.field] = app.makeAnswerEntry(question, "訪員協助代填", "contract_test");
-
-  const submission = submitAs("臺灣");
-  assert.equal(
-    submission.excel_row.collection_mode,
-    "訪員協助代填",
-    "excel_row.collection_mode 不是選的值——題目在、答案在，但值沒有到研究資料表"
-  );
-  const row = submission.answer_code_rows.find((entry) => entry.question_id === "collection_mode");
-  assert(row, "answer_code_rows 裡沒有 collection_mode");
-  assert.equal(row.status, "answered");
-  // 答案碼而不是中文標籤，第二個選項是 option_02。
-  assert.equal(row.value, "collection_mode.option_02");
-});
-
-test("collection_mode stays out of the model request", () => {
-  const submission = submitAs("臺灣");
-  for (const rowName of ["optimized_feature_row", "ai_api_feature_row", "rule_input_row", "vnext_feature_row"]) {
-    const row = submission[rowName] || {};
-    assert(!Object.prototype.hasOwnProperty.call(row, "collection_mode"), `${rowName} 不該帶 collection_mode`);
-  }
-});
