@@ -71,12 +71,13 @@
 
 | 廠商 | 代碼 | grant_id | 發放日期 | 發給誰（姓名／職稱） | 通路 | 活動／用途 | 備註 |
 |---|---|---|---|---|---|---|---|
-| 華康 | `EGHK3FV` | 43 | | | | | 2026-11-12 起是聯名入口，進來會看到華康的標誌，見下方「聯合品牌」 |
+| 華康 | `EGHK3FV` | 43 | | | | | 2026-11-12 起是聯名入口，進來會看到華康的標誌，見下方「聯合品牌」。同日內部驗證用掉 2 次 |
+| 華康 | `EGHKDEMO` | 74 | 2026-11-12 | | 連結 | 聯名頁審閱 | **不是活動正式碼。** 200 次，`delivery_mode: institution`，不過期。額度從 200 起跳是因為 `EGNUMEDEMO` 的 20 次被連結預覽吃光過 |
 | 雙和 | `EGSHN3J` | 44 | | | | | |
 | 秀傳 | `EGSCHJGJ` | 45 | | | | | |
 | 行動基因 | `EGACTJVK` | 46 | | | | | |
 | 北醫藥學 | `EGTMUPDXQ` | 47 | | | | | |
-| Numia | `EGNUMEDJ` | 48 | 未發放 | | | 活動正式碼 | 1000 次，2026-11-11 查為 9/1000。**其中 8 次在任何人拿到這組碼之前就已發生，來源未查明** |
+| Numia | `EGNUMEDJ` | 48 | 未發放 | | 連結 | 活動正式碼 | 1000 次，2026-11-11 查為 9/1000。**其中 8 次在任何人拿到這組碼之前就已發生，來源未查明**。2026-11-12 驗證 `/entry/egnumedj` 聯名正常，連結已備妥待發送 |
 | Numia | `EGNUMEDEMO` | 73 | 未發放 | | 連結 | 聯名頁審閱 | **不是活動正式碼。** 220 次（原 20，2026-11-11 補 200）。鑄出後 33 分鐘內前 20 次全被吃光，見下方「連結預覽會吃掉額度」 |
 | 星源 | `EGETAG3` | 49 | | | | | |
 | Eplus | `EGEPGGD` | 50 | | | | | |
@@ -185,7 +186,7 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV"],"grants":["43"]}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"]}}
 ```
 
 `numia` 的 `summary` 以實際設定為準，見下方「頁尾的夥伴資訊」。整串是一個值，
@@ -201,6 +202,19 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 | `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
 | `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
 | `footer` | 否 | 頁尾的夥伴區塊，見下 |
+
+### 替聯名夥伴鑄新碼，記得回來加這裡
+
+鑄碼不會自動聯名。`access:grant` 只是在資料庫開一筆額度，它不知道這家夥伴有
+logo；要不要聯名是這份白名單決定的。所以替已經聯名的夥伴鑄一組新碼——審閱用
+的 demo 碼、第二波活動碼、換通路另開的碼——都要把**新代碼或新 grant_id** 加進
+這裡，否則新連結點開是一般頁面。
+
+Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次都是鑄完碼、
+把連結準備好了，才發現點進去沒有聯名。
+
+而且症狀不會報錯：代碼有效、session 正常、頁面也正常，只是少了夥伴的標誌，所
+以除非真的點開看，不然不會發現。**鑄完碼先自己點一次連結**，比對方告訴我們好。
 
 ### 頁尾的夥伴資訊
 
