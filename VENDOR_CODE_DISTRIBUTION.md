@@ -71,7 +71,7 @@
 
 | 廠商 | 代碼 | grant_id | 發放日期 | 發給誰（姓名／職稱） | 通路 | 活動／用途 | 備註 |
 |---|---|---|---|---|---|---|---|
-| 華康 | `EGHK3FV` | 43 | | | | | |
+| 華康 | `EGHK3FV` | 43 | | | | | 2026-11-12 起是聯名入口，進來會看到華康的標誌，見下方「聯合品牌」 |
 | 雙和 | `EGSHN3J` | 44 | | | | | |
 | 秀傳 | `EGSCHJGJ` | 45 | | | | | |
 | 行動基因 | `EGACTJVK` | 46 | | | | | |
@@ -185,8 +185,11 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ"]}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV"],"grants":["43"]}}
 ```
+
+`numia` 的 `summary` 以實際設定為準，見下方「頁尾的夥伴資訊」。整串是一個值，
+貼進 Render 時中間不能有換行。
 
 沒設這個變數，或某一筆壞掉，頁面就是原本的樣子——不會擋啟動，但會在 Logs 記一
 行 `Branding config:` 開頭的錯誤。
@@ -224,6 +227,30 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 個檔案不可能兩邊都看得見。第一版只放了反白版，桌機正常，**手機上是白字白底——
 圖片確實以 42×22 正常算繪，只是沒有人看得到**。兩個檔都送進頁面，由 CSS 決定哪
 一個顯示，切換寫在關掉漸層的那同一條 media query 裡。
+
+### 華康那兩個檔是我們自己排的
+
+`brand/hwakang-*.png` 不是華康給的原檔，是我們用他們的原檔排出來的，2026-11-12
+取得他們書面同意。知道這件事很重要，否則下一個人會以為是我們拿錯檔案，好心換
+成他們官網上的版本，然後字就不見了。
+
+他們提供的是**直式**組合標（圖案在上、名稱在下，1522×1982）。品牌列高度是
+26px，直式放進去，「華康生醫」四個字只剩約 3px 高。所以我們把圓形圖案與名稱左
+右並排：兩者都是他們原檔的像素，沒有重畫、沒有換字體，只有位置改變，而且圓形
+是**縮小**去配合名稱的原生尺寸，沒有任何部分被放大。
+
+`hwakang-white.png` 只把名稱改成白色，圓形不動。原因是他們漸層的藍端 `#334F97`
+壓在 hero 的近黑底上對比只有約 2.5:1，「華」「康」兩個字會糊掉；粉端沒這個問
+題。這一點也在授權範圍內。
+
+縮放用的是預乘 alpha 的區域平均。直接平均 RGBA 會把透明像素裡存的白色拉進圓形
+邊緣，在深色底上留一圈白毛邊。
+
+檔案以 700px 寬出貨，不是原始的 2354px。品牌列上限 170 CSS px，700px 已經夠
+4 倍螢幕用；放全尺寸等於讓每一位從華康進來的人多載 200KB，只為了一個 95×26 的
+標誌。
+
+華康日後若提供官方的橫式組合標，直接換掉這兩個檔即可，設定不用動。
 
 ### 為什麼 logo 只能是本機路徑
 
