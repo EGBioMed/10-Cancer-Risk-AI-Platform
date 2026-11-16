@@ -605,6 +605,7 @@ function loadExcelRowBuilder() {
       // excel_row 與 ai_api_feature_row 共用這個運算式，所以它被抽成獨立函式；
       // 少了它 buildExcelRow 會 ReferenceError，而不是回一個看似合理的空字串。
       topLevelFunction("function buildPersonalCancerTypes() {"),
+      topLevelFunction("function buildGiFollowUpResearchColumns() {"),
       topLevelFunction("function buildExcelRow("),
       "globalThis.__excel = { buildExcelRow, answers };"
     ].join("\n"),

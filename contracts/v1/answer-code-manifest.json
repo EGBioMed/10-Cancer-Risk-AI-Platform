@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-12-v19.12-phase1",
+  "questionnaire_version": "questionnaire/2026-11-16-v19.13-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 83,
-  "canonical_answer_question_count": 81,
+  "question_count": 89,
+  "canonical_answer_question_count": 87,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -278,6 +278,104 @@
       ]
     },
     {
+      "question_id": "appetite_loss_onset",
+      "field": "symptoms.follow_up.appetite_loss_onset",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「食慾比平常下降」第一次出現，大約是多久以前？",
+      "title_en": "Roughly how long ago did the drop in appetite first start?",
+      "options": [
+        {
+          "code": "appetite_loss_onset.option_01",
+          "label_zh": "不到1個月",
+          "label_en": "Less than 1 month ago"
+        },
+        {
+          "code": "appetite_loss_onset.option_02",
+          "label_zh": "1個月到不滿3個月",
+          "label_en": "1 to less than 3 months ago"
+        },
+        {
+          "code": "appetite_loss_onset.option_03",
+          "label_zh": "3個月到不滿6個月",
+          "label_en": "3 to less than 6 months ago"
+        },
+        {
+          "code": "appetite_loss_onset.option_04",
+          "label_zh": "半年以上",
+          "label_en": "6 months ago or more"
+        },
+        {
+          "code": "appetite_loss_onset.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "appetite_loss_course",
+      "field": "symptoms.follow_up.appetite_loss_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「食慾比平常下降」的情況比較接近哪一種？",
+      "title_en": "Which best describes the drop in appetite since it began?",
+      "options": [
+        {
+          "code": "appetite_loss_course.option_01",
+          "label_zh": "持續存在，沒有好過",
+          "label_en": "It has been there continuously"
+        },
+        {
+          "code": "appetite_loss_course.option_02",
+          "label_zh": "反覆出現，時好時壞",
+          "label_en": "It comes and goes"
+        },
+        {
+          "code": "appetite_loss_course.option_03",
+          "label_zh": "出現過，現在已經沒有了",
+          "label_en": "It happened before but has gone now"
+        },
+        {
+          "code": "appetite_loss_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "appetite_loss_intake_effect",
+      "field": "symptoms.follow_up.appetite_loss_intake_effect",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「食慾比平常下降」有沒有讓您平常吃的量變少？",
+      "title_en": "Has the drop in appetite reduced how much you usually eat?",
+      "options": [
+        {
+          "code": "appetite_loss_intake_effect.option_01",
+          "label_zh": "食量明顯減少",
+          "label_en": "I eat noticeably less"
+        },
+        {
+          "code": "appetite_loss_intake_effect.option_02",
+          "label_zh": "食量稍微減少",
+          "label_en": "I eat a little less"
+        },
+        {
+          "code": "appetite_loss_intake_effect.option_03",
+          "label_zh": "食量沒有改變",
+          "label_en": "How much I eat has not changed"
+        },
+        {
+          "code": "appetite_loss_intake_effect.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
       "question_id": "symptoms_upper_digestive",
       "field": "symptoms.upper_digestive",
       "module": "symptoms",
@@ -340,6 +438,104 @@
           "code": "unknown",
           "label_zh": "不確定",
           "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "early_satiety_onset",
+      "field": "symptoms.follow_up.early_satiety_onset",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「吃比較少就飽」第一次出現，大約是多久以前？",
+      "title_en": "Roughly how long ago did feeling full after eating only a little first start?",
+      "options": [
+        {
+          "code": "early_satiety_onset.option_01",
+          "label_zh": "不到1個月",
+          "label_en": "Less than 1 month ago"
+        },
+        {
+          "code": "early_satiety_onset.option_02",
+          "label_zh": "1個月到不滿3個月",
+          "label_en": "1 to less than 3 months ago"
+        },
+        {
+          "code": "early_satiety_onset.option_03",
+          "label_zh": "3個月到不滿6個月",
+          "label_en": "3 to less than 6 months ago"
+        },
+        {
+          "code": "early_satiety_onset.option_04",
+          "label_zh": "半年以上",
+          "label_en": "6 months ago or more"
+        },
+        {
+          "code": "early_satiety_onset.option_05",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "early_satiety_course",
+      "field": "symptoms.follow_up.early_satiety_course",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「吃比較少就飽」的情況比較接近哪一種？",
+      "title_en": "Which best describes feeling full after eating only a little since it began?",
+      "options": [
+        {
+          "code": "early_satiety_course.option_01",
+          "label_zh": "持續存在，沒有好過",
+          "label_en": "It has been there continuously"
+        },
+        {
+          "code": "early_satiety_course.option_02",
+          "label_zh": "反覆出現，時好時壞",
+          "label_en": "It comes and goes"
+        },
+        {
+          "code": "early_satiety_course.option_03",
+          "label_zh": "出現過，現在已經沒有了",
+          "label_en": "It happened before but has gone now"
+        },
+        {
+          "code": "early_satiety_course.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
+        }
+      ]
+    },
+    {
+      "question_id": "early_satiety_intake_effect",
+      "field": "symptoms.follow_up.early_satiety_intake_effect",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "「吃比較少就飽」有沒有讓您平常吃的量變少？",
+      "title_en": "Has feeling full after eating only a little reduced how much you usually eat?",
+      "options": [
+        {
+          "code": "early_satiety_intake_effect.option_01",
+          "label_zh": "食量明顯減少",
+          "label_en": "I eat noticeably less"
+        },
+        {
+          "code": "early_satiety_intake_effect.option_02",
+          "label_zh": "食量稍微減少",
+          "label_en": "I eat a little less"
+        },
+        {
+          "code": "early_satiety_intake_effect.option_03",
+          "label_zh": "食量沒有改變",
+          "label_en": "How much I eat has not changed"
+        },
+        {
+          "code": "early_satiety_intake_effect.option_04",
+          "label_zh": "不確定怎麼回答",
+          "label_en": "Not sure how to answer"
         }
       ]
     },

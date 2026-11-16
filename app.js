@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-11-12-v19.12-phase1",
+  questionnaire_version: "questionnaire/2026-11-16-v19.13-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -427,6 +427,16 @@ Object.assign(symptomOptionTranslations, Object.fromEntries(
   "僅發生 1 次": "Occurred once",
   "反覆發生 2 次以上": "Occurred 2 or more times",
   "持續存在": "Persisted continuously",
+  "不到1個月": "Less than 1 month ago",
+  "1個月到不滿3個月": "1 to less than 3 months ago",
+  "3個月到不滿6個月": "3 to less than 6 months ago",
+  "半年以上": "6 months ago or more",
+  "持續存在，沒有好過": "It has been there continuously",
+  "反覆出現，時好時壞": "It comes and goes",
+  "出現過，現在已經沒有了": "It happened before but has gone now",
+  "食量明顯減少": "I eat noticeably less",
+  "食量稍微減少": "I eat a little less",
+  "食量沒有改變": "How much I eat has not changed",
   "少於 6 週": "Less than 6 weeks",
   "持續或間隔至少 6 週後再次出現": "Persisted or recurred at least 6 weeks apart",
   "B 型肝炎": "Hepatitis B",
@@ -570,6 +580,37 @@ const symptomTesticularLumpDurationBandQuestion = {
   appliesIf: (answers) => [lumpCourseOptions[0], lumpCourseOptions[1]].includes(getAnswerValue(answers, "rule_inputs.symptom_testicular_lump_course"))
 };
 
+// Pancreatic-cancer early-symptom follow-ups (2026-11-16). Reduced appetite
+// (symptoms_general) and early satiety (symptoms_upper_digestive) were
+// already asked as checkboxes and are model features; these ask, only when
+// one is checked, when it began, whether it persists or comes and goes, and
+// whether it has cut how much the person eats.
+//
+// Research data only, like the psychological items: excel_row and
+// answer_code_rows, never the model request, the 33 vNext columns or the 30
+// rule inputs -- each of those is pinned by count in the Flow trigger schema.
+// Hence the symptoms.follow_up.* fields rather than rule_inputs.*.
+//
+// Shared option lists, defined once: answer codes come from each array's
+// order (scripts/generate-answer-code-manifest.js). Append, never insert.
+const giSymptomOnsetOptions = ["不到1個月", "1個月到不滿3個月", "3個月到不滿6個月", "半年以上", "不確定怎麼回答"];
+const giSymptomCourseOptions = ["持續存在，沒有好過", "反覆出現，時好時壞", "出現過，現在已經沒有了", "不確定怎麼回答"];
+const giSymptomIntakeOptions = ["食量明顯減少", "食量稍微減少", "食量沒有改變", "不確定怎麼回答"];
+
+function giSymptomFollowUps(column, key, labelZh, labelEn) {
+  const fieldBase = `symptoms.follow_up.${key}`;
+  const applies = () => isRuleParentPositive(column);
+  const note = "此題只在您勾選這個症狀後出現；若不確定，可選「不確定怎麼回答」。";
+  const noteEn = "This question appears only because you selected this symptom. Select \"Not sure how to answer\" if you are unsure.";
+  return [
+    { id: `${key}_onset`, module: "symptoms", type: "single", required: true, title: `「${labelZh}」第一次出現，大約是多久以前？`, titleEn: `Roughly how long ago did ${labelEn} first start?`, note, noteEn, field: `${fieldBase}_onset`, options: giSymptomOnsetOptions, appliesIf: applies },
+    { id: `${key}_course`, module: "symptoms", type: "single", required: true, title: `「${labelZh}」的情況比較接近哪一種？`, titleEn: `Which best describes ${labelEn} since it began?`, note, noteEn, field: `${fieldBase}_course`, options: giSymptomCourseOptions, appliesIf: applies },
+    { id: `${key}_intake_effect`, module: "symptoms", type: "single", required: true, title: `「${labelZh}」有沒有讓您平常吃的量變少？`, titleEn: `Has ${labelEn} reduced how much you usually eat?`, note, noteEn, field: `${fieldBase}_intake_effect`, options: giSymptomIntakeOptions, appliesIf: applies }
+  ];
+}
+const appetiteLossFollowUpQuestions = giSymptomFollowUps("symptom_appetite_loss", "appetite_loss", "食慾比平常下降", "the drop in appetite");
+const earlySatietyFollowUpQuestions = giSymptomFollowUps("symptom_early_satiety", "early_satiety", "吃比較少就飽", "feeling full after eating only a little");
+
 // Explicit group -> follow-up map, replacing the old design where every
 // follow-up was batched after all 13 symptom groups regardless of which
 // one triggered it. symptom_mass is the one case whose trigger spans four
@@ -579,6 +620,8 @@ const symptomTesticularLumpDurationBandQuestion = {
 // placing it there means it always appears as soon as every possible
 // trigger has already been asked.
 const followUpsAfterSymptomGroup = {
+  symptoms_general: [...appetiteLossFollowUpQuestions],
+  symptoms_upper_digestive: [...earlySatietyFollowUpQuestions],
   symptoms_bowel_abdominal: [stoolLooseOrFrequentQuestion, ...ruleRepeatQuestionsByParent.symptom_hematochezia],
   symptoms_hepatobiliary: [...ruleRepeatQuestionsByParent.symptom_jaundice],
   symptoms_respiratory: [...ruleRepeatQuestionsByParent.symptom_shortness_of_breath],
@@ -2547,6 +2590,20 @@ function buildResearchFeatureRow() {
   };
 }
 
+// The six pancreatic early-symptom follow-ups (2026-11-16), as research
+// columns named after their question ids. Spelled out rather than read off
+// the question objects so this stays a self-contained function; the e2e test
+// checks every column here has a question with the matching field.
+function buildGiFollowUpResearchColumns() {
+  const columns = {};
+  for (const symptom of ["appetite_loss", "early_satiety"]) {
+    for (const part of ["onset", "course", "intake_effect"]) {
+      columns[`${symptom}_${part}`] = getAnswerValue(answers, `symptoms.follow_up.${symptom}_${part}`) || "";
+    }
+  }
+  return columns;
+}
+
 function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow, ruleInputRow) {
   // Looked up by key, not by scanning for entry.field. `answers` is keyed by
   // question.field, but the two places that build an entry disagree about
@@ -2581,6 +2638,7 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     report_language: currentLang === "en" ? "en" : "zh-Hant",
     country: getAnswerValue(answers, "demographics.country") || "",
     psych_rumination: getAnswerValue(answers, "mental_health.psych_rumination") || "",
+    ...buildGiFollowUpResearchColumns(),
     psych_social_support: getAnswerValue(answers, "mental_health.psych_social_support") || "",
     psych_neuroticism_informant: getAnswerValue(answers, "mental_health.psych_neuroticism_informant") || "",
     personal_cancer_types: personalCancerTypes,

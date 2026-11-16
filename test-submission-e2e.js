@@ -302,3 +302,69 @@ test("the three psychological items stay out of the model request and the frozen
   assert.equal(submission.vnext_feature_columns.length, 33);
   assert.equal(submission.rule_input_columns.length, 30);
 });
+
+// 2026-11-16 新增的胰臟癌早期症狀追問：勾了「食慾降低」或「容易過早飽足」才問，
+// 問首次出現時間、持續或反覆、是否影響食量。跟心理題同一條路：只進研究列與答案碼，
+// 不進模型請求，也不進釘死筆數的 vNext 與規則層欄位。
+const GI_FOLLOW_UPS = [
+  ["symptoms.general", "食慾降低或食量明顯減少", "appetite_loss"],
+  ["symptoms.upper_digestive", "容易過早飽足（吃少量就飽）", "early_satiety"]
+];
+const GI_PARTS = ["onset", "course", "intake_effect"];
+const giQuestion = (id) => app.questions.find((question) => question.id === id);
+function setSymptomGroup(field, selected) {
+  const group = app.questions.find((question) => question.field === field);
+  app.answers[field] = app.makeAnswerEntry(group, selected, "contract_test");
+}
+
+test("the pancreatic follow-ups appear only when their symptom is checked", () => {
+  for (const [field, label, key] of GI_FOLLOW_UPS) {
+    const group = app.questions.find((question) => question.field === field);
+    const other = group.options.find((option) => option !== label && option !== "以上皆無" && option !== "不確定");
+    setSymptomGroup(field, [other]);
+    for (const part of GI_PARTS) {
+      assert.equal(giQuestion(`${key}_${part}`).appliesIf(app.answers), false, `${key}_${part} 在沒勾症狀時也會問`);
+    }
+    setSymptomGroup(field, [label]);
+    for (const part of GI_PARTS) {
+      assert.equal(giQuestion(`${key}_${part}`).appliesIf(app.answers), true, `${key}_${part} 勾了症狀卻不問`);
+    }
+  }
+});
+
+test("the pancreatic follow-ups reach the research row and are coded answers", () => {
+  const picked = { onset: 2, course: 1, intake_effect: 0 };
+  for (const [field, label, key] of GI_FOLLOW_UPS) {
+    setSymptomGroup(field, [label]);
+    for (const part of GI_PARTS) {
+      const question = giQuestion(`${key}_${part}`);
+      assert.equal(question.field, `symptoms.follow_up.${key}_${part}`);
+      app.answers[question.field] = app.makeAnswerEntry(question, question.options[picked[part]], "contract_test");
+    }
+  }
+  const submission = submitAs("臺灣");
+  for (const [, , key] of GI_FOLLOW_UPS) {
+    for (const part of GI_PARTS) {
+      const id = `${key}_${part}`;
+      assert.equal(submission.excel_row[id], giQuestion(id).options[picked[part]], `excel_row.${id} 沒有拿到受試者選的值`);
+      const row = submission.answer_code_rows.find((entry) => entry.question_id === id);
+      assert(row, `answer_code_rows 裡沒有 ${id}`);
+      assert.equal(row.status, "answered");
+      assert.equal(row.value, `${id}.option_0${picked[part] + 1}`);
+    }
+  }
+});
+
+test("the pancreatic follow-ups stay out of the model request and the frozen vectors", () => {
+  const submission = submitAs("臺灣");
+  for (const [, , key] of GI_FOLLOW_UPS) {
+    for (const part of GI_PARTS) {
+      for (const row of ["ai_api_feature_row", "optimized_feature_row", "vnext_feature_row", "rule_input_row"]) {
+        assert(!(`${key}_${part}` in submission[row]), `${key}_${part} 跑進了 ${row}`);
+      }
+    }
+  }
+  assert.equal(submission.optimized_feature_columns.length, 71);
+  assert.equal(submission.vnext_feature_columns.length, 33);
+  assert.equal(submission.rule_input_columns.length, 30);
+});
