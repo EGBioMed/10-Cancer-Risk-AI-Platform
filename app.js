@@ -291,7 +291,8 @@ const symptomGroups = [
 ];
 
 // Pictures on options (2026-11-16): the delivered illustration set -- the nine
-// upper-digestive symptoms and the fifteen diet items. Keyed by the option
+// upper-digestive symptoms, the fifteen diet items and the eight
+// liver/biliary/pancreatic symptoms (oily stool included). Keyed by the option
 // string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
 // exists. Converted from the delivered 512px PNGs to JPEG (about 30 KB each,
@@ -322,7 +323,15 @@ const optionIllustrations = Object.freeze({
   "益生菌食品或補充品每週至少 3 次（例如標示含活菌的優格、發酵乳或乳酸菌飲品，以及益生菌粉包、膠囊）": "assets/illustrations/diet-probiotics.jpg",
   "飲酒（每週至少一次）": "assets/illustrations/diet-alcohol.jpg",
   "咖啡（每週至少 3 次）": "assets/illustrations/diet-coffee.jpg",
-  "茶（每週至少 3 次）": "assets/illustrations/diet-tea.jpg"
+  "茶（每週至少 3 次）": "assets/illustrations/diet-tea.jpg",
+  "黃疸（皮膚或眼白變黃）": "assets/illustrations/hb-jaundice.jpg",
+  "皮膚搔癢（非皮膚疾病引起）": "assets/illustrations/hb-pruritus.jpg",
+  "尿液顏色明顯變深（如濃茶色）": "assets/illustrations/hb-dark-urine.jpg",
+  "糞便顏色變淺或呈灰白色": "assets/illustrations/hb-pale-stool.jpg",
+  "右上腹不適或悶痛": "assets/illustrations/hb-right-upper-abdomen.jpg",
+  "過去 2 年內才被診斷糖尿病": "assets/illustrations/hb-new-diabetes.jpg",
+  "已有糖尿病，但血糖控制突然變差": "assets/illustrations/hb-worsening-diabetes.jpg",
+  "大便油油亮亮、浮在水面或不容易沖掉（油便）": "assets/illustrations/hb-oily-stool.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
