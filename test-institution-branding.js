@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 
 const {
   BRAND_MARKER,
+  MIN_LOGO_SCALE,
+  MAX_LOGO_SCALE,
   FOOTER_MARKER,
   HOST_LOCAL_MARKERS,
   parseInstitutionBranding,
@@ -273,6 +275,52 @@ test("an unknown hostName shows both rather than costing the partner their logo"
   assert.equal(brand.hostName, "bilingual");
 });
 
+// How big a partner's mark is drawn. 華康's lockup puts their name under a
+// symbol and spends most of its height on the symbol, so at the house size
+// the four characters came out around 14px and they asked for a little more.
+test("a partner's mark can be drawn larger, and only theirs", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: {
+      name: "華康生醫",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGHK3FV"],
+      logoScale: 1.3
+    },
+    numia: { name: "Numia Health", logo: "brand/numia-health-colour.svg", codes: ["EGNUMEDJ"] }
+  }));
+  assert.deepEqual(w.problems, []);
+  assert.equal(brandForSlug(w, "hwakang").logoScale, 1.3);
+  assert.equal(brandForSlug(w, "numia").logoScale, 1);
+
+  // One number for both breakpoints: styles.css multiplies the 26px desktop
+  // row and the 22px phone row by it.
+  const bigger = applyInstitutionBranding(BRAND_MARKER, brandForSlug(w, "hwakang"));
+  assert.equal(bigger.includes(`<span class="brand-partner" style="--brand-partner-scale: 1.3">`), true);
+
+  // And a partner who asked for nothing gets exactly the markup they had
+  // before the field existed -- their entrance was approved as it was.
+  const house = applyInstitutionBranding(BRAND_MARKER, brandForSlug(w, "numia"));
+  assert.equal(house.includes(`<span class="brand-partner">`), true);
+  assert.equal(house.includes("brand-partner-scale"), false);
+});
+
+test("an unusable logoScale costs the size, not the logo", () => {
+  for (const bad of [0.1, 4, "big", true, [], { px: 40 }]) {
+    const w = parseInstitutionBranding(JSON.stringify({
+      hwakang: { name: "華康生醫", logo: "brand/hwakang-colour.png", codes: ["EGHK3FV"], logoScale: bad }
+    }));
+    assert.match(w.problems.join(" | "), /unusable logoScale/, `accepted ${String(bad)}`);
+    const brand = brandForSlug(w, "hwakang");
+    assert(brand, `${String(bad)} took the whole partner down`);
+    assert.equal(brand.logoScale, 1);
+    assert.equal(applyInstitutionBranding(BRAND_MARKER, brand).includes("brand-partner-scale"), false);
+  }
+
+  // The bounds are the point of the field being bounded: a mark that towers
+  // over our own is not co-branding, and one scaled to a tenth is invisible.
+  assert(MIN_LOGO_SCALE > 0 && MAX_LOGO_SCALE > MIN_LOGO_SCALE);
+});
+
 // The footer block: who the partner is and how to reach them, at the bottom
 // of the page. Someone who arrived from a partner's landing page and is now
 // looking at a cancer questionnaire should be able to find both companies
@@ -303,6 +351,76 @@ test("the footer names the partner and links what was configured", () => {
   assert.match(html, /href="mailto:hello@numiahealth\.ca"/);
   assert.match(html, /\+1 \(604\) 555-0100/);
   assert.equal(html.includes(FOOTER_MARKER), false);
+});
+
+// 華康 asked for their QR in the footer as well as the link. It is the same
+// address either way: the link is what you tap on the page you are already
+// looking at, the code is what you point another phone at.
+test("a partner's QR is rendered under their contact lines", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: {
+      name: "華康生醫",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGHK3FV"],
+      footer: { website: "https://www.hkdna.com.tw/", qr: "brand/hwakang-qr.png", phone: "0909-956-886" }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "hwakang"));
+  assert.equal(html.includes('<img src="/brand/hwakang-qr.png"'), true);
+  // Named, because a code nobody can read is an unlabelled image.
+  assert.equal(html.includes('alt="華康生醫 QR code"'), true);
+  // Dimensions on the tag: the footer must not jump when the image lands.
+  assert.equal(html.includes('width="140" height="140"'), true);
+  // After the written lines, not between them.
+  assert(html.indexOf("site-footer__qr") > html.indexOf("0909-956-886"));
+
+  // And nobody else grows one.
+  const plain = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      footer: { website: "https://numiahealth.ca/" }
+    }
+  }));
+  assert.equal(
+    applyInstitutionBranding(FOOTER_MARKER, brandForSlug(plain, "numia")).includes("site-footer__qr"),
+    false
+  );
+});
+
+test("a QR is held to the logo's rules, and a bad one drops only itself", () => {
+  for (const bad of ["https://cdn.example.com/qr.png", "brand/../server.js", "data:image/png;base64,AAAA"]) {
+    const w = parseInstitutionBranding(JSON.stringify({
+      hwakang: {
+        name: "華康生醫",
+        logo: "brand/hwakang-colour.png",
+        codes: ["EGHK3FV"],
+        footer: { website: "https://www.hkdna.com.tw/", qr: bad }
+      }
+    }));
+    assert.match(w.problems.join(" | "), /footer qr must be brand/, `accepted ${bad}`);
+    const brand = brandForSlug(w, "hwakang");
+    assert(brand, `${bad} took the whole partner down`);
+    assert.equal(brand.footer.qr, undefined);
+    // The website line it sits under is untouched.
+    assert.equal(applyInstitutionBranding(FOOTER_MARKER, brand).includes("www.hkdna.com.tw"), true);
+  }
+
+  // A path that is fine but names a file we do not ship would render a broken
+  // image in a partner's own footer.
+  const missing = parseInstitutionBranding(JSON.stringify({
+    hwakang: {
+      name: "華康生醫",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGHK3FV"],
+      footer: { qr: "brand/nobody-made-this.png" }
+    }
+  }), { logoExists: (path) => !path.includes("nobody") });
+  assert.equal(missing.problems.join(" | ").includes("footer qr points at brand/nobody-made-this.png"), true);
+  assert.equal(brandForSlug(missing, "hwakang").footer.qr, undefined);
 });
 
 test("the footer renders the name alone when nothing else is configured", () => {
@@ -502,6 +620,30 @@ test("the page we ship still marks the half of our name that can be dropped", ()
   );
   // Every unpaired marker is a place our name silently stops being trimmed.
   assert.equal(indexHtml.split(HOST_LOCAL_MARKERS[0]).length, indexHtml.split(HOST_LOCAL_MARKERS[1]).length);
+});
+
+test("the stylesheet still multiplies by the partner scale", () => {
+  // Replace either calc() with a plain height and every page keeps rendering;
+  // the only thing that changes is that a partner who asked for a larger mark
+  // quietly stops getting one.
+  const css = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
+  assert.equal(css.includes("height: calc(26px * var(--brand-partner-scale, 1))"), true, "the desktop row stopped multiplying");
+  assert.equal(css.includes("height: calc(22px * var(--brand-partner-scale, 1))"), true, "the phone row stopped multiplying");
+});
+
+test("the QR we ship is a square PNG large enough to stay sharp", () => {
+  // Drawn at 140px and downscaled from this file, so it has to be bigger than
+  // it is shown. The dimensions come out of the IHDR rather than a library:
+  // this is a guard against the file being replaced by something small or by
+  // something that is not a PNG at all.
+  const file = path.join(__dirname, "brand", "hwakang-qr.png");
+  assert.equal(fs.existsSync(file), true);
+  const head = fs.readFileSync(file).subarray(0, 24);
+  assert.deepEqual([...head.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10], "not a PNG");
+  const width = head.readUInt32BE(16);
+  const height = head.readUInt32BE(20);
+  assert.equal(width, height, "a QR is square");
+  assert(width >= 320, `shipped at ${width}px, which will look soft`);
 });
 
 test("the configured logo is actually on disk", () => {

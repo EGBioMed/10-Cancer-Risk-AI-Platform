@@ -124,11 +124,14 @@ button {
 
 .brand-partner img {
   display: block;
-  height: 26px;
+  /* --brand-partner-scale is set per partner by lib/institution-branding.js,
+     and is absent for everyone who did not ask, so both values below are the
+     ones that were here before it existed. */
+  height: calc(26px * var(--brand-partner-scale, 1));
   width: auto;
   /* A wordmark is wide. Without a ceiling it pushes the language switcher
      off the row on the narrowest phones. */
-  max-width: 170px;
+  max-width: calc(170px * var(--brand-partner-scale, 1));
   object-fit: contain;
 }
 
@@ -1601,6 +1604,22 @@ input[type="number"] {
   line-height: 1.7;
 }
 
+.site-footer__qr {
+  margin: 12px 0 0;
+}
+
+/* The white tile is not decoration. A QR needs a light quiet zone around it
+   to be read at all, and the footer is a pale green-grey, not white -- so the
+   paper the code is printed on is drawn here rather than assumed. */
+.site-footer__qr img {
+  display: block;
+  width: 140px;
+  height: 140px;
+  padding: 6px;
+  border-radius: 8px;
+  background: #fff;
+}
+
 .service-details {
   margin-top: 16px;
 }
@@ -1880,8 +1899,8 @@ pre {
   }
 
   .brand-partner img {
-    height: 22px;
-    max-width: 140px;
+    height: calc(22px * var(--brand-partner-scale, 1));
+    max-width: calc(140px * var(--brand-partner-scale, 1));
   }
 
   /* .hero__overlay is display:none here and the hero is plain white, so the

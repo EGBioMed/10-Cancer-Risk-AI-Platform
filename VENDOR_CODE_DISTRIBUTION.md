@@ -73,6 +73,7 @@
 |---|---|---|---|---|---|---|---|
 | 華康 | `EGHK3FV` | 43 | | | | | 2026-11-12 起是聯名入口，進來會看到華康的標誌，見下方「聯合品牌」。同日內部驗證用掉 2 次 |
 | 華康 | `EGHKDEMO` | 74 | 2026-11-12 | | 連結 | 聯名頁審閱 | **不是活動正式碼。** 200 次，`delivery_mode: institution`，不過期。額度從 200 起跳是因為 `EGNUMEDEMO` 的 20 次被連結預覽吃光過 |
+| | | | | | | | 2026-11-16 華康回覆確認排版，並提供頁尾資訊（簡介、官網 https://www.hkdna.com.tw/、Email、電話）與放大標誌的要求，都已設定 |
 | 雙和 | `EGSHN3J` | 44 | | | | | |
 | 秀傳 | `EGSCHJGJ` | 45 | | | | | |
 | 行動基因 | `EGACTJVK` | 46 | | | | | |
@@ -186,11 +187,10 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"]}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"],"logoScale":1.3,"footer":{"summary":"專注於高科技基因檢測服務，精準守護華人健康。","website":"https://www.hkdna.com.tw/","email":"HuaKangDNA@gmail.com","phone":"0909-956-886","qr":"brand/hwakang-qr.png"}}}
 ```
 
-`numia` 的 `summary` 以實際設定為準，見下方「頁尾的夥伴資訊」。整串是一個值，
-貼進 Render 時中間不能有換行。
+上面是 2026-11-16 的實際設定。整串是一個值，貼進 Render 時中間不能有換行。
 
 沒設這個變數，或某一筆壞掉，頁面就是原本的樣子——不會擋啟動，但會在 Logs 記一
 行 `Branding config:` 開頭的錯誤。
@@ -202,6 +202,7 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 | `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
 | `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
 | `hostName` | 否 | **我們自己**的名字怎麼寫。預設 `bilingual`（EG BioMed 愛立基生醫）；填 `english` 只留 EG BioMed，見下 |
+| `logoScale` | 否 | 夥伴標誌畫多大，預設 1。1.3 就是比標準大三成，只影響這一家，見下 |
 | `footer` | 否 | 頁尾的夥伴區塊，見下 |
 
 ### 我們自己的名字怎麼寫
@@ -234,13 +235,31 @@ Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次
 而且症狀不會報錯：代碼有效、session 正常、頁面也正常，只是少了夥伴的標誌，所
 以除非真的點開看，不然不會發現。**鑄完碼先自己點一次連結**，比對方告訴我們好。
 
+### 夥伴標誌要大一點
+
+標頭那一列是照一個 26px 高的標誌排的（手機 22px），這個高度適合橫長的英文字標。
+華康的組合標是圖案在上、名稱在下壓成橫式，高度大部分被圓形圖案吃掉，四個字只剩
+大約一半高，在 26px 下約 14px，所以 2026-11-16 他們要求「稍微大一點」，設了
+`"logoScale":1.3`（桌機約 34px、手機約 29px）。
+
+**只影響設定的那一家。** Numia 已經確認過他們的入口長什麼樣子，不該因為別家提了
+要求就跟著變，所以沒設這個欄位的夥伴輸出的 HTML 跟這個欄位存在之前一模一樣。
+
+可填 0.75 到 1.6。上限是因為標誌比我們自己的還大就不叫聯名了；下限是防手滑——
+填 0.1 會讓夥伴的標誌小到看不見，而且頁面不會報錯。超出範圍或根本不是數字，會
+退回預設值 1 並在 Logs 記一行，不會把整筆夥伴退掉。
+
+實作上傳的是一個 CSS 變數而不是固定高度，因為桌機和手機是兩個基準值，一個數字
+要同時跟著兩邊走。`styles.css` 裡那兩行 `calc()` 被改回固定高度的話，頁面照樣
+正常，只是這個欄位安靜失效——所以測試裡有一條直接盯著 `styles.css`。
+
 ### 頁尾的夥伴資訊
 
 ```
-"footer": {"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/","email":"...","phone":"..."}
+"footer": {"summary":"…","website":"https://numiahealth.ca/","email":"…","phone":"…","qr":"brand/<檔名>.png"}
 ```
 
-四個欄位全部選填，而且是**各自**檢查、各自捨棄的——只給網址沒給電話，就是一個
+五個欄位全部選填，而且是**各自**檢查、各自捨棄的——只給網址沒給電話，就是一個
 只有網址的頁尾，不會整筆被退。有設 `logo` 就一定會有頁尾區塊，至少印出夥伴名稱；
 沒設的欄位不會留下空的聯絡欄（一個底下什麼都沒有的「聯絡方式」比沒有更糟）。
 
@@ -252,6 +271,17 @@ Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次
 顯示的是主機名（`numiahealth.ca`）而不是完整網址：頁尾裡一長串路徑看起來像追蹤
 連結。標籤「合作夥伴 / In partnership with」跟著頁面語言切換，由 `app.js` 處理，
 找不到元素就跳過——沒有聯名的頁面根本沒有這個區塊。
+
+`qr` 是夥伴自己的 QRCode，畫在聯絡資訊下面。規則跟 `logo` 一樣而不是跟
+`website` 一樣：它是這個部署要吐出去的圖片，所以只能是 `brand/<檔名>`，不能
+是外站網址（理由見 `LOGO_PATTERN` 的說明）。檔案不在磁碟上就只丟掉這個欄位，
+夥伴其他資訊照常。
+
+畫的時候底下會墊一塊白底——這不是裝飾。QRCode 需要四個模塊寬的淺色靜區才讀得
+到，而頁尾是淡綠灰色不是白色，所以那張「紙」要自己畫出來。
+
+**別把我們自己的入口連結做成 QRCode 貼上去。** 入口連結本身就是通行證。夥伴的
+QRCode 指向夥伴的官網，這是兩回事。
 
 ### 為什麼要兩個 logo 檔
 
@@ -281,6 +311,18 @@ Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次
 檔案以 700px 寬出貨，不是原始的 2354px。品牌列上限 170 CSS px，700px 已經夠
 4 倍螢幕用；放全尺寸等於讓每一位從華康進來的人多載 200KB，只為了一個 95×26 的
 標誌。
+
+`hwakang-qr.png` 也是我們處理過的。他們給了兩張 QRCode（黑色、綠色），掃出來
+是同一個網址 `https://www.hkdna.com.tw/`。我們用黑色那張：黑底白紙對比約
+16.6:1，綠色（`#14ab57`）只有約 2.8:1——兩張現在都掃得到，但綠色在影印、轉灰
+階或光線不足時會失敗。
+
+原檔是 JPEG，每個模塊邊緣都有壓縮雜訊。我們先把**低彩度**的像素二值化成純黑純
+白（雜訊消失、幾何不動），中間那個彩色圓形圖案因為彩度高所以原封不動保留，再
+縮到 480px 並補上四個模塊的靜區——他們原檔只有一個模塊，低於規格。
+
+驗收方式是真的去掃：用解碼器讀 480px、224px、112px 三種尺寸，都要讀得出同一個
+網址才算數。檔案大小 29KB。
 
 華康日後若提供官方的橫式組合標，直接換掉這兩個檔即可，設定不用動。
 
