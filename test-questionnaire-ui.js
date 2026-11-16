@@ -249,7 +249,7 @@ test("local-only acceptance does not falsely claim that a report was emailed", (
 test("every symptom picture sits on a live option and its file exists", () => {
   const liveOptions = new Set(questions.flatMap((question) => Array.isArray(question.options) ? question.options : []));
   const entries = Object.entries(optionIllustrations);
-  assert(entries.length >= 32, "the illustration set is missing");
+  assert(entries.length >= 37, "the illustration set is missing");
   for (const [option, src] of entries) {
     assert(liveOptions.has(option), `a picture is keyed to "${option}", which is no longer an option`);
     assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.(svg|jpg|png)$/);

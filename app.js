@@ -292,7 +292,8 @@ const symptomGroups = [
 
 // Pictures on options (2026-11-16): the delivered illustration set -- the nine
 // upper-digestive symptoms, the fifteen diet items and the eight
-// liver/biliary/pancreatic symptoms (oily stool included). Keyed by the option
+// liver/biliary/pancreatic symptoms (oily stool included) and the five
+// respiratory symptoms (square, 512x512). Keyed by the option
 // string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
 // exists. Converted from the delivered 512px PNGs to JPEG (about 30 KB each,
@@ -331,7 +332,12 @@ const optionIllustrations = Object.freeze({
   "右上腹不適或悶痛": "assets/illustrations/hb-right-upper-abdomen.jpg",
   "過去 2 年內才被診斷糖尿病": "assets/illustrations/hb-new-diabetes.jpg",
   "已有糖尿病，但血糖控制突然變差": "assets/illustrations/hb-worsening-diabetes.jpg",
-  "大便油油亮亮、浮在水面或不容易沖掉（油便）": "assets/illustrations/hb-oily-stool.jpg"
+  "大便油油亮亮、浮在水面或不容易沖掉（油便）": "assets/illustrations/hb-oily-stool.jpg",
+  "持續咳嗽超過 3 週（非感冒引起）": "assets/illustrations/resp-persistent-cough.jpg",
+  "咳血或痰中帶血": "assets/illustrations/resp-hemoptysis.jpg",
+  "一年內反覆發生肺炎 2 次以上": "assets/illustrations/resp-recurrent-pneumonia.jpg",
+  "持續胸痛或胸悶": "assets/illustrations/resp-chest-pain.jpg",
+  "最近 6 個月內曾出現呼吸喘、呼吸急促或比平常更容易喘": "assets/illustrations/resp-shortness-of-breath.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
