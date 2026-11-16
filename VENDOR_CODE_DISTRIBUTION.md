@@ -188,7 +188,7 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"],"logoScale":1.3,"footer":{"summary":"專注於高科技基因檢測服務，精準守護華人健康。","email":"HuaKangDNA@gmail.com","phone":"0909-956-886","qr":"brand/hwakang-qr.png","phoneLabel":"諮詢專線","emailLabel":"信箱"}}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"],"logoScale":1.3,"footer":{"summary":"專注於高科技基因檢測服務，精準守護華人健康。","email":"HuaKangDNA@gmail.com","phone":"0909-956-886","qr":"brand/hwakang-qr.png","phoneLabel":{"zh":"諮詢專線","en":"Consultation line"},"emailLabel":{"zh":"信箱","en":"Email"}}}}
 ```
 
 上面是 2026-11-16 的實際設定。整串是一個值，貼進 Render 時中間不能有換行。
@@ -257,7 +257,7 @@ Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次
 ### 頁尾的夥伴資訊
 
 ```
-"footer": {"summary":"…","website":"https://numiahealth.ca/","email":"…","emailLabel":"信箱","phone":"…","phoneLabel":"諮詢專線","qr":"brand/<檔名>.png"}
+"footer": {"summary":"…","website":"https://numiahealth.ca/","email":"…","emailLabel":{"zh":"信箱","en":"Email"},"phone":"…","phoneLabel":{"zh":"諮詢專線","en":"Consultation line"},"qr":"brand/<檔名>.png"}
 ```
 
 七個欄位全部選填，而且是**各自**檢查、各自捨棄的——只給網址沒給電話，就是一個
@@ -274,19 +274,29 @@ Numia 的 `EGNUMEDEMO` 和華康的 `EGHKDEMO` 都在這裡跌過一次，兩次
 找不到元素就跳過——沒有聯名的頁面根本沒有這個區塊。
 
 `emailLabel` / `phoneLabel` 是那兩行前面的字。**沒設也會有標籤**——預設是
-「信箱 / Email」「電話 / Phone」，跟著頁面語言切換（由 `app.js` 處理，機制跟
-「合作夥伴」那行一樣）。
+「信箱 / Email」「電話 / Phone」。
 
-有設就照夥伴寫的印，而且**不翻譯**：華康寫的是「諮詢專線」，那跟「電話」不是
-同一件事，不該被我們換掉；夥伴的名稱和簡介本來也不翻譯。實作上的分界是 id——
-我們的預設標籤帶 id 所以 `app.js` 會換掉它，夥伴自己的不帶 id 所以不會被動到。
+**標籤一定是兩種語言，跟著頁面切換。** 不管設定裡寫的是哪一種形式，存進去的
+都是 `{zh, en}`，渲染時兩個都放進 `data-label-zh` / `data-label-en`，由
+`app.js` 跟著 `currentLang` 換字：
 
-2026-11-16 第一版漏掉了這整件事：華康給的「諮詢專線」「信箱」被當成多餘的字
-丟掉，頁尾只印出一串沒有標籤的電話號碼。一份癌症問卷底下放一組沒說是誰的、
-要幹嘛的電話，是真的會讓人不敢打。
+```
+"phoneLabel": {"zh":"諮詢專線","en":"Consultation line"}   兩邊都照夥伴的
+"phoneLabel": "諮詢專線"                                   中文用夥伴的，英文退回「Phone」
+```
 
-標籤最長 24 字。設了標籤卻沒設對應的 email／phone 會記一行 Logs 並丟掉標籤；
-標籤太長只丟標籤，號碼還在，改用預設值，不會變成沒有標籤的裸號碼。
+夥伴的用字要留著——華康寫的是「諮詢專線」，那跟「電話」不是同一件事。但標籤
+跟夥伴的**名稱、簡介不一樣**：名稱和簡介是他們的文字，我們不翻；標籤是我們頁
+面的框架，只是在描述他們那一行，所以另一種語言一定有東西可以填。
+
+2026-11-16 這裡連錯兩次。第一次是把華康給的「諮詢專線」「信箱」當成多餘的字
+丟掉，頁尾只印出一串沒有標籤的電話號碼——一份癌症問卷底下放一組沒說是誰的、
+要幹嘛的電話，是真的會讓人不敢打。第二次是補上標籤之後，讓夥伴給的中文字**不
+跟著翻譯**，結果英文版頁尾出現「諮詢專線」四個中文字。
+
+標籤最長 24 字（兩種語言各自算）。設了標籤卻沒設對應的 email／phone 會記一行
+Logs 並丟掉標籤；標籤太長或形式不對只丟標籤，號碼還在，改用預設值，不會變成
+沒有標籤的裸號碼。
 
 `qr` 是夥伴自己的 QRCode，畫在聯絡資訊下面。規則跟 `logo` 一樣而不是跟
 `website` 一樣：它是這個部署要吐出去的圖片，所以只能是 `brand/<檔名>`，不能

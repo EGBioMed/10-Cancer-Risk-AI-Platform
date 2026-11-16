@@ -1244,13 +1244,14 @@ function applyStaticText() {
   // up rather than assumed. The partner's own name is never translated.
   const partnerLabel = document.querySelector("#partnerLabel");
   if (partnerLabel) partnerLabel.textContent = currentLang === "en" ? "In partnership with" : "合作夥伴";
-  // Only the labels we supplied carry an id. A partner who named their own
-  // contact line -- 華康's 「諮詢專線」 -- has no id on it and is not
-  // translated, the same way their name and summary are not.
-  const partnerEmailLabel = document.querySelector("#partnerEmailLabel");
-  if (partnerEmailLabel) partnerEmailLabel.textContent = currentLang === "en" ? "Email" : "信箱";
-  const partnerPhoneLabel = document.querySelector("#partnerPhoneLabel");
-  if (partnerPhoneLabel) partnerPhoneLabel.textContent = currentLang === "en" ? "Phone" : "電話";
+  // Every contact label carries both languages, the partner's own wording
+  // included: 華康's 「諮詢專線」 has "Consultation line" beside it, and a
+  // partner who gave no English gets ours. A Chinese word left on the English
+  // page is how this first shipped.
+  document.querySelectorAll(".site-footer__contact-label[data-label-zh]").forEach((label) => {
+    const text = currentLang === "en" ? label.dataset.labelEn : label.dataset.labelZh;
+    if (text) label.textContent = text;
+  });
   document.querySelectorAll("[data-service-copy]").forEach((copy) => {
     copy.hidden = copy.dataset.serviceCopy !== currentLang;
   });

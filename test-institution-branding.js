@@ -434,22 +434,41 @@ test("a contact line says what it is, in the partner's own words where they gave
       codes: ["EGHK3FV"],
       footer: {
         email: "HuaKangDNA@gmail.com",
-        emailLabel: "信箱",
+        emailLabel: { zh: "信箱", en: "Email" },
         phone: "0909-956-886",
-        phoneLabel: "諮詢專線"
+        phoneLabel: { zh: "諮詢專線", en: "Consultation line" }
       }
     }
   }));
   assert.deepEqual(w.problems, []);
 
   const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "hwakang"));
-  assert.equal(html.includes("諮詢專線"), true);
-  assert.equal(html.includes("信箱"), true);
-  // 「諮詢專線」 says something 「電話」 does not, so it is printed as they
-  // wrote it -- and without an id, which is what keeps app.js from
-  // translating a partner's own words on the English page.
-  assert.equal(html.includes('id="partnerPhoneLabel"'), false);
-  assert.equal(html.includes('id="partnerEmailLabel"'), false);
+  // 「諮詢專線」 says something 「電話」 does not, so their wording is kept --
+  // and it travels with an English twin, because the page switches language
+  // under the reader. Leaving the Chinese on the English page is how this
+  // first shipped.
+  assert.equal(html.includes('data-label-zh="諮詢專線" data-label-en="Consultation line"'), true);
+  assert.equal(html.includes('data-label-zh="信箱" data-label-en="Email"'), true);
+  // Rendered in Chinese, which is what index.html ships; app.js swaps it.
+  assert.equal(html.includes(">諮詢專線</span>"), true);
+});
+
+test("a label given in one language still has something to show in the other", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    x: {
+      name: "X",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGX1234"],
+      footer: { phone: "02-1234-5678", phoneLabel: "客服專線" }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  // Their word in Chinese, ours in English. A label is our furniture
+  // describing their line, not their text, so there is always a sensible
+  // thing to fall back to -- unlike their name, which is never translated.
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "x"));
+  assert.equal(html.includes('data-label-zh="客服專線" data-label-en="Phone"'), true);
 });
 
 test("a partner who named nothing still gets labelled lines, in the page language", () => {
@@ -466,8 +485,8 @@ test("a partner who named nothing still gets labelled lines, in the page languag
   // The id is the whole mechanism: app.js looks these up and swaps the text,
   // exactly as it does for #partnerLabel.
   const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "x"));
-  assert.equal(html.includes('<span class="site-footer__contact-label" id="partnerEmailLabel">信箱</span>'), true);
-  assert.equal(html.includes('<span class="site-footer__contact-label" id="partnerPhoneLabel">電話</span>'), true);
+  assert.equal(html.includes('data-label-zh="信箱" data-label-en="Email"'), true);
+  assert.equal(html.includes('data-label-zh="電話" data-label-en="Phone"'), true);
 });
 
 test("a label with nothing to label, or too long, is reported and dropped", () => {
@@ -495,7 +514,7 @@ test("a label with nothing to label, or too long, is reported and dropped", () =
   // default takes its place rather than leaving the line bare.
   const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(shouty, "x"));
   assert.equal(html.includes("02-1234-5678"), true);
-  assert.equal(html.includes('id="partnerPhoneLabel"'), true);
+  assert.equal(html.includes('data-label-zh="電話" data-label-en="Phone"'), true);
 });
 
 test("a contact label is escaped", () => {
@@ -503,7 +522,7 @@ test("a contact label is escaped", () => {
     slug: "x",
     name: "X",
     logo: "brand/a.svg",
-    footer: { phone: "02-1234-5678", phoneLabel: '"><script>alert(1)</script>' }
+    footer: { phone: "02-1234-5678", phoneLabel: { zh: '"><script>alert(1)</script>', en: "Phone" } }
   });
   assert.equal(html.includes("<script>"), false);
   assert.equal(html.includes("&lt;script&gt;"), true);
