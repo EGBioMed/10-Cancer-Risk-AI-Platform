@@ -10,9 +10,9 @@ const cutoff = source.indexOf("const answers = {};");
 const sandbox = { EGAnswerCodes: answerCodes };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions };`, sandbox);
+globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor };`, sandbox);
 
-const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions } = sandbox.__uiDefinitions;
+const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor } = sandbox.__uiDefinitions;
 const byId = (id) => questions.find((question) => question.id === id);
 
 test("mental matrix preserves all three canonical answer fields", () => {
@@ -239,4 +239,35 @@ test("local-only acceptance does not falsely claim that a report was emailed", (
   assert(source.includes("地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。"));
   assert(source.includes("The local AI model and email service have not finished migration"));
   assert(!source.includes("本次健康探索已完成，您的結果已寄送至"));
+});
+
+// Visual cues (2026-11-16). A picture keyed to an option that has since been
+// reworded would silently stop showing; a picture whose file is missing would
+// show a broken image to the person it was meant to help.
+test("every symptom picture sits on a live option and its file exists", () => {
+  const liveOptions = new Set(questions.flatMap((question) => Array.isArray(question.options) ? question.options : []));
+  const entries = Object.entries(optionIllustrations);
+  assert(entries.length >= 3, "the trial pictures are missing");
+  for (const [option, src] of entries) {
+    assert(liveOptions.has(option), `a picture is keyed to "${option}", which is no longer an option`);
+    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.svg$/);
+    assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
+  }
+  assert.equal(illustrationFor("不是任何選項"), null);
+});
+
+test("yes / no / not-sure icons mark only those answers", () => {
+  assert.equal(answerIconFor("是"), "yes");
+  assert.equal(answerIconFor("否"), "no");
+  assert.equal(answerIconFor("不確定"), "unsure");
+  assert.equal(answerIconFor("不確定怎麼回答"), "unsure");
+  assert.equal(answerIconFor("以上皆無"), "no");
+  assert.equal(answerIconFor("是，曾由醫師診斷"), "yes");
+  assert.equal(answerIconFor("否，從未做過"), "no");
+  assert.equal(answerIconFor("對"), "yes");
+  assert.equal(answerIconFor("不對"), "no");
+  // Words that merely contain 是 or 否 are not answers of that kind.
+  assert.equal(answerIconFor("男性"), null);
+  assert.equal(answerIconFor("是否"), null);
+  assert.equal(answerIconFor(undefined), null);
 });

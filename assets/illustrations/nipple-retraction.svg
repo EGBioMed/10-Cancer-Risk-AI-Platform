@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="乳頭凹陷：左邊是正常向外的乳頭，右邊是新發生、往內凹陷的乳頭（側面圖）">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF7F5"/>
+      <stop offset="1" stop-color="#DDEFEB"/>
+    </linearGradient>
+    <linearGradient id="panelBad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF4EE"/>
+      <stop offset="1" stop-color="#FCE3D6"/>
+    </linearGradient>
+    <linearGradient id="skin" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E3A884"/>
+      <stop offset="0.55" stop-color="#F6D3BB"/>
+      <stop offset="1" stop-color="#EDBB9A"/>
+    </linearGradient>
+    <linearGradient id="arm" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#E0A47F"/>
+      <stop offset="1" stop-color="#F0C3A5"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0B4F48" flood-opacity="0.15"/>
+    </filter>
+    <clipPath id="clipL"><rect x="22" y="22" width="198" height="256" rx="18"/></clipPath>
+    <clipPath id="clipR"><rect x="260" y="22" width="198" height="256" rx="18"/></clipPath>
+  </defs>
+
+  <rect width="480" height="300" rx="22" fill="url(#bg)"/>
+  <rect x="22" y="22" width="198" height="256" rx="18" fill="#FFFFFF" filter="url(#soft)"/>
+  <rect x="260" y="22" width="198" height="256" rx="18" fill="url(#panelBad)" filter="url(#soft)"/>
+
+  <path d="M228 150 L250 150" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round"/>
+  <path d="M244 140 L254 150 L244 160" fill="none" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== normal: side view, nipple points outward ===== -->
+  <g clip-path="url(#clipL)">
+    <g transform="translate(96 150)">
+      <path d="M-90 -140 L-14 -140 C-4 -112 4 -84 8 -60 C12 -44 16 -34 24 -28 C48 -12 60 -2 62 10 C64 22 52 38 30 48 C22 52 18 64 18 84 L18 140 L-90 140 Z" fill="url(#skin)"/>
+      <path d="M58 -6 C62 0 63 6 63 10 C63 15 62 20 58 26" fill="none" stroke="#C47E62" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+      <path d="M61 5 C68 5 71 8 71 10 C71 12 68 15 61 15 Z" fill="#B36A50"/>
+      <path d="M-40 -126 C-28 -96 -24 -40 -26 0 C-28 40 -30 80 -32 140 L-58 140 C-58 80 -60 30 -62 -10 C-64 -60 -60 -100 -52 -128 Z" fill="url(#arm)" opacity="0.95"/>
+      <path d="M-14 -140 C-4 -112 4 -84 8 -60" fill="none" stroke="#D59A7C" stroke-width="2" opacity="0.6"/>
+    </g>
+  </g>
+  <!-- zoom ring + badge -->
+  <circle cx="160" cy="160" r="26" fill="none" stroke="#0F766E" stroke-width="3" stroke-dasharray="5 5"/>
+  <circle cx="196" cy="46" r="15" fill="#0F766E"/>
+  <path d="M189 46 L194 51 L203 41" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== newly retracted: nipple pulled inward ===== -->
+  <g clip-path="url(#clipR)">
+    <g transform="translate(334 150)">
+      <path d="M-90 -140 L-14 -140 C-4 -112 4 -84 8 -60 C12 -44 16 -34 24 -28 C48 -12 58 -4 60 4 C56 6 52 8 52 10 C52 12 56 14 60 17 C58 26 50 38 30 48 C22 52 18 64 18 84 L18 140 L-90 140 Z" fill="url(#skin)"/>
+      <path d="M57 -8 C60 -3 60 2 59 4" fill="none" stroke="#C47E62" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+      <path d="M59 17 C59 21 58 25 56 28" fill="none" stroke="#C47E62" stroke-width="7" stroke-linecap="round" opacity="0.55"/>
+      <path d="M60 4 C56 6 52 8 52 10 C52 12 56 14 60 17" fill="none" stroke="#8E4F3A" stroke-width="3.2" stroke-linecap="round"/>
+      <path d="M-40 -126 C-28 -96 -24 -40 -26 0 C-28 40 -30 80 -32 140 L-58 140 C-58 80 -60 30 -62 -10 C-64 -60 -60 -100 -52 -128 Z" fill="url(#arm)" opacity="0.95"/>
+      <path d="M-14 -140 C-4 -112 4 -84 8 -60" fill="none" stroke="#D59A7C" stroke-width="2" opacity="0.6"/>
+      <!-- inward arrow -->
+      <path d="M92 10 L66 10" stroke="#E2572A" stroke-width="4" stroke-linecap="round"/>
+      <path d="M74 2 L64 10 L74 18" fill="none" stroke="#E2572A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+  </g>
+  <circle cx="390" cy="160" r="26" fill="none" stroke="#E2572A" stroke-width="3" stroke-dasharray="5 5"/>
+  <circle cx="434" cy="46" r="15" fill="#E2572A"/>
+  <path d="M434 37 L434 49" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/>
+  <circle cx="434" cy="55" r="2.2" fill="#FFFFFF"/>
+</svg>

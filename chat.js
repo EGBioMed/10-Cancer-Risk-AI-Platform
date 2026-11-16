@@ -48,8 +48,9 @@
       multiHint: "可複選，選好後按「這些就是了」。",
       multiConfirm: "這些就是了",
       skip: "不確定",
-      readBack: (value) => `我記下的是「${value}」，對嗎？`,
-      readBackUnclear: (value) => `想跟您確認：「${value}」，對嗎？請回答「對」或「不對」。`,
+      readBackLead: "我記下的是",
+      readBackLeadUnclear: "想跟您再確認一次",
+      readBackAsk: "對嗎？請按「對」或「不對」，也可以直接說。",
       corrected: "好的，那我們再一次。",
       confirmYes: "對",
       confirmNo: "不對",
@@ -74,8 +75,9 @@
       multiHint: "Choose as many as apply, then press \"That's all\".",
       multiConfirm: "That's all",
       skip: "Not sure",
-      readBack: (value) => `I have "${value}". Is that right?`,
-      readBackUnclear: (value) => `Just to check: "${value}" -- is that right? Please answer yes or no.`,
+      readBackLead: "I have",
+      readBackLeadUnclear: "Just to check once more",
+      readBackAsk: "Is that right? Tap Yes or No, or just say so.",
       corrected: "All right, let's try that one again.",
       confirmYes: "Yes",
       confirmNo: "No",
@@ -169,11 +171,35 @@
     awaitingMultiSelection = null;
   }
 
+  // A chip is the option's words, plus -- where app.js has one -- a shape for
+  // yes / no / not sure, or a picture of the symptom. Both are decoration: what
+  // a tap sends is still the option string, set by the caller.
   function chip(label, onClick, selected) {
     const button = document.createElement("button");
     button.type = "button";
-    button.className = selected ? "chip chip--on" : "chip";
-    button.textContent = label;
+    button.className = "chip";
+    if (selected) button.classList.add("chip--on");
+
+    const picture = typeof illustrationFor === "function" ? illustrationFor(label) : null;
+    const icon = typeof answerIconFor === "function" ? answerIconFor(label) : null;
+    if (picture) {
+      button.classList.add("chip--card");
+      const image = document.createElement("img");
+      image.src = picture;
+      image.alt = "";
+      image.className = "chip__picture";
+      button.appendChild(image);
+    } else if (icon) {
+      button.classList.add("chip--icon");
+      const mark = document.createElement("span");
+      mark.className = `answer-icon answer-icon--${icon}`;
+      mark.setAttribute("aria-hidden", "true");
+      button.appendChild(mark);
+    }
+    const words = document.createElement("span");
+    words.textContent = label;
+    button.appendChild(words);
+
     button.addEventListener("click", onClick);
     return button;
   }
@@ -202,7 +228,7 @@
         const button = chip(option, () => {
           if (chosen.has(option)) chosen.delete(option);
           else chosen.add(option);
-          button.className = chosen.has(option) ? "chip chip--on" : "chip";
+          button.classList.toggle("chip--on", chosen.has(option));
         });
         optionsArea.appendChild(button);
       }
@@ -242,11 +268,52 @@
     return Array.isArray(value) ? value.join("、") : String(value ?? "");
   }
 
-  // The read-back: the answer as understood, and two buttons. Typing works too
-  // ("著", "毋著", "對", "不對"); the buttons send the same words.
+  // Units for the big read-back figure. Said aloud, "46" is easy to mishear as
+  // "40"; written large with its unit, the mistake is visible (test 2's
+  // weight error was exactly this).
+  function readBackUnit(question) {
+    if (!question) return { before: "", after: "" };
+    if (question.id === "birth_year") return isEnglish ? { before: "", after: "" } : { before: "西元 ", after: " 年" };
+    if (question.id === "height_cm") return { before: "", after: isEnglish ? " cm" : " 公分" };
+    if (question.id === "weight_kg") return { before: "", after: isEnglish ? " kg" : " 公斤" };
+    if (question.repeatCount) return { before: "", after: isEnglish ? " times" : " 次" };
+    if (question.intervalDays) return { before: "", after: isEnglish ? " days" : " 天" };
+    return { before: "", after: "" };
+  }
+
+  // The read-back: the answer as understood, shown large, and two buttons.
+  // Typing works too ("著", "毋著", "對", "不對"); the buttons send the same
+  // words. The card's text is the whole sentence, so the log still reads as
+  // one line to a screen reader.
+  function readBackCard(turn, unclear) {
+    const card = document.createElement("div");
+    card.className = "bubble bubble--bot readback";
+    const lead = document.createElement("p");
+    lead.className = "readback__lead";
+    lead.textContent = unclear ? copy.readBackLeadUnclear : copy.readBackLead;
+    const value = document.createElement("p");
+    value.className = "readback__value";
+    const unit = turn.question && turn.question.type === "number" ? readBackUnit(turn.question) : { before: "", after: "" };
+    value.textContent = `${unit.before}${readBackText(turn.value)}${unit.after}`;
+    const picture = typeof illustrationFor === "function" && !Array.isArray(turn.value) ? illustrationFor(turn.value) : null;
+    const ask = document.createElement("p");
+    ask.className = "readback__ask";
+    ask.textContent = copy.readBackAsk;
+    card.append(lead, value);
+    if (picture) {
+      const image = document.createElement("img");
+      image.src = picture;
+      image.alt = "";
+      image.className = "readback__picture";
+      card.appendChild(image);
+    }
+    card.appendChild(ask);
+    transcript.appendChild(card);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
   function askConfirmation(turn, unclear) {
-    const shown = readBackText(turn.value);
-    say(unclear ? copy.readBackUnclear(shown) : copy.readBack(shown), "bot");
+    readBackCard(turn, unclear);
     clearOptions();
     optionsArea.appendChild(chip(copy.confirmYes, () => reply(copy.confirmYes, copy.confirmYes)));
     optionsArea.appendChild(chip(copy.confirmNo, () => reply(copy.confirmNo, copy.confirmNo)));

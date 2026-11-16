@@ -43,6 +43,24 @@ const cancerOptions = ["乳癌", "攝護腺癌", "肺癌", "頭頸癌", "胰臟�
 
 const symptomNoneOption = "以上皆無";
 const symptomUnknownOption = "不確定";
+
+// Visual cues (2026-11-16, NSTC reviewer: make the questionnaire easier for
+// respondents to operate). An answer that means yes, no or "not sure" gets a
+// shape as well as a word, so an older respondent can find it without reading
+// the label. Decoration on the button only: the value saved is the option
+// string, unchanged. Exact matches, plus the "是，…" / "否，…" option forms.
+const ANSWER_ICON_EXACT = Object.freeze({
+  "是": "yes", "對": "yes", "Yes": "yes",
+  "否": "no", "不對": "no", "No": "no", [symptomNoneOption]: "no",
+  [symptomUnknownOption]: "unsure", "不確定怎麼回答": "unsure", "Not sure": "unsure"
+});
+function answerIconFor(option) {
+  const text = String(option ?? "");
+  if (Object.prototype.hasOwnProperty.call(ANSWER_ICON_EXACT, text)) return ANSWER_ICON_EXACT[text];
+  if (text.startsWith("是，")) return "yes";
+  if (text.startsWith("否，")) return "no";
+  return null;
+}
 const symptomReminderZh = "請回想最近 3 個月內的身體狀況。出血、腫塊或其他警示狀況即使只發生一次也請勾選；一般不適則請勾選持續、反覆或明顯新發生的情況。若個別選項或追問題目標示『最近 6 個月』，請以該題標示的時間範圍作答。";
 const symptomReminderEn = "Please think about your health during the past 3 months. Select bleeding, a lump, or another warning sign even if it occurred once. For common symptoms, select those that were persistent, recurrent, or clearly new. If an option or follow-up question specifies the past 6 months, answer using that stated timeframe.";
 
@@ -263,6 +281,21 @@ const symptomGroups = [
     ]
   }
 ];
+
+// Pictures for symptoms that are easier to recognise than to name (trial,
+// 2026-11-16: three items). Keyed by the option string itself, so a picture
+// can only ever sit on the option it was drawn for; test-questionnaire-ui.js
+// checks every key is a live option and every file exists. The picture is
+// decorative to assistive technology (alt=""): the button's own label already
+// says what it shows.
+const optionIllustrations = Object.freeze({
+  "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-nodes.svg",
+  "黃疸（皮膚或眼白變黃）": "assets/illustrations/jaundice.svg",
+  "新發生的乳頭凹陷（非天生）": "assets/illustrations/nipple-retraction.svg"
+});
+function illustrationFor(option) {
+  return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
+}
 
 const symptomOptionTranslations = symptomGroups.reduce((translations, group) => {
   group.options.forEach(([label, english]) => {
@@ -1698,7 +1731,7 @@ function renderQuickInput(question) {
       ${isConsentQuestion ? `<div class="consent-option-hint" id="consentOptionHint"></div>` : ""}
       <div class="multi-options${isSymptomQuestion ? " multi-options--symptoms" : ""}">
         ${visibleOptions.map((option) => `
-          <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}" type="button" data-value="${option}" aria-pressed="false">${tx(option)}</button>
+          <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}${illustrationFor(option) ? " option-button--illustrated" : ""}" type="button" data-value="${option}" aria-pressed="false">${illustrationFor(option) ? `<img class="option-illustration" src="${illustrationFor(option)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
         `).join("")}
       </div>
       <button class="secondary-action" id="saveMultiBtn" type="button">${isConsentQuestion ? (currentLang === "en" ? i18n.en.ui.consentContinue : "三項都已勾選，繼續填寫") : ui("saveContinue")}</button>
@@ -1765,7 +1798,7 @@ function renderQuickInput(question) {
   }
 
   quickOptions.innerHTML = singleOptions.map((option) => `
-    <button class="option-button" type="button" data-value="${option}">${tx(option)}</button>
+    <button class="option-button${answerIconFor(option) ? " option-button--icon" : ""}" type="button" data-value="${option}">${answerIconFor(option) ? `<span class="answer-icon answer-icon--${answerIconFor(option)}" aria-hidden="true"></span>` : ""}${tx(option)}</button>
   `).join("");
 
   quickOptions.querySelectorAll(".option-button").forEach((button) => {

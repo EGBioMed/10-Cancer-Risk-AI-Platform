@@ -2538,3 +2538,66 @@ pre {
     font-size: 12px;
   }
 }
+
+/* Visual cues (2026-11-16): yes / no / unsure answers carry a shape as well
+   as a word, and some symptom options carry a picture. Shared by the form and
+   the chat page. */
+.answer-icon {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.answer-icon--yes { background: #0f766e; }
+.answer-icon--yes::before { content: "✓"; }
+.answer-icon--no { background: #b4533a; }
+.answer-icon--no::before { content: "✕"; }
+.answer-icon--unsure { background: #8a7a52; }
+.answer-icon--unsure::before { content: "?"; }
+
+.option-button--icon {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 60px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.option-button--illustrated {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 10px;
+}
+
+.option-illustration {
+  display: block;
+  width: 100%;
+  max-width: 420px;
+  height: auto;
+  border-radius: 14px;
+}
+
+.option-button--symptom.option-button--illustrated::before {
+  top: auto;
+  bottom: 18px;
+  transform: none;
+}
+
+.option-button--symptom.option-button--illustrated.is-selected::after {
+  top: auto;
+  bottom: 21px;
+  transform: none;
+}
+
+.option-button--illustrated.is-selected .option-illustration {
+  outline: 3px solid var(--teal);
+  outline-offset: 2px;
+}
