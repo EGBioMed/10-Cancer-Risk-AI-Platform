@@ -186,7 +186,7 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"]}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"…","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"]}}
 ```
 
 `numia` 的 `summary` 以實際設定為準，見下方「頁尾的夥伴資訊」。整串是一個值，
@@ -201,7 +201,23 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 | `logo` | 是 | 淺色背景用的版本。路徑只能是 `brand/<檔名>.svg` 或 `.png` |
 | `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
 | `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
+| `hostName` | 否 | 標頭裡**我們自己**的名字。預設 `bilingual`（EG BioMed 愛立基生醫）；填 `english` 只留 EG BioMed，見下 |
 | `footer` | 否 | 頁尾的夥伴區塊，見下 |
+
+### 標頭裡我們自己的名字
+
+頁面第一行是「EG BioMed 愛立基生醫」。Numia 的活動在加拿大、全程英文，他們的使
+用者看到的第一行有四個中文字，會以為點錯公司，所以 2026-11-12 起 `numia` 設了
+`"hostName":"english"`，標頭只顯示 EG BioMed。
+
+只有中文那一半會拿掉，EG BioMed 一定留著——報告是我們寄的，一個從頭到尾沒看過
+我們名字的使用者收到信會覺得莫名其妙。
+
+只影響標頭，不影響頁尾：頁尾那行「EG BioMed 愛立基生醫」所有入口都一樣。華康和
+其他未設定的夥伴維持中英並列。
+
+填了不認得的值（例如 `"zh"`）不會把整筆退掉，是退回 `bilingual` 並在 Logs 記一
+行——為了省我們自己名字的四個字而讓夥伴的 logo 消失，不划算。
 
 ### 替聯名夥伴鑄新碼，記得回來加這裡
 

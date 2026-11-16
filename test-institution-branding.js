@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const {
   BRAND_MARKER,
   FOOTER_MARKER,
+  HOST_LOCAL_MARKERS,
   parseInstitutionBranding,
   brandForEntrance,
   brandForSlug,
@@ -210,6 +211,59 @@ test("a bad logoOnDark is refused rather than quietly ignored", () => {
   const missing = parseInstitutionBranding(NUMIA, { logoExists: (p) => !p.includes("white") });
   assert.match(missing.problems.join(" | "), /numia-health-white\.svg, which is not on disk/);
   assert.equal(missing.brands.size, 0);
+});
+
+// Our own name in the hero, which opens "EG BioMed 愛立基生醫". Numia's
+// campaign is Canadian and runs in English; four Chinese characters in the
+// first line their users read made the page look like somebody else's.
+const HOST_ROW = `<div class="brand-row"><span>EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}</span>${BRAND_MARKER}</div>`;
+
+test("a partner can ask for our name without the Chinese half", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      hostName: "english"
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(HOST_ROW, brandForSlug(w, "numia"));
+  assert.equal(html.includes("愛立基生醫"), false);
+  // Trimmed, not replaced: the report arrives from us, and a user who never
+  // saw our name anywhere would be surprised by it.
+  assert.equal(html.includes("<span>EG BioMed</span>"), true);
+});
+
+test("everyone else keeps both halves, and nobody keeps the markers", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: { name: "華康生醫", logo: "brand/numia-health-colour.svg", codes: ["EGHK3FV"] }
+  }));
+  assert.equal(brandForSlug(w, "hwakang").hostName, "bilingual");
+
+  for (const brand of [brandForSlug(w, "hwakang"), null]) {
+    const html = applyInstitutionBranding(HOST_ROW, brand);
+    assert.equal(html.includes("<span>EG BioMed 愛立基生醫</span>"), true);
+    // Including the page strangers see: a comment left in the source names a
+    // mechanism and invites a look at it.
+    for (const marker of HOST_LOCAL_MARKERS) assert.equal(html.includes(marker), false);
+  }
+});
+
+test("an unknown hostName shows both rather than costing the partner their logo", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      hostName: "zh"
+    }
+  }));
+  assert.match(w.problems.join(" | "), /unknown hostName "zh"/);
+  const brand = brandForSlug(w, "numia");
+  assert(brand, "an unreadable hostName took the whole partner down");
+  assert.equal(brand.hostName, "bilingual");
 });
 
 // The footer block: who the partner is and how to reach them, at the bottom
@@ -424,6 +478,18 @@ test("a partner asset is not served to strangers", async () => {
   const response = await fetch(`${base}/brand/numia-health-white.svg`, { redirect: "manual" });
   assert.equal(response.status, 302);
   assert.equal(response.headers.get("location"), "/");
+});
+
+test("the page we ship still marks the half of our name that can be dropped", () => {
+  // The markers are HTML comments. Edit the hero line without them and the
+  // page keeps rendering perfectly -- for every partner, in both languages,
+  // including the one who asked for the Chinese to come off. Nothing else
+  // would fail, which is why this is asserted against the file itself.
+  const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  assert.match(
+    indexHtml,
+    new RegExp(`<span>EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}</span>`)
+  );
 });
 
 test("the configured logo is actually on disk", () => {
