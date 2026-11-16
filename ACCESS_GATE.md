@@ -391,6 +391,17 @@ retries, and an order can pass through several paid statuses, so a second
 call returns the code already issued (`reused: true`) rather than minting a
 second redeemable assessment.
 
+The gate page links to that product page. A visitor who arrives without a
+code used to have no way forward at all -- the support address on the gate
+only helps someone whose personal link is broken -- so the code field now
+carries a secondary 「取得存取代碼」 button beneath it (`PURCHASE_URL` in
+`lib/access-gate-view.js`). It opens in a new tab, which keeps the gate
+loaded while the purchase runs so the code from the confirmation email can
+be pasted straight back in. The button is safe to show unconditionally
+because the gate is the one page that is never co-branded: it is served
+before any session exists, so there is no partner entrance on which this
+would send a partner's customers to our own store.
+
 Four deliberate choices:
 
 - **The store does not generate the code.** Registering a store-generated

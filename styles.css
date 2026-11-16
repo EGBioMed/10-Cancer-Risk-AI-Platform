@@ -716,6 +716,42 @@ html[lang="en"] h1 {
   font-weight: 600;
 }
 
+/* A <div>, not a <p>: `.access-gate-panel p` is more specific than a single
+   class, so a paragraph here would silently take the panel's margin and
+   colour instead of these. */
+.access-gate-purchase {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  margin: 18px 0 0;
+}
+
+.access-gate-purchase__lead {
+  color: #e8f3ef;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.access-gate-purchase__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-weight: 700;
+  text-decoration: none;
+  transition: transform 160ms ease, background 160ms ease;
+}
+
+.access-gate-purchase__link:hover {
+  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.22);
+}
+
 .access-gate-support {
   margin: 16px 0 0;
   padding-top: 16px;
@@ -2182,6 +2218,22 @@ pre {
 
   .access-gate-support a {
     color: var(--teal-deep);
+  }
+
+  .access-gate-purchase__lead {
+    color: var(--muted);
+  }
+
+  .access-gate-purchase__link {
+    width: 100%;
+    min-height: 48px;
+    border-color: var(--teal);
+    background: #ffffff;
+    color: var(--teal-deep);
+  }
+
+  .access-gate-purchase__link:hover {
+    background: #f1f7f5;
   }
 
   .validation-metrics {

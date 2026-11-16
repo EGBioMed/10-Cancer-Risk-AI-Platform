@@ -19,7 +19,7 @@ const {
   MIN_CODE_LENGTH,
   MAX_CODE_LENGTH
 } = require("./lib/access-gate");
-const { buildGatedIndexHtml } = require("./lib/access-gate-view");
+const { buildGatedIndexHtml, PURCHASE_URL } = require("./lib/access-gate-view");
 
 test("generated tokens are high-entropy and hash deterministically", () => {
   const tokenA = generateRawToken();
@@ -101,6 +101,30 @@ test("unauthorized gate view provides a bilingual language switch without loadin
   assert.doesNotMatch(gatedHtml, /id="assessment"/);
   assert.doesNotMatch(gatedHtml, /src="app\.js/);
   assert.doesNotMatch(gatedHtml, /src="answer-codes\.js/);
+});
+
+test("the gate offers a way to buy a code to a visitor who has none", () => {
+  const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
+  const gatedHtml = buildGatedIndexHtml(indexHtml);
+  const css = fs.readFileSync(path.join(__dirname, "styles.css"), "utf8");
+
+  // The support address below the button only helps someone whose personal
+  // link is broken; without this, a stranger who lands on the gate has no
+  // way forward at all.
+  assert.equal(PURCHASE_URL.startsWith("https://"), true);
+  assert.equal(gatedHtml.includes(`href="${PURCHASE_URL}"`), true);
+  // The template placeholder must have been interpolated, not shipped.
+  assert.equal(gatedHtml.includes("${PURCHASE_URL}"), false);
+  // A new tab keeps the gate open while the purchase runs, so the code from
+  // the confirmation email can be pasted straight back in.
+  assert.equal(gatedHtml.includes('target="_blank" rel="noopener noreferrer"'), true);
+  assert.equal(gatedHtml.includes("取得存取代碼"), true);
+  assert.equal(gatedHtml.includes("Get an access code"), true);
+  // Both the lead-in and the button label have to follow the language switch.
+  assert.equal(gatedHtml.includes('setText("#accessGatePurchaseLead", selected.purchaseLead)'), true);
+  assert.equal(gatedHtml.includes('setText("#accessGatePurchaseLink", selected.purchaseButton)'), true);
+  // An anchor with no rule of its own renders as a bare link, not a button.
+  assert.equal(css.includes(".access-gate-purchase__link"), true);
 });
 
 test("normalizeCode trims, lowercases, and collapses whitespace", () => {
