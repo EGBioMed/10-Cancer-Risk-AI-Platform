@@ -150,6 +150,21 @@
     return line;
   }
 
+  // The question's own picture, if app.js gives it one, as a bubble of its
+  // own right under the question.
+  function showQuestionPicture(question) {
+    const picture = typeof questionIllustrationFor === "function" ? questionIllustrationFor(question) : null;
+    if (!picture) return;
+    const bubble = document.createElement("div");
+    bubble.className = "bubble bubble--bot bubble--picture";
+    const image = document.createElement("img");
+    image.src = picture;
+    image.alt = "";
+    bubble.appendChild(image);
+    transcript.appendChild(bubble);
+    transcript.scrollTop = transcript.scrollHeight;
+  }
+
   function note(text) {
     const line = document.createElement("div");
     line.className = "note";
@@ -349,7 +364,10 @@
     else if (turn.kind === "disambiguate") say(copy.disambiguate, "bot");
     // A correction lands here too: after "好的，那我們再一次。" the question
     // itself is repeated, not just "try again".
-    else say(questionText(turn.question), "bot");
+    else {
+      say(questionText(turn.question), "bot");
+      showQuestionPicture(turn.question);
+    }
 
     renderOptions(turn.question, turn);
     input.disabled = false;

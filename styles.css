@@ -2601,3 +2601,12 @@ pre {
   outline: 3px solid var(--teal);
   outline-offset: 2px;
 }
+
+.question-illustration {
+  display: block;
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  margin: 4px 0 12px;
+  border-radius: 16px;
+}

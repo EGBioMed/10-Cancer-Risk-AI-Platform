@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="食慾下降：左邊是看到飯菜想吃，右邊是飯菜擺著卻不想吃、推開">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF7F5"/>
+      <stop offset="1" stop-color="#DDEFEB"/>
+    </linearGradient>
+    <linearGradient id="panelBad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF4EE"/>
+      <stop offset="1" stop-color="#FCE3D6"/>
+    </linearGradient>
+    <radialGradient id="skin" cx="0.42" cy="0.38" r="0.7">
+      <stop offset="0" stop-color="#FBE1CD"/>
+      <stop offset="0.7" stop-color="#F1C4A4"/>
+      <stop offset="1" stop-color="#E2A985"/>
+    </radialGradient>
+    <linearGradient id="bowl" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#D9E6F2"/>
+    </linearGradient>
+    <radialGradient id="rice" cx="0.45" cy="0.3" r="0.7">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EDE6D6"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0B4F48" flood-opacity="0.15"/>
+    </filter>
+    <g id="head">
+      <ellipse cx="0" cy="0" rx="40" ry="46" fill="url(#skin)"/>
+      <ellipse cx="-40" cy="4" rx="6" ry="10" fill="#E8B596"/>
+      <ellipse cx="40" cy="4" rx="6" ry="10" fill="#E8B596"/>
+      <path d="M-42 -8 C-46 -46 -20 -58 2 -56 C26 -56 46 -44 42 -8 C36 -28 18 -36 0 -36 C-18 -36 -34 -28 -42 -8 Z" fill="#B8B4AE"/>
+    </g>
+    <g id="riceBowl">
+      <ellipse cx="0" cy="-2" rx="44" ry="16" fill="url(#rice)"/>
+      <circle cx="-14" cy="-10" r="7" fill="#7FB069"/>
+      <circle cx="-4" cy="-13" r="6" fill="#8CC07A"/>
+      <ellipse cx="14" cy="-9" rx="10" ry="5" fill="#E9965E"/>
+      <path d="M-46 0 C-44 30 -24 42 0 42 C24 42 44 30 46 0 Z" fill="url(#bowl)" stroke="#9FB6CB" stroke-width="2"/>
+      <path d="M-34 14 C-20 20 20 20 34 14" fill="none" stroke="#7FA6C9" stroke-width="3" opacity="0.6"/>
+    </g>
+  </defs>
+
+  <rect width="480" height="300" rx="22" fill="url(#bg)"/>
+  <rect x="22" y="22" width="198" height="256" rx="18" fill="#FFFFFF" filter="url(#soft)"/>
+  <rect x="260" y="22" width="198" height="256" rx="18" fill="url(#panelBad)" filter="url(#soft)"/>
+  <path d="M228 150 L250 150" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round"/>
+  <path d="M244 140 L254 150 L244 160" fill="none" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== normal: wants to eat ===== -->
+  <g transform="translate(121 96)">
+    <use href="#head"/>
+    <path d="M-24 -2 C-19 -8 -11 -8 -6 -2" fill="none" stroke="#3A2E28" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 -2 C19 -8 11 -8 6 -2" fill="none" stroke="#3A2E28" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-14 18 C-6 28 6 28 14 18" fill="#C9614A" stroke="#B9735A" stroke-width="2" stroke-linejoin="round"/>
+    <ellipse cx="-26" cy="12" rx="7" ry="4" fill="#F2A08A" opacity="0.5"/>
+    <ellipse cx="26" cy="12" rx="7" ry="4" fill="#F2A08A" opacity="0.5"/>
+  </g>
+  <g transform="translate(121 214)"><use href="#riceBowl"/></g>
+  <!-- steam -->
+  <g fill="none" stroke="#B7C9C5" stroke-width="3" stroke-linecap="round">
+    <path d="M106 180 C100 172 112 166 106 158"/>
+    <path d="M122 176 C116 168 128 162 122 154"/>
+    <path d="M138 180 C132 172 144 166 138 158"/>
+  </g>
+  <!-- chopsticks -->
+  <g stroke="#B07A4A" stroke-width="4" stroke-linecap="round">
+    <line x1="160" y1="176" x2="194" y2="150"/>
+    <line x1="164" y1="184" x2="200" y2="162"/>
+  </g>
+  <circle cx="196" cy="46" r="15" fill="#0F766E"/>
+  <path d="M189 46 L194 51 L203 41" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== reduced appetite: food untouched, pushed away ===== -->
+  <g transform="translate(359 96)">
+    <use href="#head"/>
+    <ellipse cx="-15" cy="-2" rx="4" ry="4.5" fill="#3A2E28"/>
+    <ellipse cx="15" cy="-2" rx="4" ry="4.5" fill="#3A2E28"/>
+    <path d="M-24 -14 C-18 -12 -12 -12 -8 -14" fill="none" stroke="#8C847C" stroke-width="3" stroke-linecap="round"/>
+    <path d="M24 -14 C18 -12 12 -12 8 -14" fill="none" stroke="#8C847C" stroke-width="3" stroke-linecap="round"/>
+    <path d="M-12 24 C-4 20 4 20 12 24" fill="none" stroke="#9C6A55" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(372 220)"><use href="#riceBowl"/></g>
+  <!-- pushed-away arrow; chopsticks laid down unused -->
+  <g stroke="#B07A4A" stroke-width="4" stroke-linecap="round">
+    <line x1="290" y1="258" x2="342" y2="258"/>
+    <line x1="292" y1="266" x2="344" y2="266"/>
+  </g>
+  <path d="M330 180 L410 180" stroke="#E2572A" stroke-width="4" stroke-linecap="round"/>
+  <path d="M400 171 L412 180 L400 189" fill="none" stroke="#E2572A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="434" cy="46" r="15" fill="#E2572A"/>
+  <path d="M434 37 L434 49" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/>
+  <circle cx="434" cy="55" r="2.2" fill="#FFFFFF"/>
+</svg>

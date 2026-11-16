@@ -10,9 +10,9 @@ const cutoff = source.indexOf("const answers = {};");
 const sandbox = { EGAnswerCodes: answerCodes };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor };`, sandbox);
+globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor };`, sandbox);
 
-const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor } = sandbox.__uiDefinitions;
+const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor } = sandbox.__uiDefinitions;
 const byId = (id) => questions.find((question) => question.id === id);
 
 test("mental matrix preserves all three canonical answer fields", () => {
@@ -271,4 +271,17 @@ test("yes / no / not-sure icons mark only those answers", () => {
   assert.equal(answerIconFor("男性"), null);
   assert.equal(answerIconFor("是否"), null);
   assert.equal(answerIconFor(undefined), null);
+});
+
+test("every question picture sits on a live question and its file exists", () => {
+  const entries = Object.entries(questionIllustrations);
+  assert(entries.length >= 1, "the question pictures are missing");
+  for (const [id, src] of entries) {
+    assert(byId(id), `a picture is keyed to question "${id}", which no longer exists`);
+    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.svg$/);
+    assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
+    assert.equal(questionIllustrationFor(byId(id)), src);
+  }
+  assert.equal(questionIllustrationFor(byId("height_cm")), null);
+  assert.equal(questionIllustrationFor(undefined), null);
 });

@@ -291,10 +291,25 @@ const symptomGroups = [
 const optionIllustrations = Object.freeze({
   "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-nodes.svg",
   "黃疸（皮膚或眼白變黃）": "assets/illustrations/jaundice.svg",
-  "新發生的乳頭凹陷（非天生）": "assets/illustrations/nipple-retraction.svg"
+  "新發生的乳頭凹陷（非天生）": "assets/illustrations/nipple-retraction.svg",
+  "食慾降低或食量明顯減少": "assets/illustrations/appetite-loss.svg",
+  "尿液顏色明顯變深（如濃茶色）": "assets/illustrations/dark-urine.svg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
+}
+
+// A picture under the question's own title (2026-11-16), for questions whose
+// subject is easier to show than to name. Keyed by question id. The first
+// appetite follow-up carries it, so the person sees which symptom the next
+// three questions are about before answering any of them. (Early satiety had
+// one too; it was dropped as hard to read.)
+const questionIllustrations = Object.freeze({
+  appetite_loss_onset: "assets/illustrations/appetite-loss.svg"
+});
+function questionIllustrationFor(question) {
+  const id = question && question.id;
+  return id && Object.prototype.hasOwnProperty.call(questionIllustrations, id) ? questionIllustrations[id] : null;
 }
 
 const symptomOptionTranslations = symptomGroups.reduce((translations, group) => {
@@ -1501,6 +1516,7 @@ function renderQuestion() {
     ${moduleFeedback ? `<p class="module-feedback">${moduleFeedback}</p>` : ""}
     <p class="question-meta">${currentLang === "en" ? `${ui("questionCount")} ${currentIndex + 1} ${ui("of")} ${activeQuestions.length}` : `第 ${currentIndex + 1} 題 / 共 ${activeQuestions.length} 題`}</p>
     <h2 class="question-title">${questionCopy.title}${question.required ? '<span class="required-mark"> *</span>' : ""}</h2>
+    ${questionIllustrationFor(question) ? `<img class="question-illustration" src="${questionIllustrationFor(question)}" alt="" />` : ""}
     ${question.isSymptomGroup ? `
       <div class="symptom-reminder" role="note">
         <strong>${currentLang === "en" ? "How to answer" : "填答提醒"}</strong>

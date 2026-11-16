@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 300" role="img" aria-label="尿液顏色變深：左邊是正常的淡黃色，右邊是像濃茶一樣的深褐色">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#EEF7F5"/>
+      <stop offset="1" stop-color="#DDEFEB"/>
+    </linearGradient>
+    <linearGradient id="panelBad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFF4EE"/>
+      <stop offset="1" stop-color="#FCE3D6"/>
+    </linearGradient>
+    <linearGradient id="pale" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#F6E27A"/>
+      <stop offset="0.5" stop-color="#FBF0A8"/>
+      <stop offset="1" stop-color="#F1D964"/>
+    </linearGradient>
+    <linearGradient id="tea" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#8A3F0C"/>
+      <stop offset="0.5" stop-color="#B8621A"/>
+      <stop offset="1" stop-color="#6E3510"/>
+    </linearGradient>
+    <linearGradient id="glass" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF" stop-opacity="0.45"/>
+      <stop offset="0.25" stop-color="#FFFFFF" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0.12"/>
+    </linearGradient>
+    <linearGradient id="cup" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E3ECF3"/>
+    </linearGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="4" stdDeviation="5" flood-color="#0B4F48" flood-opacity="0.15"/>
+    </filter>
+    <g id="beaker">
+      <!-- glass body -->
+      <path d="M-40 -70 L40 -70 L34 70 C34 76 30 80 24 80 L-24 80 C-30 80 -34 76 -34 70 Z" fill="#FFFFFF" fill-opacity="0.35" stroke="#A9BFCB" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+    <g id="beakerShine">
+      <path d="M-40 -70 L40 -70 L34 70 C34 76 30 80 24 80 L-24 80 C-30 80 -34 76 -34 70 Z" fill="url(#glass)"/>
+      <path d="M-28 -56 L-24 60" stroke="#FFFFFF" stroke-width="6" stroke-linecap="round" opacity="0.7"/>
+      <g stroke="#A9BFCB" stroke-width="2" stroke-linecap="round">
+        <line x1="22" y1="-40" x2="34" y2="-40"/>
+        <line x1="24" y1="-10" x2="34" y2="-10"/>
+        <line x1="26" y1="20" x2="33" y2="20"/>
+      </g>
+    </g>
+  </defs>
+
+  <rect width="480" height="300" rx="22" fill="url(#bg)"/>
+  <rect x="22" y="22" width="198" height="256" rx="18" fill="#FFFFFF" filter="url(#soft)"/>
+  <rect x="260" y="22" width="198" height="256" rx="18" fill="url(#panelBad)" filter="url(#soft)"/>
+  <path d="M228 150 L250 150" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round"/>
+  <path d="M244 140 L254 150 L244 160" fill="none" stroke="#9AB3AE" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== normal: pale yellow ===== -->
+  <g transform="translate(121 158)">
+    <use href="#beaker"/>
+    <path d="M-37 -20 L37 -20 L34 70 C34 76 30 80 24 80 L-24 80 C-30 80 -34 76 -34 70 Z" fill="url(#pale)"/>
+    <ellipse cx="0" cy="-20" rx="37" ry="5" fill="#FBF3C0"/>
+    <use href="#beakerShine"/>
+  </g>
+  <circle cx="196" cy="46" r="15" fill="#0F766E"/>
+  <path d="M189 46 L194 51 L203 41" fill="none" stroke="#FFFFFF" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- ===== dark, tea-coloured ===== -->
+  <g transform="translate(330 158)">
+    <use href="#beaker"/>
+    <path d="M-37 -20 L37 -20 L34 70 C34 76 30 80 24 80 L-24 80 C-30 80 -34 76 -34 70 Z" fill="url(#tea)"/>
+    <ellipse cx="0" cy="-20" rx="37" ry="5" fill="#B9733A"/>
+    <use href="#beakerShine"/>
+  </g>
+  <!-- teacup for comparison -->
+  <g transform="translate(410 214)">
+    <ellipse cx="0" cy="26" rx="34" ry="7" fill="#D5E0E8"/>
+    <path d="M-26 -10 L26 -10 C26 12 16 24 0 24 C-16 24 -26 12 -26 -10 Z" fill="url(#cup)" stroke="#A9BFCB" stroke-width="2"/>
+    <ellipse cx="0" cy="-10" rx="26" ry="6" fill="#8A4A18" stroke="#A9BFCB" stroke-width="2"/>
+    <path d="M26 -4 C38 -4 38 12 24 12" fill="none" stroke="#A9BFCB" stroke-width="4"/>
+    <g fill="none" stroke="#C9A98C" stroke-width="2.5" stroke-linecap="round" opacity="0.8">
+      <path d="M-8 -22 C-12 -30 -4 -34 -8 -42"/>
+      <path d="M6 -22 C2 -30 10 -34 6 -42"/>
+    </g>
+  </g>
+  <text x="381" y="196" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#E2572A">=</text>
+  <circle cx="434" cy="46" r="15" fill="#E2572A"/>
+  <path d="M434 37 L434 49" stroke="#FFFFFF" stroke-width="3.6" stroke-linecap="round"/>
+  <circle cx="434" cy="55" r="2.2" fill="#FFFFFF"/>
+</svg>
