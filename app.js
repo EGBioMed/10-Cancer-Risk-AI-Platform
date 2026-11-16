@@ -1865,7 +1865,7 @@ function renderQuickInput(question) {
     });
     quickOptions.innerHTML = `
       ${isConsentQuestion ? `<div class="consent-option-hint" id="consentOptionHint"></div>` : ""}
-      <div class="multi-options${isSymptomQuestion ? " multi-options--symptoms" : ""}">
+      <div class="multi-options${isSymptomQuestion ? " multi-options--symptoms" : ""}${visibleOptions.some((option) => illustrationFor(option)) ? " multi-options--pictures" : ""}">
         ${visibleOptions.map((option) => `
           <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}${illustrationFor(option) ? " option-button--illustrated" : ""}" type="button" data-value="${option}" aria-pressed="false">${illustrationFor(option) ? `<img class="option-illustration" src="${illustrationFor(option)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
         `).join("")}
