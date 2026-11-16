@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 
 const {
   BRAND_MARKER,
+  MAX_SUMMARY_LENGTH,
   MIN_LOGO_SCALE,
   MAX_LOGO_SCALE,
   FOOTER_MARKER,
@@ -421,6 +422,61 @@ test("a QR is held to the logo's rules, and a bad one drops only itself", () => 
   }), { logoExists: (path) => !path.includes("nobody") });
   assert.equal(missing.problems.join(" | ").includes("footer qr points at brand/nobody-made-this.png"), true);
   assert.equal(brandForSlug(missing, "hwakang").footer.qr, undefined);
+});
+
+// The partner's own sentence, which also has to switch with the page: a
+// Chinese description sitting under an English questionnaire is the same
+// defect as a Chinese label, one line further up.
+test("a partner's summary can be sent in both languages", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: {
+      name: "華康生醫",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGHK3FV"],
+      footer: {
+        summary: { zh: "專注於高科技基因檢測服務。", en: "Specialists in high-tech genetic testing." }
+      }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "hwakang"));
+  assert.equal(html.includes('data-label-zh="專注於高科技基因檢測服務。"'), true);
+  assert.equal(html.includes('data-label-en="Specialists in high-tech genetic testing."'), true);
+  // Rendered in Chinese, like everything else index.html ships; app.js swaps.
+  assert.equal(html.includes(">專注於高科技基因檢測服務。</p>"), true);
+});
+
+test("a summary sent in one language is shown on both pages, not translated", () => {
+  // Numia's case, and the reason this differs from a label: the sentence is
+  // the partner's own copy. We do not write an English version of a company's
+  // description of itself, and we do not leave the line empty either.
+  const w = parseInstitutionBranding(JSON.stringify({
+    numia: {
+      name: "Numia Health",
+      logo: "brand/numia-health-colour.svg",
+      codes: ["EGNUMEDJ"],
+      footer: { summary: "At-home blood work." }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "numia"));
+  assert.equal(html.includes('data-label-zh="At-home blood work." data-label-en="At-home blood work."'), true);
+});
+
+test("an over-long summary is caught in either language", () => {
+  for (const summary of [
+    { zh: "長".repeat(MAX_SUMMARY_LENGTH + 1), en: "Short." },
+    { zh: "短。", en: "x".repeat(MAX_SUMMARY_LENGTH + 1) }
+  ]) {
+    const w = parseInstitutionBranding(JSON.stringify({
+      x: { name: "X", logo: "brand/hwakang-colour.png", codes: ["EGX1234"], footer: { summary } }
+    }));
+    assert.match(w.problems.join(" | "), /footer summary is longer than/);
+    // The partner survives, as every other bad footer field leaves them.
+    assert.equal(brandForSlug(w, "x").footer.summary, undefined);
+  }
 });
 
 // A bare phone number under a cancer questionnaire, with nothing saying
