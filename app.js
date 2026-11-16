@@ -290,31 +290,21 @@ const symptomGroups = [
   }
 ];
 
-// Pictures for symptoms that are easier to recognise than to name (trial,
-// 2026-11-16: three items). Keyed by the option string itself, so a picture
-// can only ever sit on the option it was drawn for; test-questionnaire-ui.js
-// checks every key is a live option and every file exists. The picture is
-// decorative to assistive technology (alt=""): the button's own label already
-// says what it shows.
-const optionIllustrations = Object.freeze({
-  "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-nodes.svg",
-  "黃疸（皮膚或眼白變黃）": "assets/illustrations/jaundice.svg",
-  "新發生的乳頭凹陷（非天生）": "assets/illustrations/nipple-retraction.svg",
-  "食慾降低或食量明顯減少": "assets/illustrations/appetite-loss.svg",
-  "尿液顏色明顯變深（如濃茶色）": "assets/illustrations/dark-urine.svg"
-});
+// Pictures for symptoms that are easier to recognise than to name. Trialled
+// 2026-11-16 (lymph nodes, jaundice, nipple retraction, appetite loss, dark
+// urine) and withdrawn the same day at the PI's request; the SVGs are in git
+// history (commits 3a78c28, b6b5b4b). The mechanism stays: an entry here,
+// keyed by the option string itself, puts a picture back on that option, and
+// test-questionnaire-ui.js checks every key is a live option and every file
+// exists. alt="" -- the button's own label already says what it shows.
+const optionIllustrations = Object.freeze({});
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
 }
 
-// A picture under the question's own title (2026-11-16), for questions whose
-// subject is easier to show than to name. Keyed by question id. The first
-// appetite follow-up carries it, so the person sees which symptom the next
-// three questions are about before answering any of them. (Early satiety had
-// one too; it was dropped as hard to read.)
-const questionIllustrations = Object.freeze({
-  appetite_loss_onset: "assets/illustrations/appetite-loss.svg"
-});
+// A picture under a question's own title, keyed by question id. Empty since
+// 2026-11-16 (see optionIllustrations above); appetite_loss_onset carried one.
+const questionIllustrations = Object.freeze({});
 function questionIllustrationFor(question) {
   const id = question && question.id;
   return id && Object.prototype.hasOwnProperty.call(questionIllustrations, id) ? questionIllustrations[id] : null;
@@ -1244,13 +1234,14 @@ function applyStaticText() {
   // up rather than assumed. The partner's own name is never translated.
   const partnerLabel = document.querySelector("#partnerLabel");
   if (partnerLabel) partnerLabel.textContent = currentLang === "en" ? "In partnership with" : "合作夥伴";
-  // Every contact label carries both languages, the partner's own wording
-  // included: 華康's 「諮詢專線」 has "Consultation line" beside it, and a
-  // partner who gave no English gets ours. A Chinese word left on the English
-  // page is how this first shipped.
-  document.querySelectorAll(".site-footer__contact-label[data-label-zh]").forEach((label) => {
-    const text = currentLang === "en" ? label.dataset.labelEn : label.dataset.labelZh;
-    if (text) label.textContent = text;
+  // Everything the server wrote into the partner block in two languages --
+  // the contact labels and the partner's own summary. Only those elements
+  // carry these attributes, so this can be asked for by attribute rather than
+  // by keeping a list of them here. Chinese left sitting on the English page
+  // is how both of them first shipped.
+  document.querySelectorAll("[data-label-zh]").forEach((element) => {
+    const text = currentLang === "en" ? element.dataset.labelEn : element.dataset.labelZh;
+    if (text) element.textContent = text;
   });
   document.querySelectorAll("[data-service-copy]").forEach((copy) => {
     copy.hidden = copy.dataset.serviceCopy !== currentLang;
