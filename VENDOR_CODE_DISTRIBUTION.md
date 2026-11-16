@@ -201,20 +201,22 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 | `logo` | 是 | 淺色背景用的版本。路徑只能是 `brand/<檔名>.svg` 或 `.png` |
 | `logoOnDark` | 否 | 深色背景用的反白版本。沒給就兩邊都用 `logo` |
 | `codes` / `grants` | 擇一 | 這家夥伴從哪些代碼進來 |
-| `hostName` | 否 | 標頭裡**我們自己**的名字。預設 `bilingual`（EG BioMed 愛立基生醫）；填 `english` 只留 EG BioMed，見下 |
+| `hostName` | 否 | **我們自己**的名字怎麼寫。預設 `bilingual`（EG BioMed 愛立基生醫）；填 `english` 只留 EG BioMed，見下 |
 | `footer` | 否 | 頁尾的夥伴區塊，見下 |
 
-### 標頭裡我們自己的名字
+### 我們自己的名字怎麼寫
 
-頁面第一行是「EG BioMed 愛立基生醫」。Numia 的活動在加拿大、全程英文，他們的使
-用者看到的第一行有四個中文字，會以為點錯公司，所以 2026-11-12 起 `numia` 設了
-`"hostName":"english"`，標頭只顯示 EG BioMed。
+頁面上我們的名字出現兩次，標頭第一行和頁尾，都是「EG BioMed 愛立基生醫」。Numia
+的活動在加拿大、全程英文，他們的使用者看到的第一行有四個中文字，會以為點錯公
+司，所以 2026-11-12 起 `numia` 設了 `"hostName":"english"`。
+
+**兩處一起改**，標頭和頁尾都只顯示 EG BioMed（頁尾 2026-11-16 補上——先只改了標
+頭，頁尾留著中文看起來像漏掉，不像決定）。
 
 只有中文那一半會拿掉，EG BioMed 一定留著——報告是我們寄的，一個從頭到尾沒看過
 我們名字的使用者收到信會覺得莫名其妙。
 
-只影響標頭，不影響頁尾：頁尾那行「EG BioMed 愛立基生醫」所有入口都一樣。華康和
-其他未設定的夥伴維持中英並列。
+華康和其他沒設這個欄位的夥伴，兩處都維持中英並列；沒有 session 的驗證碼頁也是。
 
 填了不認得的值（例如 `"zh"`）不會把整筆退掉，是退回 `bilingual` 並在 Logs 記一
 行——為了省我們自己名字的四個字而讓夥伴的 logo 消失，不划算。

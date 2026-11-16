@@ -213,10 +213,13 @@ test("a bad logoOnDark is refused rather than quietly ignored", () => {
   assert.equal(missing.brands.size, 0);
 });
 
-// Our own name in the hero, which opens "EG BioMed 愛立基生醫". Numia's
-// campaign is Canadian and runs in English; four Chinese characters in the
-// first line their users read made the page look like somebody else's.
-const HOST_ROW = `<div class="brand-row"><span>EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}</span>${BRAND_MARKER}</div>`;
+// Our own name, which the page carries twice as "EG BioMed 愛立基生醫" --
+// once in the hero and once in the footer. Numia's campaign is Canadian and
+// runs in English; four Chinese characters in the first line their users read
+// made the page look like somebody else's.
+const OUR_NAME = `EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}`;
+const HOST_ROW = `<div class="brand-row"><span>${OUR_NAME}</span>${BRAND_MARKER}</div>`
+  + `<footer><p class="site-footer__brand">${OUR_NAME}</p>${FOOTER_MARKER}</footer>`;
 
 test("a partner can ask for our name without the Chinese half", () => {
   const w = parseInstitutionBranding(JSON.stringify({
@@ -230,10 +233,13 @@ test("a partner can ask for our name without the Chinese half", () => {
   assert.deepEqual(w.problems, []);
 
   const html = applyInstitutionBranding(HOST_ROW, brandForSlug(w, "numia"));
+  // Both places, not just the first one. Trimming the hero and leaving the
+  // footer would read as an oversight rather than a decision.
   assert.equal(html.includes("愛立基生醫"), false);
   // Trimmed, not replaced: the report arrives from us, and a user who never
   // saw our name anywhere would be surprised by it.
   assert.equal(html.includes("<span>EG BioMed</span>"), true);
+  assert.equal(html.includes('<p class="site-footer__brand">EG BioMed</p>'), true);
 });
 
 test("everyone else keeps both halves, and nobody keeps the markers", () => {
@@ -245,6 +251,7 @@ test("everyone else keeps both halves, and nobody keeps the markers", () => {
   for (const brand of [brandForSlug(w, "hwakang"), null]) {
     const html = applyInstitutionBranding(HOST_ROW, brand);
     assert.equal(html.includes("<span>EG BioMed 愛立基生醫</span>"), true);
+    assert.equal(html.includes('<p class="site-footer__brand">EG BioMed 愛立基生醫</p>'), true);
     // Including the page strangers see: a comment left in the source names a
     // mechanism and invites a look at it.
     for (const marker of HOST_LOCAL_MARKERS) assert.equal(html.includes(marker), false);
@@ -486,10 +493,15 @@ test("the page we ship still marks the half of our name that can be dropped", ()
   // including the one who asked for the Chinese to come off. Nothing else
   // would fail, which is why this is asserted against the file itself.
   const indexHtml = fs.readFileSync(path.join(__dirname, "index.html"), "utf8");
-  assert.match(
-    indexHtml,
-    new RegExp(`<span>EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}</span>`)
+  const ourName = `EG BioMed${HOST_LOCAL_MARKERS[0]} 愛立基生醫${HOST_LOCAL_MARKERS[1]}`;
+  assert.equal(indexHtml.includes(`<span>${ourName}</span>`), true, "the hero line is unmarked");
+  assert.equal(
+    indexHtml.includes(`<p class="site-footer__brand">${ourName}</p>`),
+    true,
+    "the footer line is unmarked"
   );
+  // Every unpaired marker is a place our name silently stops being trimmed.
+  assert.equal(indexHtml.split(HOST_LOCAL_MARKERS[0]).length, indexHtml.split(HOST_LOCAL_MARKERS[1]).length);
 });
 
 test("the configured logo is actually on disk", () => {
