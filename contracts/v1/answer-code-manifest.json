@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-16-v19.13-phase1",
+  "questionnaire_version": "questionnaire/2026-11-16-v19.14-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 89,
-  "canonical_answer_question_count": 87,
+  "question_count": 93,
+  "canonical_answer_question_count": 91,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -683,6 +683,11 @@
           "code": "symptom_worsening_diabetes_control",
           "label_zh": "已有糖尿病，但血糖控制突然變差",
           "label_en": "Sudden worsening of blood glucose control in existing diabetes"
+        },
+        {
+          "code": "symptoms_hepatobiliary.option_08",
+          "label_zh": "大便油油亮亮、浮在水面或不容易沖掉（油便）",
+          "label_en": "Oily or greasy stools that float or are hard to flush away"
         },
         {
           "code": "none",
@@ -2753,6 +2758,145 @@
           "code": "unknown",
           "label_zh": "不確定",
           "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "acute_pancreatitis",
+      "field": "medical_history.acute_pancreatitis",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "醫師是否曾診斷您得過「急性胰臟炎」？",
+      "title_en": "Has a clinician ever diagnosed you with acute pancreatitis?",
+      "options": [
+        {
+          "code": "acute_pancreatitis.option_01",
+          "label_zh": "是，曾由醫師診斷",
+          "label_en": "Yes, diagnosed by a clinician"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "acute_pancreatitis_episodes",
+      "field": "medical_history.acute_pancreatitis_episodes",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "急性胰臟炎總共發作過幾次？",
+      "title_en": "How many times have you had acute pancreatitis?",
+      "options": [
+        {
+          "code": "acute_pancreatitis_episodes.option_01",
+          "label_zh": "1 次",
+          "label_en": "Once"
+        },
+        {
+          "code": "acute_pancreatitis_episodes.option_02",
+          "label_zh": "2 次",
+          "label_en": "Twice"
+        },
+        {
+          "code": "acute_pancreatitis_episodes.option_03",
+          "label_zh": "3 次以上",
+          "label_en": "3 or more times"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不記得",
+          "label_en": "I do not remember"
+        }
+      ]
+    },
+    {
+      "question_id": "acute_pancreatitis_last_episode",
+      "field": "medical_history.acute_pancreatitis_last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近一次急性胰臟炎發作，大約是多久以前？",
+      "title_en": "Roughly how long ago was your most recent episode of acute pancreatitis?",
+      "options": [
+        {
+          "code": "acute_pancreatitis_last_episode.option_01",
+          "label_zh": "1 年內",
+          "label_en": "Within the past year"
+        },
+        {
+          "code": "acute_pancreatitis_last_episode.option_02",
+          "label_zh": "1 年到不滿 3 年",
+          "label_en": "1 to less than 3 years ago"
+        },
+        {
+          "code": "acute_pancreatitis_last_episode.option_03",
+          "label_zh": "3 年到不滿 5 年",
+          "label_en": "3 to less than 5 years ago"
+        },
+        {
+          "code": "acute_pancreatitis_last_episode.option_04",
+          "label_zh": "5 年以上",
+          "label_en": "5 or more years ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不記得",
+          "label_en": "I do not remember"
+        }
+      ]
+    },
+    {
+      "question_id": "acute_pancreatitis_cause",
+      "field": "medical_history.acute_pancreatitis_cause",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "醫師說急性胰臟炎主要是什麼原因引起的？",
+      "title_en": "What did the clinician say mainly caused the acute pancreatitis?",
+      "options": [
+        {
+          "code": "acute_pancreatitis_cause.option_01",
+          "label_zh": "膽結石或膽道結石",
+          "label_en": "Gallstones or bile duct stones"
+        },
+        {
+          "code": "acute_pancreatitis_cause.option_02",
+          "label_zh": "喝酒",
+          "label_en": "Alcohol"
+        },
+        {
+          "code": "acute_pancreatitis_cause.option_03",
+          "label_zh": "血中三酸甘油酯很高",
+          "label_en": "Very high blood triglycerides"
+        },
+        {
+          "code": "acute_pancreatitis_cause.option_04",
+          "label_zh": "藥物引起",
+          "label_en": "A medication"
+        },
+        {
+          "code": "acute_pancreatitis_cause.option_05",
+          "label_zh": "其他原因",
+          "label_en": "Another cause"
+        },
+        {
+          "code": "acute_pancreatitis_cause.option_06",
+          "label_zh": "醫師沒有說明，或找不到原因",
+          "label_en": "No cause was given or found"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不記得",
+          "label_en": "I do not remember"
         }
       ]
     },

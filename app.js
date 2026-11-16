@@ -4,7 +4,7 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 }
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-11-16-v19.13-phase1",
+  questionnaire_version: "questionnaire/2026-11-16-v19.14-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -124,6 +124,14 @@ const symptomGroups = [
     title: "肝膽胰症狀",
     titleEn: "Liver, Biliary, and Pancreatic Symptoms",
     field: "symptoms.hepatobiliary",
+    // Oily stool (steatorrhoea, a sign of pancreatic exocrine insufficiency),
+    // added 2026-11-16 to be recorded apart from pale stool. An extraOption,
+    // not an option: ordinary options become symptom feature columns, which
+    // are pinned by count in the Flow schema. This one reaches only
+    // answer_code_rows and the research column fatty_stool in excel_row.
+    extraOptions: [
+      ["大便油油亮亮、浮在水面或不容易沖掉（油便）", "Oily or greasy stools that float or are hard to flush away"]
+    ],
     options: [
       ["黃疸（皮膚或眼白變黃）", "Jaundice, with yellowing of the skin or whites of the eyes", "symptom_jaundice"],
       ["皮膚搔癢（非皮膚疾病引起）", "Itchy skin not explained by a skin condition", "symptom_pruritus"],
@@ -468,7 +476,20 @@ Object.assign(symptomOptionTranslations, Object.fromEntries(
   "不記得": "I do not remember",
   "做過且曾被告知偏高": "Tested and was told the result was elevated",
   "做過且結果正常": "Tested and the result was normal",
-  "沒做過": "Never tested"
+  "沒做過": "Never tested",
+  "1 次": "Once",
+  "2 次": "Twice",
+  "3 次以上": "3 or more times",
+  "1 年內": "Within the past year",
+  "1 年到不滿 3 年": "1 to less than 3 years ago",
+  "3 年到不滿 5 年": "3 to less than 5 years ago",
+  "5 年以上": "5 or more years ago",
+  "膽結石或膽道結石": "Gallstones or bile duct stones",
+  "喝酒": "Alcohol",
+  "血中三酸甘油酯很高": "Very high blood triglycerides",
+  "藥物引起": "A medication",
+  "其他原因": "Another cause",
+  "醫師沒有說明，或找不到原因": "No cause was given or found"
 });
 
 // These three follow-ups used to sit as inline literals batched at the end
@@ -626,6 +647,20 @@ function giSymptomFollowUps(column, key, labelZh, labelEn) {
 const appetiteLossFollowUpQuestions = giSymptomFollowUps("symptom_appetite_loss", "appetite_loss", "食慾比平常下降", "the drop in appetite");
 const earlySatietyFollowUpQuestions = giSymptomFollowUps("symptom_early_satiety", "early_satiety", "吃比較少就飽", "feeling full after eating only a little");
 
+// Acute pancreatitis (2026-11-16). The questionnaire asked only about chronic
+// pancreatitis; a clinician-diagnosed acute episode is asked here, and when
+// the answer is yes, how many episodes, the most recent, and the known cause.
+// Research data only, for the same reason as the follow-ups above: field
+// medical_history.acute_pancreatitis*, never rule_inputs.* or the model.
+// Option lists: append, never insert (answer codes come from the order).
+const isAcutePancreatitisYes = () => getAnswerValue(answers, "medical_history.acute_pancreatitis") === "是，曾由醫師診斷";
+const acutePancreatitisQuestions = [
+  { id: "acute_pancreatitis", module: "history", type: "single", required: true, title: "醫師是否曾診斷您得過「急性胰臟炎」？", titleEn: "Has a clinician ever diagnosed you with acute pancreatitis?", note: "急性胰臟炎通常是突然上腹劇痛、需要住院。請依醫療人員曾告知的診斷回答。", noteEn: "Acute pancreatitis usually means sudden, severe upper abdominal pain that needs a hospital stay. Answer based on a diagnosis given by a healthcare professional.", field: "medical_history.acute_pancreatitis", options: ["是，曾由醫師診斷", "否", "不確定"] },
+  { id: "acute_pancreatitis_episodes", module: "history", type: "single", required: true, title: "急性胰臟炎總共發作過幾次？", titleEn: "How many times have you had acute pancreatitis?", note: "此題只在您回答曾被診斷後出現。", noteEn: "This question appears only because you said you had been diagnosed.", field: "medical_history.acute_pancreatitis_episodes", options: ["1 次", "2 次", "3 次以上", "不記得"], appliesIf: isAcutePancreatitisYes },
+  { id: "acute_pancreatitis_last_episode", module: "history", type: "single", required: true, title: "最近一次急性胰臟炎發作，大約是多久以前？", titleEn: "Roughly how long ago was your most recent episode of acute pancreatitis?", note: "請選擇最接近的時間。", noteEn: "Choose the closest timeframe.", field: "medical_history.acute_pancreatitis_last_episode", options: ["1 年內", "1 年到不滿 3 年", "3 年到不滿 5 年", "5 年以上", "不記得"], appliesIf: isAcutePancreatitisYes },
+  { id: "acute_pancreatitis_cause", module: "history", type: "single", required: true, title: "醫師說急性胰臟炎主要是什麼原因引起的？", titleEn: "What did the clinician say mainly caused the acute pancreatitis?", note: "若發作過多次，請以最近一次為準。", noteEn: "If you have had more than one episode, answer for the most recent.", field: "medical_history.acute_pancreatitis_cause", options: ["膽結石或膽道結石", "喝酒", "血中三酸甘油酯很高", "藥物引起", "其他原因", "醫師沒有說明，或找不到原因", "不記得"], appliesIf: isAcutePancreatitisYes }
+];
+
 // Explicit group -> follow-up map, replacing the old design where every
 // follow-up was batched after all 13 symptom groups regardless of which
 // one triggered it. symptom_mass is the one case whose trigger spans four
@@ -737,6 +772,8 @@ const questions = [
   { id: "chronic_conditions", module: "history", type: "multi", required: true, title: "是否有以下慢性疾病？", note: "可複選；若無相關病史可選以上皆無。", field: "medical_history.chronic_conditions", options: ["高血壓", "糖尿病／高血糖", "高血脂／高膽固醇", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "胃食道逆流", "心臟病／心律不整", "甲狀腺疾病", "氣喘／慢性肺阻塞（COPD）", "痛風／高尿酸", "關節炎（含類風濕性）", "憂鬱症／焦慮症", "中風病史", "腎臟病／洗腎", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "以上皆無", "其他慢性疾病"] },
   { id: "liver_disease_etiology", module: "history", type: "multi", required: true, title: "您曾被診斷的肝病種類為何？", titleEn: "Which liver condition were you diagnosed with?", note: "可複選；請依醫療人員告知的診斷回答。", noteEn: "Select all that apply based on diagnoses given by a healthcare professional.", field: "medical_history.liver_disease_etiology", noneOption: "不確定肝病種類", options: liverEtiologyOptions, appliesIf: () => hasSelected("medical_history.chronic_conditions", "肝病") },
   { id: "vnext_diagnosed_conditions", module: "history", type: "multi", required: true, title: "是否曾有以下經醫療人員確認的病史或事件？", titleEn: "Have you had any of the following clinician-confirmed conditions or events?", note: "可複選。骨折依最近 12 個月回答，其餘依是否曾被醫療人員診斷回答。", noteEn: "Select all that apply. For fracture, consider the past 12 months; for the others, report whether a clinician has ever diagnosed the condition.", field: "medical_history.vnext_diagnosed_conditions", noneOption: symptomNoneOption, unknownOption: symptomUnknownOption, options: [...vnextHistoryFeatureDefinitions.map(([label]) => label), symptomNoneOption, symptomUnknownOption] },
+  // Sits after vnext_diagnosed_conditions, which asks about chronic pancreatitis.
+  ...acutePancreatitisQuestions,
   { id: "orchitis_epididymitis", module: "history", type: "single", required: true, title: "醫師是否曾診斷您有睪丸炎或副睪炎？", titleEn: "Has a clinician ever diagnosed you with orchitis or epididymitis?", note: "請依醫療人員曾告知的診斷回答。", noteEn: "Answer based on a diagnosis previously given by a healthcare professional.", field: "rule_inputs.dx_orchitis_epididymitis", ruleField: "dx_orchitis_epididymitis", options: ["是，曾由醫師診斷", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" },
   { id: "psa_history", module: "history", type: "single", required: true, title: "您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？", titleEn: "Have you previously had a PSA (prostate-specific antigen) test, and were you told that the result was elevated?", note: "本題只詢問既往檢查紀錄，不要求您另外接受抽血檢查。", noteEn: "This asks only about a previous test result and does not ask you to undergo a new blood test.", field: "rule_inputs.screen_psa_elevated", ruleField: "screen_psa_elevated", options: ["做過且曾被告知偏高", "做過且結果正常", "沒做過", "不記得"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" && calculateAge() >= 50 },
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
@@ -2620,6 +2657,23 @@ function buildGiFollowUpResearchColumns() {
   return columns;
 }
 
+// Oily stool and acute pancreatitis (2026-11-16), research columns only.
+// fatty_stool: 1 checked, 0 group answered without it, "" not answered or
+// "not sure". Self-contained like the function above; the e2e test checks
+// the acute_pancreatitis* columns against the question fields.
+function buildPancreaticResearchColumns() {
+  const group = getAnswerValue(answers, "symptoms.hepatobiliary");
+  const selected = Array.isArray(group) ? group : [];
+  const fattyStool = !selected.length || selected.includes(symptomUnknownOption)
+    ? ""
+    : selected.includes("大便油油亮亮、浮在水面或不容易沖掉（油便）") ? 1 : 0;
+  const columns = { fatty_stool: fattyStool };
+  for (const part of ["", "_episodes", "_last_episode", "_cause"]) {
+    columns[`acute_pancreatitis${part}`] = getAnswerValue(answers, `medical_history.acute_pancreatitis${part}`) || "";
+  }
+  return columns;
+}
+
 function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symptomAnswers, vnextFeatureRow, vnextFeatureMetadata, researchFeatureRow, ruleInputRow) {
   // Looked up by key, not by scanning for entry.field. `answers` is keyed by
   // question.field, but the two places that build an entry disagree about
@@ -2655,6 +2709,7 @@ function buildExcelRow(optimizedFeatureRow, submittedAt, symptomFeatureRow, symp
     country: getAnswerValue(answers, "demographics.country") || "",
     psych_rumination: getAnswerValue(answers, "mental_health.psych_rumination") || "",
     ...buildGiFollowUpResearchColumns(),
+    ...buildPancreaticResearchColumns(),
     psych_social_support: getAnswerValue(answers, "mental_health.psych_social_support") || "",
     psych_neuroticism_informant: getAnswerValue(answers, "mental_health.psych_neuroticism_informant") || "",
     personal_cancer_types: personalCancerTypes,

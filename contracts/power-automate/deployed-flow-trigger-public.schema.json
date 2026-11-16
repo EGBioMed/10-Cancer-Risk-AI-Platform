@@ -12,7 +12,7 @@
     "questionnaire_version": {
       "type": "string",
       "enum": [
-        "questionnaire/2026-11-16-v19.13-phase1"
+        "questionnaire/2026-11-16-v19.14-phase1"
       ]
     },
     "consent_version": {

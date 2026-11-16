@@ -146,10 +146,11 @@ test("submission validation count follows the canonical questionnaire definition
   const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, "contracts", "v1", "answer-code-manifest.json"), "utf8"));
   // A literal on purpose: adding a question should have to be stated here, not
   // absorbed silently. 76 -> 77 -> 78 -> 81 (2026-10-27, three psychological
-  // items) -> 87 (2026-11-16, six pancreatic early-symptom follow-ups). The
+  // items) -> 87 (2026-11-16, six pancreatic early-symptom follow-ups) -> 91
+  // (2026-11-16, acute pancreatitis and its three follow-ups). The
   // three contracts that pin the same number are cross-checked against this
   // manifest in test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 87);
+  assert.equal(canonicalAnswerQuestions.length, 91);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

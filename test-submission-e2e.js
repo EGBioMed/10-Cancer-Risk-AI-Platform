@@ -368,3 +368,66 @@ test("the pancreatic follow-ups stay out of the model request and the frozen vec
   assert.equal(submission.vnext_feature_columns.length, 33);
   assert.equal(submission.rule_input_columns.length, 30);
 });
+
+// 2026-11-16 補的兩題：油便（肝膽胰症狀的 extraOption）與急性胰臟炎（病史，勾「是」才追問
+// 次數、最近一次、原因）。同樣只進研究列與答案碼。
+const FATTY_STOOL = "大便油油亮亮、浮在水面或不容易沖掉（油便）";
+const AP_FOLLOW_UPS = ["acute_pancreatitis_episodes", "acute_pancreatitis_last_episode", "acute_pancreatitis_cause"];
+
+test("oily stool is a separate checkbox from pale stool and reaches the research row", () => {
+  const group = app.questions.find((question) => question.id === "symptoms_hepatobiliary");
+  assert(group.options.includes(FATTY_STOOL));
+  assert(group.options.includes("糞便顏色變淺或呈灰白色"));
+  assert(!group.symptomDefinitions.some(([label]) => label === FATTY_STOOL), "油便變成了症狀特徵欄");
+
+  setSymptomGroup("symptoms.hepatobiliary", [FATTY_STOOL]);
+  let submission = submitAs("臺灣");
+  assert.equal(submission.excel_row.fatty_stool, 1);
+  assert.equal(submission.excel_row.symptom_pale_stool, 0, "勾油便不該連帶勾到灰白便");
+  const row = submission.answer_code_rows.find((entry) => entry.question_id === "symptoms_hepatobiliary");
+  assert(row.value.includes("symptoms_hepatobiliary.option_08"), "答案碼裡沒有油便");
+
+  setSymptomGroup("symptoms.hepatobiliary", ["糞便顏色變淺或呈灰白色"]);
+  submission = submitAs("臺灣");
+  assert.equal(submission.excel_row.fatty_stool, 0);
+
+  setSymptomGroup("symptoms.hepatobiliary", ["不確定"]);
+  assert.equal(submitAs("臺灣").excel_row.fatty_stool, "");
+});
+
+test("the acute pancreatitis follow-ups appear only after a yes", () => {
+  const parent = giQuestion("acute_pancreatitis");
+  for (const answer of ["否", "不確定"]) {
+    app.answers[parent.field] = app.makeAnswerEntry(parent, answer, "contract_test");
+    for (const id of AP_FOLLOW_UPS) assert.equal(giQuestion(id).appliesIf(app.answers), false, `${id} 在回答「${answer}」時也會問`);
+  }
+  app.answers[parent.field] = app.makeAnswerEntry(parent, "是，曾由醫師診斷", "contract_test");
+  for (const id of AP_FOLLOW_UPS) assert.equal(giQuestion(id).appliesIf(app.answers), true, `${id} 回答是卻不問`);
+});
+
+test("acute pancreatitis reaches the research row as coded answers and stays out of the model", () => {
+  const parent = giQuestion("acute_pancreatitis");
+  app.answers[parent.field] = app.makeAnswerEntry(parent, "是，曾由醫師診斷", "contract_test");
+  const picked = { acute_pancreatitis_episodes: 1, acute_pancreatitis_last_episode: 0, acute_pancreatitis_cause: 2 };
+  for (const id of AP_FOLLOW_UPS) {
+    const question = giQuestion(id);
+    assert.equal(question.field, `medical_history.${id}`);
+    app.answers[question.field] = app.makeAnswerEntry(question, question.options[picked[id]], "contract_test");
+  }
+  const submission = submitAs("臺灣");
+  assert.equal(submission.excel_row.acute_pancreatitis, "是，曾由醫師診斷");
+  for (const id of AP_FOLLOW_UPS) {
+    assert.equal(submission.excel_row[id], giQuestion(id).options[picked[id]], `excel_row.${id} 沒有拿到受試者選的值`);
+    const row = submission.answer_code_rows.find((entry) => entry.question_id === id);
+    assert(row, `answer_code_rows 裡沒有 ${id}`);
+    assert.equal(row.value, `${id}.option_0${picked[id] + 1}`);
+  }
+  for (const id of ["acute_pancreatitis", ...AP_FOLLOW_UPS, "fatty_stool"]) {
+    for (const rowName of ["ai_api_feature_row", "optimized_feature_row", "vnext_feature_row", "rule_input_row"]) {
+      assert(!(id in submission[rowName]), `${id} 跑進了 ${rowName}`);
+    }
+  }
+  assert.equal(submission.optimized_feature_columns.length, 71);
+  assert.equal(submission.vnext_feature_columns.length, 33);
+  assert.equal(submission.rule_input_columns.length, 30);
+});
