@@ -290,14 +290,40 @@ const symptomGroups = [
   }
 ];
 
-// Pictures for symptoms that are easier to recognise than to name. Trialled
-// 2026-11-16 (lymph nodes, jaundice, nipple retraction, appetite loss, dark
-// urine) and withdrawn the same day at the PI's request; the SVGs are in git
-// history (commits 3a78c28, b6b5b4b). The mechanism stays: an entry here,
-// keyed by the option string itself, puts a picture back on that option, and
+// Pictures on options (2026-11-16): the delivered illustration set -- the nine
+// upper-digestive symptoms and the fifteen diet items. Keyed by the option
+// string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
-// exists. alt="" -- the button's own label already says what it shows.
-const optionIllustrations = Object.freeze({});
+// exists. Converted from the delivered 512px PNGs to JPEG (about 30 KB each,
+// a tenth of the PNG size), since nine share one page on a phone. alt="":
+// the option's own label already says what the picture shows.
+// (The earlier hand-drawn SVG trial was withdrawn; it is in 3a78c28/b6b5b4b.)
+const optionIllustrations = Object.freeze({
+  "容易過早飽足（吃少量就飽）": "assets/illustrations/gi-early-satiety.jpg",
+  "上腹部悶脹或不適": "assets/illustrations/gi-upper-abdominal-discomfort.jpg",
+  "上腹部疼痛": "assets/illustrations/gi-epigastric-pain.jpg",
+  "消化不良（餐後脹、噯氣或胃部不舒服）": "assets/illustrations/gi-dyspepsia.jpg",
+  "噁心感（非懷孕或暈車引起）": "assets/illustrations/gi-nausea.jpg",
+  "胃酸逆流到喉嚨或口中": "assets/illustrations/gi-reflux.jpg",
+  "胸口或上腹有灼熱感（火燒心）": "assets/illustrations/gi-heartburn.jpg",
+  "吞嚥困難、吞嚥疼痛或食物卡住感": "assets/illustrations/gi-dysphagia.jpg",
+  "吐血或嘔吐物呈咖啡渣樣": "assets/illustrations/gi-hematemesis.jpg",
+  "紅肉（牛、羊、豬等；平均每週至少 3 次）": "assets/illustrations/diet-red-meat.jpg",
+  "燒烤或油炸食品（平均每週至少 3 次）": "assets/illustrations/diet-grilled-fried.jpg",
+  "醃漬或鹽漬食品（例如泡菜、鹹魚；平均每週至少 3 次）": "assets/illustrations/diet-pickled-salted.jpg",
+  "加工肉品（例如香腸、火腿、培根；平均每週至少 3 次）": "assets/illustrations/diet-processed-meat.jpg",
+  "甜食或高糖零食（平均每週至少 3 次）": "assets/illustrations/diet-sweets.jpg",
+  "含糖飲料（平均每週至少 3 次）": "assets/illustrations/diet-sugary-drinks.jpg",
+  "高脂肪食物（例如速食、肥肉；平均每週至少 3 次）": "assets/illustrations/diet-high-fat.jpg",
+  "每天攝取蔬菜或水果": "assets/illustrations/diet-vegetables-fruit.jpg",
+  "豆類或豆製品每週至少 3 次": "assets/illustrations/diet-soy.jpg",
+  "每天飲用至少一杯 240 ml 牛奶": "assets/illustrations/diet-milk.jpg",
+  "其他乳製品每週至少 3 次（例如優格、起司）": "assets/illustrations/diet-other-dairy.jpg",
+  "益生菌食品或補充品每週至少 3 次（例如標示含活菌的優格、發酵乳或乳酸菌飲品，以及益生菌粉包、膠囊）": "assets/illustrations/diet-probiotics.jpg",
+  "飲酒（每週至少一次）": "assets/illustrations/diet-alcohol.jpg",
+  "咖啡（每週至少 3 次）": "assets/illustrations/diet-coffee.jpg",
+  "茶（每週至少 3 次）": "assets/illustrations/diet-tea.jpg"
+});
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
 }
@@ -1969,7 +1995,7 @@ function renderDietMatrix(question) {
           ${group.options.filter((option) => option !== group.noneOption).map((option, optionIndex) => {
             const isMet = selectedItems.includes(option);
             return `<div class="diet-frequency-row" role="radiogroup" aria-labelledby="diet-label-${group.id}-${optionIndex}">
-              <span class="matrix-row-label" id="diet-label-${group.id}-${optionIndex}">${escapeHtml(tx(option))}</span>
+              <span class="matrix-row-label" id="diet-label-${group.id}-${optionIndex}">${illustrationFor(option) ? `<img class="diet-row-picture" src="${illustrationFor(option)}" alt="" />` : ""}<span>${escapeHtml(tx(option))}</span></span>
               <label class="matrix-choice"><input type="radio" name="diet-${group.id}-${optionIndex}" value="met"${isMet ? " checked" : ""}><span>${currentLang === "en" ? "Meets" : "達到"}</span></label>
               <label class="matrix-choice"><input type="radio" name="diet-${group.id}-${optionIndex}" value="below"${!isMet ? " checked" : ""}><span>${currentLang === "en" ? "Below" : "未達"}</span></label>
             </div>`;

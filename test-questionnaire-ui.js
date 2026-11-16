@@ -249,10 +249,10 @@ test("local-only acceptance does not falsely claim that a report was emailed", (
 test("every symptom picture sits on a live option and its file exists", () => {
   const liveOptions = new Set(questions.flatMap((question) => Array.isArray(question.options) ? question.options : []));
   const entries = Object.entries(optionIllustrations);
-  // Empty since 2026-11-16, when the trial pictures were withdrawn.
+  assert(entries.length >= 24, "the illustration set is missing");
   for (const [option, src] of entries) {
     assert(liveOptions.has(option), `a picture is keyed to "${option}", which is no longer an option`);
-    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.svg$/);
+    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.(svg|jpg|png)$/);
     assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
   }
   assert.equal(illustrationFor("不是任何選項"), null);
@@ -278,7 +278,7 @@ test("every question picture sits on a live question and its file exists", () =>
   const entries = Object.entries(questionIllustrations);
   for (const [id, src] of entries) {
     assert(byId(id), `a picture is keyed to question "${id}", which no longer exists`);
-    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.svg$/);
+    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.(svg|jpg|png)$/);
     assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
     assert.equal(questionIllustrationFor(byId(id)), src);
   }

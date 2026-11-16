@@ -2636,3 +2636,10 @@ pre {
   margin: 4px 0 12px;
   border-radius: 16px;
 }
+
+/* Diet frequency rows: a picture beside each item (2026-11-16). */
+.diet-frequency-row .matrix-row-label { gap: 12px; }
+.diet-row-picture { flex: none; width: 88px; height: 66px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: #fbf6ee; }
+@media (max-width: 720px) {
+  .diet-row-picture { width: 72px; height: 54px; }
+}
