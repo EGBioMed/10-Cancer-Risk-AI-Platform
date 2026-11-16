@@ -423,6 +423,92 @@ test("a QR is held to the logo's rules, and a bad one drops only itself", () => 
   assert.equal(brandForSlug(missing, "hwakang").footer.qr, undefined);
 });
 
+// A bare phone number under a cancer questionnaire, with nothing saying
+// whose it is or what it is for, is what shipped first. 華康 had sent theirs
+// as 「諮詢專線」 and 「信箱」 and both words were dropped on the way in.
+test("a contact line says what it is, in the partner's own words where they gave them", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    hwakang: {
+      name: "華康生醫",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGHK3FV"],
+      footer: {
+        email: "HuaKangDNA@gmail.com",
+        emailLabel: "信箱",
+        phone: "0909-956-886",
+        phoneLabel: "諮詢專線"
+      }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "hwakang"));
+  assert.equal(html.includes("諮詢專線"), true);
+  assert.equal(html.includes("信箱"), true);
+  // 「諮詢專線」 says something 「電話」 does not, so it is printed as they
+  // wrote it -- and without an id, which is what keeps app.js from
+  // translating a partner's own words on the English page.
+  assert.equal(html.includes('id="partnerPhoneLabel"'), false);
+  assert.equal(html.includes('id="partnerEmailLabel"'), false);
+});
+
+test("a partner who named nothing still gets labelled lines, in the page language", () => {
+  const w = parseInstitutionBranding(JSON.stringify({
+    x: {
+      name: "X",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGX1234"],
+      footer: { email: "a@b.co", phone: "02-1234-5678" }
+    }
+  }));
+  assert.deepEqual(w.problems, []);
+
+  // The id is the whole mechanism: app.js looks these up and swaps the text,
+  // exactly as it does for #partnerLabel.
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(w, "x"));
+  assert.equal(html.includes('<span class="site-footer__contact-label" id="partnerEmailLabel">信箱</span>'), true);
+  assert.equal(html.includes('<span class="site-footer__contact-label" id="partnerPhoneLabel">電話</span>'), true);
+});
+
+test("a label with nothing to label, or too long, is reported and dropped", () => {
+  const orphan = parseInstitutionBranding(JSON.stringify({
+    x: {
+      name: "X",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGX1234"],
+      footer: { website: "https://example.com/", phoneLabel: "諮詢專線" }
+    }
+  }));
+  assert.match(orphan.problems.join(" | "), /set phoneLabel but no phone/);
+  assert.equal(applyInstitutionBranding(FOOTER_MARKER, brandForSlug(orphan, "x")).includes("諮詢專線"), false);
+
+  const shouty = parseInstitutionBranding(JSON.stringify({
+    x: {
+      name: "X",
+      logo: "brand/hwakang-colour.png",
+      codes: ["EGX1234"],
+      footer: { phone: "02-1234-5678", phoneLabel: "請在上班時間撥打這支專線洽詢檢測相關問題謝謝您的來電" }
+    }
+  }));
+  assert.match(shouty.problems.join(" | "), /phoneLabel is longer than/);
+  // The number survives; only the label it came with is dropped, and the
+  // default takes its place rather than leaving the line bare.
+  const html = applyInstitutionBranding(FOOTER_MARKER, brandForSlug(shouty, "x"));
+  assert.equal(html.includes("02-1234-5678"), true);
+  assert.equal(html.includes('id="partnerPhoneLabel"'), true);
+});
+
+test("a contact label is escaped", () => {
+  const html = applyInstitutionBranding(FOOTER_MARKER, {
+    slug: "x",
+    name: "X",
+    logo: "brand/a.svg",
+    footer: { phone: "02-1234-5678", phoneLabel: '"><script>alert(1)</script>' }
+  });
+  assert.equal(html.includes("<script>"), false);
+  assert.equal(html.includes("&lt;script&gt;"), true);
+});
+
 test("the footer renders the name alone when nothing else is configured", () => {
   const w = parseInstitutionBranding(JSON.stringify({
     hwakang: { name: "華康生醫", logo: "brand/numia-health-colour.svg", codes: ["EGHK3FV"] }

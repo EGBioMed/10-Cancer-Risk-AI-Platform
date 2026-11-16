@@ -1244,6 +1244,13 @@ function applyStaticText() {
   // up rather than assumed. The partner's own name is never translated.
   const partnerLabel = document.querySelector("#partnerLabel");
   if (partnerLabel) partnerLabel.textContent = currentLang === "en" ? "In partnership with" : "合作夥伴";
+  // Only the labels we supplied carry an id. A partner who named their own
+  // contact line -- 華康's 「諮詢專線」 -- has no id on it and is not
+  // translated, the same way their name and summary are not.
+  const partnerEmailLabel = document.querySelector("#partnerEmailLabel");
+  if (partnerEmailLabel) partnerEmailLabel.textContent = currentLang === "en" ? "Email" : "信箱";
+  const partnerPhoneLabel = document.querySelector("#partnerPhoneLabel");
+  if (partnerPhoneLabel) partnerPhoneLabel.textContent = currentLang === "en" ? "Phone" : "電話";
   document.querySelectorAll("[data-service-copy]").forEach((copy) => {
     copy.hidden = copy.dataset.serviceCopy !== currentLang;
   });
