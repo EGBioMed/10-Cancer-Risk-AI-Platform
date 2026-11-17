@@ -278,10 +278,10 @@ test("every question picture sits on a live question and its file exists", () =>
   const entries = Object.entries(questionIllustrations);
   for (const [id, src] of entries) {
     assert(byId(id), `a picture is keyed to question "${id}", which no longer exists`);
-    assert.match(src, /^assets\/illustrations\/[a-z0-9-]+\.(svg|jpg|png)$/);
+    assert.match(src, /^assets\/illustrations\/(?:basic\/)?[a-z0-9_-]+\.(svg|jpg|png)$/);
     assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
     assert.equal(questionIllustrationFor(byId(id)), src);
   }
-  assert.equal(questionIllustrationFor(byId("height_cm")), null);
+  assert.equal(questionIllustrationFor(byId("email")), null);
   assert.equal(questionIllustrationFor(undefined), null);
 });
