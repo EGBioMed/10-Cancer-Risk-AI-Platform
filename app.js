@@ -290,10 +290,11 @@ const symptomGroups = [
   }
 ];
 
-// Pictures on options (2026-11-16): the delivered illustration set -- the nine
-// upper-digestive symptoms, the fifteen diet items and the eight
-// liver/biliary/pancreatic symptoms (oily stool included) and the five
-// respiratory symptoms (square, 512x512). Keyed by the option
+// Pictures on options (2026-11-16/17): the delivered illustration sets -- the
+// fifteen diet items and every symptom group (upper digestive,
+// liver/biliary/pancreatic with oily stool, respiratory, bowel, urinary,
+// general, head/neck/nasal, oral/throat, neurological, bone/blood/lymph).
+// Some sets are 4:3, some square; both fit the cards. Keyed by the option
 // string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
 // exists. Converted from the delivered 512px PNGs to JPEG (about 30 KB each,
@@ -374,7 +375,15 @@ const optionIllustrations = Object.freeze({
   "新發生的癲癇或抽搐": "assets/illustrations/neuro-seizure.jpg",
   "視力模糊或視野缺損（非近視或老花）": "assets/illustrations/neuro-visual-change.jpg",
   "肢體無力或麻木": "assets/illustrations/neuro-limb-weakness.jpg",
-  "人格改變或記憶力明顯衰退": "assets/illustrations/neuro-personality-memory.jpg"
+  "人格改變或記憶力明顯衰退": "assets/illustrations/neuro-personality-memory.jpg",
+  "持續背痛（非外傷或肌肉引起）": "assets/illustrations/bone-back-pain.jpg",
+  "持續或反覆的肋骨疼痛": "assets/illustrations/bone-rib-pain.jpg",
+  "其他部位持續或反覆的骨骼疼痛": "assets/illustrations/bone-pain-other.jpg",
+  "持續或反覆的關節疼痛，且原因不明": "assets/illustrations/bone-joint-pain.jpg",
+  "反覆或原因不明的鼻出血": "assets/illustrations/blood-nosebleeds.jpg",
+  "一年內反覆感染 3 次以上，或感染久久不癒": "assets/illustrations/blood-recurrent-infection.jpg",
+  "容易瘀青或異常出血（小傷口出血久不止）": "assets/illustrations/blood-easy-bruising.jpg",
+  "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-enlarged-nodes.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
