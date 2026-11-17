@@ -2735,3 +2735,18 @@ pre {
 @media (max-width: 720px) {
   .diet-row-picture { width: 72px; height: 54px; }
 }
+
+/* Credit line required by CC BY 4.0 for the Servier-based pictures (2026-11-17). */
+.illustration-credit {
+  flex: 1 1 100%;
+  grid-column: 1 / -1;
+  width: 100%;
+  margin: 10px 0 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #6b7976;
+}
+
+.illustration-credit a {
+  color: inherit;
+}

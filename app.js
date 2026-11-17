@@ -397,10 +397,45 @@ const optionIllustrations = Object.freeze({
   "月經異常增多或不規則出血": "assets/illustrations/gyn-heavy-irregular.jpg",
   "持續或反覆的異常陰道分泌物": "assets/illustrations/gyn-discharge.jpg",
   "持續或反覆的骨盆腔疼痛": "assets/illustrations/gyn-pelvic-pain.jpg",
-  "骨盆腔不適或腹圍明顯增加": "assets/illustrations/gyn-pelvic-girth.jpg"
+  "骨盆腔不適或腹圍明顯增加": "assets/illustrations/gyn-pelvic-girth.jpg",
+  "睪丸摸到腫塊或硬塊": "assets/illustrations/male-testicular-lump.jpg",
+  "單側或雙側睪丸明顯腫大": "assets/illustrations/male-testicular-swelling.jpg",
+  "陰囊明顯腫大": "assets/illustrations/male-scrotal-swelling.jpg",
+  "睪丸疼痛或沉重感": "assets/illustrations/male-testicular-pain.jpg",
+  "腹股溝持續或反覆疼痛": "assets/illustrations/male-groin-pain.jpg",
+  "曾突然完全無法排尿，需要就醫處理": "assets/illustrations/male-urinary-retention.jpg",
+  "新發生或明顯惡化的勃起功能障礙": "assets/illustrations/male-erectile-dysfunction.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
+}
+
+// The male reproductive pictures (2026-11-17) are adapted from Servier Medical
+// Art under CC BY 4.0, which requires this credit wherever they are shown --
+// so the form and the chat print it under any group that shows one of them.
+const servierIllustrations = new Set([
+  "assets/illustrations/male-testicular-lump.jpg",
+  "assets/illustrations/male-testicular-swelling.jpg",
+  "assets/illustrations/male-scrotal-swelling.jpg",
+  "assets/illustrations/male-testicular-pain.jpg",
+  "assets/illustrations/male-groin-pain.jpg",
+  "assets/illustrations/male-urinary-retention.jpg",
+  "assets/illustrations/male-erectile-dysfunction.jpg"
+]);
+const servierCredit = {
+  zh: "圖片改作自 Servier Medical Art（smart.servier.com），依 CC BY 4.0 授權使用；修改包含裁切、縮放與症狀標示，Servier 未為本改作背書。",
+  en: "Images adapted from Servier Medical Art (smart.servier.com), licensed under CC BY 4.0. Changes: cropping, resizing and symptom markers. No endorsement by Servier is implied."
+};
+function illustrationCreditFor(options) {
+  return (options || []).some((option) => servierIllustrations.has(illustrationFor(option)))
+    ? (typeof currentLang !== "undefined" && currentLang === "en" ? servierCredit.en : servierCredit.zh)
+    : null;
+}
+function illustrationCreditHtml(options) {
+  const text = illustrationCreditFor(options);
+  return text
+    ? `<p class="illustration-credit">${text.replace("CC BY 4.0", '<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>')}</p>`
+    : "";
 }
 
 // A picture under a question's own title, keyed by question id. Empty since
@@ -1930,6 +1965,7 @@ function renderQuickInput(question) {
           <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}${illustrationFor(option) ? " option-button--illustrated" : ""}" type="button" data-value="${option}" aria-pressed="false">${illustrationFor(option) ? `<img class="option-illustration" src="${illustrationFor(option)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
         `).join("")}
       </div>
+      ${illustrationCreditHtml(visibleOptions)}
       <button class="secondary-action" id="saveMultiBtn" type="button">${isConsentQuestion ? (currentLang === "en" ? i18n.en.ui.consentContinue : "三項都已勾選，繼續填寫") : ui("saveContinue")}</button>
     `;
 

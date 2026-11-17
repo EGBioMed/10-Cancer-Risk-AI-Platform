@@ -257,6 +257,14 @@
         reply([...chosen], [...chosen].join("、"));
       });
       optionsArea.appendChild(confirm);
+      // CC BY pictures need their credit beside them (see app.js).
+      const credit = typeof illustrationCreditFor === "function" ? illustrationCreditFor(offered) : null;
+      if (credit) {
+        const note = document.createElement("p");
+        note.className = "options__hint illustration-credit";
+        note.textContent = credit;
+        optionsArea.appendChild(note);
+      }
       return;
     }
 
