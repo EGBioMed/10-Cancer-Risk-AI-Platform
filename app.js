@@ -337,7 +337,15 @@ const optionIllustrations = Object.freeze({
   "咳血或痰中帶血": "assets/illustrations/resp-hemoptysis.jpg",
   "一年內反覆發生肺炎 2 次以上": "assets/illustrations/resp-recurrent-pneumonia.jpg",
   "持續胸痛或胸悶": "assets/illustrations/resp-chest-pain.jpg",
-  "最近 6 個月內曾出現呼吸喘、呼吸急促或比平常更容易喘": "assets/illustrations/resp-shortness-of-breath.jpg"
+  "最近 6 個月內曾出現呼吸喘、呼吸急促或比平常更容易喘": "assets/illustrations/resp-shortness-of-breath.jpg",
+  "經常腹脹": "assets/illustrations/bowel-bloating.jpg",
+  "持續腹痛": "assets/illustrations/bowel-abdominal-pain.jpg",
+  "排便習慣改變（腹瀉與便秘交替，或糞便持續變細）": "assets/illustrations/bowel-habit-change.jpg",
+  "血便（鮮紅色血液）": "assets/illustrations/bowel-hematochezia.jpg",
+  "黑便（柏油狀、黑色糞便）": "assets/illustrations/bowel-melena.jpg",
+  "頻繁想排便但感覺排不乾淨（裡急後重）": "assets/illustrations/bowel-tenesmus.jpg",
+  "糞便潛血檢查曾發現異常": "assets/illustrations/bowel-abnormal-fobt.jpg",
+  "便秘（排便困難或排便次數減少）": "assets/illustrations/bowel-constipation.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
