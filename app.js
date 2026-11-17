@@ -353,7 +353,14 @@ const optionIllustrations = Object.freeze({
   "排尿中斷（排尿時尿流突然停止）": "assets/illustrations/uro-interrupted-flow.jpg",
   "肉眼可見尿液呈紅色、粉紅色或帶血": "assets/illustrations/uro-visible-hematuria.jpg",
   "尿液外觀看不出血，但尿液檢查曾發現潛血": "assets/illustrations/uro-occult-hematuria.jpg",
-  "排尿疼痛或有灼熱感": "assets/illustrations/uro-dysuria.jpg"
+  "排尿疼痛或有灼熱感": "assets/illustrations/uro-dysuria.jpg",
+  "不明原因體重下降（過去 6 個月超過體重 5%）": "assets/illustrations/gen-weight-loss.jpg",
+  "經常疲倦或體力明顯下降（非因工作或睡眠不足）": "assets/illustrations/gen-fatigue.jpg",
+  "食慾降低或食量明顯減少": "assets/illustrations/gen-appetite-loss.jpg",
+  "曾被診斷貧血，或近期抽血發現血色素偏低": "assets/illustrations/gen-anemia.jpg",
+  "夜間盜汗（非因環境過熱或更年期）": "assets/illustrations/gen-night-sweats.jpg",
+  "不明原因發燒（體溫超過 38°C，持續超過 1 週）": "assets/illustrations/gen-fever.jpg",
+  "最近 6 個月內，身體任何部位新出現原因不明的腫塊（包含腋下、腹股溝、四肢或其他部位）": "assets/illustrations/gen-mass.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
