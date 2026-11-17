@@ -293,8 +293,9 @@ const symptomGroups = [
 // Pictures on options (2026-11-16/17): the delivered illustration sets -- the
 // fifteen diet items and every symptom group (upper digestive,
 // liver/biliary/pancreatic with oily stool, respiratory, bowel, urinary,
-// general, head/neck/nasal, oral/throat, neurological, bone/blood/lymph).
-// Some sets are 4:3, some square; both fit the cards. Keyed by the option
+// general, head/neck/nasal, oral/throat, neurological, bone/blood/lymph,
+// breast). Breast uses the anatomy cross-section set, chosen over the
+// clothed-figure set. Some sets are 4:3, some square. Keyed by the option
 // string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
 // exists. Converted from the delivered 512px PNGs to JPEG (about 30 KB each,
@@ -383,7 +384,12 @@ const optionIllustrations = Object.freeze({
   "反覆或原因不明的鼻出血": "assets/illustrations/blood-nosebleeds.jpg",
   "一年內反覆感染 3 次以上，或感染久久不癒": "assets/illustrations/blood-recurrent-infection.jpg",
   "容易瘀青或異常出血（小傷口出血久不止）": "assets/illustrations/blood-easy-bruising.jpg",
-  "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-enlarged-nodes.jpg"
+  "淋巴結腫大（頸部、腋下或鼠蹊部腫塊）": "assets/illustrations/lymph-enlarged-nodes.jpg",
+  "乳房腫塊或局部硬塊": "assets/illustrations/breast-lump.jpg",
+  "新發生的乳頭凹陷（非天生）": "assets/illustrations/breast-nipple-retraction.jpg",
+  "乳頭異常分泌物（尤其是血性分泌物）": "assets/illustrations/breast-nipple-discharge.jpg",
+  "乳房皮膚橘皮樣變化或局部凹陷": "assets/illustrations/breast-skin-change.jpg",
+  "乳房疼痛或脹痛": "assets/illustrations/breast-pain.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
