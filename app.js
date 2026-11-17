@@ -294,7 +294,7 @@ const symptomGroups = [
 // fifteen diet items and every symptom group (upper digestive,
 // liver/biliary/pancreatic with oily stool, respiratory, bowel, urinary,
 // general, head/neck/nasal, oral/throat, neurological, bone/blood/lymph,
-// breast). Breast uses the anatomy cross-section set, chosen over the
+// breast, gynecological). Breast uses the anatomy cross-section set, chosen over the
 // clothed-figure set. Some sets are 4:3, some square. Keyed by the option
 // string itself, so a picture can only sit on the option it was drawn for;
 // test-questionnaire-ui.js checks every key is a live option and every file
@@ -389,7 +389,15 @@ const optionIllustrations = Object.freeze({
   "新發生的乳頭凹陷（非天生）": "assets/illustrations/breast-nipple-retraction.jpg",
   "乳頭異常分泌物（尤其是血性分泌物）": "assets/illustrations/breast-nipple-discharge.jpg",
   "乳房皮膚橘皮樣變化或局部凹陷": "assets/illustrations/breast-skin-change.jpg",
-  "乳房疼痛或脹痛": "assets/illustrations/breast-pain.jpg"
+  "乳房疼痛或脹痛": "assets/illustrations/breast-pain.jpg",
+  "性交後出血": "assets/illustrations/gyn-postcoital-bleeding.jpg",
+  "兩次月經之間出血": "assets/illustrations/gyn-intermenstrual-bleeding.jpg",
+  "其他月經以外的異常陰道出血": "assets/illustrations/gyn-abnormal-bleeding.jpg",
+  "停經後陰道出血": "assets/illustrations/gyn-postmenopausal-bleeding.jpg",
+  "月經異常增多或不規則出血": "assets/illustrations/gyn-heavy-irregular.jpg",
+  "持續或反覆的異常陰道分泌物": "assets/illustrations/gyn-discharge.jpg",
+  "持續或反覆的骨盆腔疼痛": "assets/illustrations/gyn-pelvic-pain.jpg",
+  "骨盆腔不適或腹圍明顯增加": "assets/illustrations/gyn-pelvic-girth.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
