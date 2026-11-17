@@ -360,7 +360,11 @@ const optionIllustrations = Object.freeze({
   "曾被診斷貧血，或近期抽血發現血色素偏低": "assets/illustrations/gen-anemia.jpg",
   "夜間盜汗（非因環境過熱或更年期）": "assets/illustrations/gen-night-sweats.jpg",
   "不明原因發燒（體溫超過 38°C，持續超過 1 週）": "assets/illustrations/gen-fever.jpg",
-  "最近 6 個月內，身體任何部位新出現原因不明的腫塊（包含腋下、腹股溝、四肢或其他部位）": "assets/illustrations/gen-mass.jpg"
+  "最近 6 個月內，身體任何部位新出現原因不明的腫塊（包含腋下、腹股溝、四肢或其他部位）": "assets/illustrations/gen-mass.jpg",
+  "頸部摸得到腫塊或硬塊": "assets/illustrations/hn-neck-lump.jpg",
+  "頭部、臉部或頸部出現新的腫塊": "assets/illustrations/hn-head-neck-mass.jpg",
+  "鼻腔內或鼻部出現腫塊": "assets/illustrations/hn-nasal-mass.jpg",
+  "持續、反覆或單側鼻塞／鼻漏": "assets/illustrations/hn-nasal-discharge.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
