@@ -189,13 +189,13 @@
   // A chip is the option's words, plus -- where app.js has one -- a shape for
   // yes / no / not sure, or a picture of the symptom. Both are decoration: what
   // a tap sends is still the option string, set by the caller.
-  function chip(label, onClick, selected) {
+  function chip(label, onClick, selected, question) {
     const button = document.createElement("button");
     button.type = "button";
     button.className = "chip";
     if (selected) button.classList.add("chip--on");
 
-    const picture = typeof illustrationFor === "function" ? illustrationFor(label) : null;
+    const picture = typeof illustrationFor === "function" ? illustrationFor(label, question) : null;
     const icon = typeof answerIconFor === "function" ? answerIconFor(label) : null;
     if (picture) {
       button.classList.add("chip--card");
@@ -244,7 +244,7 @@
           if (chosen.has(option)) chosen.delete(option);
           else chosen.add(option);
           button.classList.toggle("chip--on", chosen.has(option));
-        });
+        }, false, question);
         optionsArea.appendChild(button);
       }
 
@@ -269,7 +269,7 @@
     }
 
     for (const option of offered) {
-      optionsArea.appendChild(chip(option, () => reply(option, option)));
+      optionsArea.appendChild(chip(option, () => reply(option, option), false, question));
     }
   }
 
@@ -318,7 +318,7 @@
     value.className = "readback__value";
     const unit = turn.question && turn.question.type === "number" ? readBackUnit(turn.question) : { before: "", after: "" };
     value.textContent = `${unit.before}${readBackText(turn.value)}${unit.after}`;
-    const picture = typeof illustrationFor === "function" && !Array.isArray(turn.value) ? illustrationFor(turn.value) : null;
+    const picture = typeof illustrationFor === "function" && !Array.isArray(turn.value) ? illustrationFor(turn.value, turn.question) : null;
     const ask = document.createElement("p");
     ask.className = "readback__ask";
     ask.textContent = copy.readBackAsk;

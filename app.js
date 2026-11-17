@@ -406,7 +406,28 @@ const optionIllustrations = Object.freeze({
   "曾突然完全無法排尿，需要就醫處理": "assets/illustrations/male-urinary-retention.jpg",
   "新發生或明顯惡化的勃起功能障礙": "assets/illustrations/male-erectile-dysfunction.jpg"
 });
-function illustrationFor(option) {
+// Pictures that belong to one question only (2026-11-17): the PSA options
+// include "沒做過" and "不記得", which other questions also offer, so these
+// are looked up by question id first and never leak into another question.
+const questionOptionIllustrations = Object.freeze({
+  diet_type: Object.freeze({
+    "一般飲食（平常會吃肉類或海鮮）": "assets/illustrations/diettype-omnivore.jpg",
+    "蔬食為主（主要吃植物性食物，但仍會吃肉類或海鮮）": "assets/illustrations/diettype-mostly-plant.jpg",
+    "魚素（不吃肉類，但會吃魚類或海鮮）": "assets/illustrations/diettype-pescatarian.jpg",
+    "蛋奶素（不吃肉類及海鮮，但會吃蛋或乳製品）": "assets/illustrations/diettype-lacto-ovo.jpg",
+    "全素（不吃肉類、海鮮、蛋及乳製品）": "assets/illustrations/diettype-vegan.jpg"
+  }),
+  psa_history: Object.freeze({
+    "做過且曾被告知偏高": "assets/illustrations/psa-elevated.jpg",
+    "做過且結果正常": "assets/illustrations/psa-normal.jpg",
+    "沒做過": "assets/illustrations/psa-never.jpg",
+    "不記得": "assets/illustrations/psa-unsure.jpg"
+  })
+});
+function illustrationFor(option, question) {
+  const id = typeof question === "string" ? question : question && question.id;
+  const scoped = id && Object.prototype.hasOwnProperty.call(questionOptionIllustrations, id) ? questionOptionIllustrations[id] : null;
+  if (scoped && Object.prototype.hasOwnProperty.call(scoped, option)) return scoped[option];
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
 }
 
@@ -1960,9 +1981,9 @@ function renderQuickInput(question) {
     });
     quickOptions.innerHTML = `
       ${isConsentQuestion ? `<div class="consent-option-hint" id="consentOptionHint"></div>` : ""}
-      <div class="multi-options${isSymptomQuestion ? " multi-options--symptoms" : ""}${visibleOptions.some((option) => illustrationFor(option)) ? " multi-options--pictures" : ""}">
+      <div class="multi-options${isSymptomQuestion ? " multi-options--symptoms" : ""}${visibleOptions.some((option) => illustrationFor(option, question)) ? " multi-options--pictures" : ""}">
         ${visibleOptions.map((option) => `
-          <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}${illustrationFor(option) ? " option-button--illustrated" : ""}" type="button" data-value="${option}" aria-pressed="false">${illustrationFor(option) ? `<img class="option-illustration" src="${illustrationFor(option)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
+          <button class="option-button option-button--multi${isConsentQuestion ? " option-button--consent" : ""}${isSymptomQuestion ? " option-button--symptom" : ""}${option === question.noneOption ? " option-button--none" : ""}${illustrationFor(option, question) ? " option-button--illustrated" : ""}" type="button" data-value="${option}" aria-pressed="false">${illustrationFor(option, question) ? `<img class="option-illustration" src="${illustrationFor(option, question)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
         `).join("")}
       </div>
       ${illustrationCreditHtml(visibleOptions)}
@@ -2025,6 +2046,22 @@ function renderQuickInput(question) {
     `;
     document.querySelector("#singleDropdown").addEventListener("change", (event) => {
       saveAnswer(event.target.value, "single_choice");
+    });
+    return;
+  }
+
+  // Single choice with pictures (diet type, PSA history): the same cards as
+  // the symptom groups, one tap answers.
+  if (singleOptions.some((option) => illustrationFor(option, question))) {
+    quickOptions.innerHTML = `
+      <div class="multi-options multi-options--pictures">
+        ${singleOptions.map((option) => `
+          <button class="option-button${illustrationFor(option, question) ? " option-button--illustrated" : ""}" type="button" data-value="${option}">${illustrationFor(option, question) ? `<img class="option-illustration" src="${illustrationFor(option, question)}" alt="" />` : ""}<span class="option-label">${tx(option)}</span></button>
+        `).join("")}
+      </div>
+    `;
+    quickOptions.querySelectorAll(".option-button").forEach((button) => {
+      button.addEventListener("click", () => saveAnswer(button.dataset.value, "single_choice"));
     });
     return;
   }
