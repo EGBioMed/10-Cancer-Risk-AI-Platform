@@ -406,9 +406,10 @@ const optionIllustrations = Object.freeze({
   "曾突然完全無法排尿，需要就醫處理": "assets/illustrations/male-urinary-retention.jpg",
   "新發生或明顯惡化的勃起功能障礙": "assets/illustrations/male-erectile-dysfunction.jpg"
 });
-// Pictures that belong to one question only (2026-11-17): the PSA options
-// include "沒做過" and "不記得", which other questions also offer, so these
-// are looked up by question id first and never leak into another question.
+// Pictures that belong to one question only (2026-11-17), looked up by
+// question id first. Short options such as "不記得" recur across questions,
+// so a set keyed here never leaks into another question. (PSA history had a
+// set here; it was taken off on request the same day.)
 const questionOptionIllustrations = Object.freeze({
   diet_type: Object.freeze({
     "一般飲食（平常會吃肉類或海鮮）": "assets/illustrations/diettype-omnivore.jpg",
@@ -416,12 +417,6 @@ const questionOptionIllustrations = Object.freeze({
     "魚素（不吃肉類，但會吃魚類或海鮮）": "assets/illustrations/diettype-pescatarian.jpg",
     "蛋奶素（不吃肉類及海鮮，但會吃蛋或乳製品）": "assets/illustrations/diettype-lacto-ovo.jpg",
     "全素（不吃肉類、海鮮、蛋及乳製品）": "assets/illustrations/diettype-vegan.jpg"
-  }),
-  psa_history: Object.freeze({
-    "做過且曾被告知偏高": "assets/illustrations/psa-elevated.jpg",
-    "做過且結果正常": "assets/illustrations/psa-normal.jpg",
-    "沒做過": "assets/illustrations/psa-never.jpg",
-    "不記得": "assets/illustrations/psa-unsure.jpg"
   })
 });
 function illustrationFor(option, question) {
