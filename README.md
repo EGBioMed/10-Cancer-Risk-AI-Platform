@@ -9,6 +9,8 @@ PostgreSQL 與 Caddy，提交資料不再依賴 Power Automate／Excel 逐筆寫
   有一段（Power Automate flow）不在版本控制裡，程式碼與文件都可能與線上行為不符。
   內含 2026-09 那次「測試全綠卻讓每一筆送件失敗」的完整紀錄、動手前的檢查表，以及
   改完之後該怎麼驗。要改這條路徑的人（含 AI 助手）先看這份。**
+- [IT 維運 SOP](IT_OPERATIONS_SOP.md)：接手 Power Automate 失敗處理、GitHub 推送、Render
+  部署與 Azure 資料 API 的人先讀這一份。含四個操作台對照、故障訊息對照表與緊急降級順序。
 - [開發者與新電腦快速上手手冊](DEVELOPER_ONBOARDING.md)：從第一次取得程式碼、
   pgAdmin、Windows 服務、HTTPS 憑證，到除錯、備份及日常操作。
 - [地端 PostgreSQL 部署手冊](ON_PREMISES_DEPLOYMENT.md)：資料庫結構、權限邊界與
