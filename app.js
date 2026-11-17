@@ -364,7 +364,12 @@ const optionIllustrations = Object.freeze({
   "頸部摸得到腫塊或硬塊": "assets/illustrations/hn-neck-lump.jpg",
   "頭部、臉部或頸部出現新的腫塊": "assets/illustrations/hn-head-neck-mass.jpg",
   "鼻腔內或鼻部出現腫塊": "assets/illustrations/hn-nasal-mass.jpg",
-  "持續、反覆或單側鼻塞／鼻漏": "assets/illustrations/hn-nasal-discharge.jpg"
+  "持續、反覆或單側鼻塞／鼻漏": "assets/illustrations/hn-nasal-discharge.jpg",
+  "口腔潰瘍超過 2 週未癒合": "assets/illustrations/oral-ulcer.jpg",
+  "持續聲音沙啞超過 3 週（非感冒引起）": "assets/illustrations/oral-hoarseness.jpg",
+  "口腔白斑或紅斑": "assets/illustrations/oral-patch.jpg",
+  "持續或反覆喉嚨痛（非一般感冒）": "assets/illustrations/oral-sore-throat.jpg",
+  "持續或反覆耳痛，且耳部檢查沒有明確原因": "assets/illustrations/oral-otalgia.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
