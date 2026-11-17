@@ -114,6 +114,7 @@
 
 | 不要 | 為什麼 |
 |---|---|
+| 直接 push `main`（繞過 PR） | push 到 `main` 就是上線。PR 是唯一讓 CI 在上線**之前**跑完的關卡。緊急例外見 6.5 |
 | 打開流程 A 的編輯器 | 沒有草稿狀態，誤觸即上線，服務對象是全部付費客戶 |
 | 關掉流程的 Secure Outputs | `REPORT_SPEC.md` 第 17 節要求的設定，執行紀錄看不到輸出是刻意的 |
 | 用 WordPress 的「外掛檔案編輯器」 | 2026-09-18 一次貼上造成 fatal，自動還原失敗、檔案留成 0 bytes，代碼交付停擺約 30 分鐘且訂單上沒有任何線索 |
@@ -302,16 +303,31 @@ CI 設定：`.github/workflows/ci.yml`，ubuntu-latest、Node 24、`npm ci && np
 
 ### 6.5 回退
 
-```bash
+回退跟其他改動一樣，走分支 + PR：
+
+```powershell
+git switch -c "it/revert-<commit>"
+```
+
+```powershell
 git revert <commit>
 ```
 
-```bash
-git push origin main
+```powershell
+git push -u origin "it/revert-<commit>"
 ```
 
-Render 會自動部署 revert 後的版本。**改資料庫結構的 commit 不能這樣回退**——
-revert 程式碼不會把資料改回去，先問。
+PR 合進 `main` 之後，Render 會自動部署 revert 後的版本。
+
+**現場故障、來不及等 review 的時候**：直接 push `main` 要有平台負責人當下同意，
+事後補一則說明（哪一個 commit、為什麼來不及走 PR）。**這是例外，不是第二條
+路徑。** 緊急直推沒有 PR 當關卡，而上一次 CI 連紅 18 次就是因為沒有人在看（見 6.3）。
+
+另外兩件事：
+
+- **改資料庫結構的 commit 不能這樣回退**——revert 程式不會把資料改回去，先問。
+- 回退程式碼 **不會動到 Render 儀表板上的環境變數**。跟設定有關的故障
+  （聯名、webhook、金鑰）要到儀表板處理，見 7.3、7.4。
 
 ---
 
