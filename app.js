@@ -454,9 +454,12 @@ function illustrationCreditHtml(options) {
     : "";
 }
 
-// Basic-information header pictures use varied plain clothing and adult
-// representation. They introduce the question without encoding an answer.
+// Pictures under a question's own title (2026-11-17): the basic-information
+// questions, secondhand smoke, and first-degree family (who counts as one).
+// They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  secondhand_smoke: "assets/illustrations/secondhand-smoke.jpg",
+  family_cancer: "assets/illustrations/family-first-degree.jpg",
   full_name: "assets/illustrations/basic/full_name.jpg",
   birth_year: "assets/illustrations/basic/birth_year.jpg",
   height_cm: "assets/illustrations/basic/height_cm.jpg",
