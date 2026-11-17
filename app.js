@@ -369,7 +369,12 @@ const optionIllustrations = Object.freeze({
   "持續聲音沙啞超過 3 週（非感冒引起）": "assets/illustrations/oral-hoarseness.jpg",
   "口腔白斑或紅斑": "assets/illustrations/oral-patch.jpg",
   "持續或反覆喉嚨痛（非一般感冒）": "assets/illustrations/oral-sore-throat.jpg",
-  "持續或反覆耳痛，且耳部檢查沒有明確原因": "assets/illustrations/oral-otalgia.jpg"
+  "持續或反覆耳痛，且耳部檢查沒有明確原因": "assets/illustrations/oral-otalgia.jpg",
+  "新發生的持續頭痛（非過去的偏頭痛模式）": "assets/illustrations/neuro-headache.jpg",
+  "新發生的癲癇或抽搐": "assets/illustrations/neuro-seizure.jpg",
+  "視力模糊或視野缺損（非近視或老花）": "assets/illustrations/neuro-visual-change.jpg",
+  "肢體無力或麻木": "assets/illustrations/neuro-limb-weakness.jpg",
+  "人格改變或記憶力明顯衰退": "assets/illustrations/neuro-personality-memory.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
