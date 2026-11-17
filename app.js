@@ -345,7 +345,15 @@ const optionIllustrations = Object.freeze({
   "黑便（柏油狀、黑色糞便）": "assets/illustrations/bowel-melena.jpg",
   "頻繁想排便但感覺排不乾淨（裡急後重）": "assets/illustrations/bowel-tenesmus.jpg",
   "糞便潛血檢查曾發現異常": "assets/illustrations/bowel-abnormal-fobt.jpg",
-  "便秘（排便困難或排便次數減少）": "assets/illustrations/bowel-constipation.jpg"
+  "便秘（排便困難或排便次數減少）": "assets/illustrations/bowel-constipation.jpg",
+  "頻尿（白天排尿超過 8 次）": "assets/illustrations/uro-frequency.jpg",
+  "夜尿增加（晚上起床排尿超過 2 次）": "assets/illustrations/uro-nocturia.jpg",
+  "尿流變細或排尿無力": "assets/illustrations/uro-weak-stream.jpg",
+  "排尿困難（需用力才能排出）": "assets/illustrations/uro-hesitancy.jpg",
+  "排尿中斷（排尿時尿流突然停止）": "assets/illustrations/uro-interrupted-flow.jpg",
+  "肉眼可見尿液呈紅色、粉紅色或帶血": "assets/illustrations/uro-visible-hematuria.jpg",
+  "尿液外觀看不出血，但尿液檢查曾發現潛血": "assets/illustrations/uro-occult-hematuria.jpg",
+  "排尿疼痛或有灼熱感": "assets/illustrations/uro-dysuria.jpg"
 });
 function illustrationFor(option) {
   return Object.prototype.hasOwnProperty.call(optionIllustrations, option) ? optionIllustrations[option] : null;
