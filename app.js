@@ -2,9 +2,25 @@ const SUBMISSION_ENDPOINT = "/api/submit";
 if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !== "function") {
   throw new Error("Answer-code module failed to load before app.js.");
 }
+
+// Which questionnaire this page is: "sale" (the paid/public assessment, the only
+// one that exists in production today) or "intake" (research recruitment: no
+// Email, no report, extra follow-ups). Anything other than an explicit "intake"
+// is "sale", so a page nobody configured keeps behaving exactly as before.
+// The server sets EG_QUESTIONNAIRE_MODE in the page it serves, from the
+// entrance the session came in through (lib/questionnaire-mode.js); the
+// browser cannot choose. Read here, first, because the version string, the
+// module list and the question list all depend on it.
+const QUESTIONNAIRE_MODE = globalThis.EG_QUESTIONNAIRE_MODE === "intake" ? "intake" : "sale";
+
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  questionnaire_version: "questionnaire/2026-11-16-v19.14-phase1",
+  // The intake questionnaire is versioned apart: it has different questions
+  // (no name or Email, the chronic follow-up table, a free-text question) and
+  // its own code list, contracts/intake/answer-code-manifest.json.
+  questionnaire_version: QUESTIONNAIRE_MODE === "intake"
+    ? "questionnaire/2026-11-18-v19.14-intake1"
+    : "questionnaire/2026-11-16-v19.14-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -28,7 +44,10 @@ const modules = [
   { id: "mental", title: "心理健康", summary: "記錄近期壓力、睡眠與情緒困擾頻率。" },
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
-  { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
+  // Intake asks no contact details; its last section holds the free-text question.
+  QUESTIONNAIRE_MODE === "intake"
+    ? { id: "closing", title: "其他補充", summary: "最近身體狀況的補充說明（可留白）。" }
+    : { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -967,6 +986,70 @@ const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) 
 // would silently renumber one question's codes and not the others'.
 const psychFrequencyOptions = ["從不", "很少", "有時", "經常", "總是"];
 
+// Intake-only follow-up on chronic_conditions: for every condition the
+// respondent checked, whether they have seen a doctor for it and how long ago
+// it last flared up. One table (chronic_followup_matrix) instead of two
+// questions per condition, so checking five conditions costs one page, not
+// ten. Each cell is still its own single-choice question underneath -- the
+// pattern mental_frequency_matrix uses -- so every answer gets a frozen code
+// and a not_applicable row when its condition was not checked.
+//
+// Each entry: key; the keyword chronic_* in buildOptimizedFeatureRow matches on
+// (reused so "which conditions count as checked" is defined the same way in
+// both); the chronic_conditions option label; its English label.
+const chronicFollowUpConditions = [
+  ["hypertension", "高血壓", "高血壓", "Hypertension"],
+  ["diabetes", "糖尿病", "糖尿病／高血糖", "Diabetes / high blood sugar"],
+  ["hyperlipidemia", "高血脂", "高血脂／高膽固醇", "High lipids / cholesterol"],
+  ["liver_disease", "肝病", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "Liver disease"],
+  ["gerd", "胃食道逆流", "胃食道逆流", "Gastroesophageal reflux"],
+  ["heart_disease", "心臟病", "心臟病／心律不整", "Heart disease / arrhythmia"],
+  ["thyroid", "甲狀腺", "甲狀腺疾病", "Thyroid disease"],
+  ["asthma_copd", "氣喘", "氣喘／慢性肺阻塞（COPD）", "Asthma / COPD"],
+  ["gout", "痛風", "痛風／高尿酸", "Gout / high uric acid"],
+  ["arthritis", "關節炎", "關節炎（含類風濕性）", "Arthritis"],
+  ["mental", "憂鬱症", "憂鬱症／焦慮症", "Depression / anxiety"],
+  ["stroke", "中風", "中風病史", "Stroke"],
+  ["kidney", "腎臟病", "腎臟病／洗腎", "Kidney disease / dialysis"],
+  ["autoimmune", "自體免疫", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "Autoimmune disease"],
+  ["other_unclassified", "其他慢性疾病", "其他慢性疾病", "Other chronic disease"]
+];
+const chronicCareOptions = ["是", "否", "不確定"];
+const chronicLastEpisodeOptions = ["1 個月內", "1–6 個月", "6–12 個月", "1 年以上", "不確定"];
+const chronicFollowUpRowQuestions = chronicFollowUpConditions.flatMap(([key, keyword, labelZh, labelEn]) => {
+  const appliesIf = () => hasSelected("medical_history.chronic_conditions", keyword);
+  return [
+    {
+      id: `chronic_care_${key}`, module: "history", type: "single", required: true, displayInComposite: true,
+      intakeOnly: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
+      matrixColumn: "care", matrixColumnLabel: "是否已就診", matrixColumnLabelEn: "Seen a doctor for it?",
+      title: `${labelZh}：是否已就診？`, titleEn: `${labelEn}: have you seen a doctor for it?`,
+      field: `medical_history.chronic_followup.${key}.care`, options: chronicCareOptions, appliesIf
+    },
+    {
+      id: `chronic_last_episode_${key}`, module: "history", type: "single", required: true, displayInComposite: true,
+      intakeOnly: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
+      matrixColumn: "last_episode", matrixColumnLabel: "最近一次發病距今", matrixColumnLabelEn: "Last flare-up",
+      title: `${labelZh}：最近一次發病距今多久？`, titleEn: `${labelEn}: how long ago was the last flare-up?`,
+      field: `medical_history.chronic_followup.${key}.last_episode`, options: chronicLastEpisodeOptions, appliesIf
+    }
+  ];
+});
+const chronicFollowUpQuestions = [
+  {
+    id: "chronic_followup_matrix", module: "history", type: "grouped-matrix", required: true, isComposite: true,
+    intakeOnly: true,
+    title: "您勾選的慢性疾病：就診狀況與最近一次發病",
+    titleEn: "The chronic conditions you selected: care and last flare-up",
+    note: "請針對每一項疾病回答。「最近一次發病」指最近一次症狀明顯或需要就醫處理的時間；不記得請選「不確定」。",
+    noteEn: "Answer for each condition. \"Last flare-up\" means the most recent time symptoms were noticeable or needed medical care; choose \"Not sure\" if you do not remember.",
+    rowQuestionIds: chronicFollowUpRowQuestions.map((question) => question.id),
+    appliesIf: () => chronicFollowUpConditions.some(([, keyword]) => hasSelected("medical_history.chronic_conditions", keyword))
+  },
+  ...chronicFollowUpRowQuestions
+];
+const intakeChronicFollowUpQuestions = QUESTIONNAIRE_MODE === "intake" ? chronicFollowUpQuestions : [];
+
 const questions = [
   {
     id: "consent_acknowledgement",
@@ -979,7 +1062,10 @@ const questions = [
     options: consentOptions,
     minSelected: 3
   },
-  { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
+  // Sale only: the intake questionnaire collects no name (2026-11-18).
+  ...(QUESTIONNAIRE_MODE === "sale" ? [
+    { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" }
+  ] : []),
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
@@ -1034,6 +1120,8 @@ const questions = [
   { id: "personal_cancer_types", module: "history", type: "multi", required: true, title: "目前或過去曾被診斷的癌別為何？", note: "可複選；若不確定癌別，請選其他癌種。", field: "medical_history.personal_cancer_types", options: cancerOptions, appliesIf: (answers) => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history")) },
   { id: "chronic_conditions", module: "history", type: "multi", required: true, title: "是否有以下慢性疾病？", note: "可複選；若無相關病史可選以上皆無。", field: "medical_history.chronic_conditions", options: ["高血壓", "糖尿病／高血糖", "高血脂／高膽固醇", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "胃食道逆流", "心臟病／心律不整", "甲狀腺疾病", "氣喘／慢性肺阻塞（COPD）", "痛風／高尿酸", "關節炎（含類風濕性）", "憂鬱症／焦慮症", "中風病史", "腎臟病／洗腎", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "以上皆無", "其他慢性疾病"] },
   { id: "liver_disease_etiology", module: "history", type: "multi", required: true, title: "您曾被診斷的肝病種類為何？", titleEn: "Which liver condition were you diagnosed with?", note: "可複選；請依醫療人員告知的診斷回答。", noteEn: "Select all that apply based on diagnoses given by a healthcare professional.", field: "medical_history.liver_disease_etiology", noneOption: "不確定肝病種類", options: liverEtiologyOptions, appliesIf: () => hasSelected("medical_history.chronic_conditions", "肝病") },
+  // Intake only; an empty spread in the questionnaire on sale (see QUESTIONNAIRE_MODE).
+  ...intakeChronicFollowUpQuestions,
   { id: "vnext_diagnosed_conditions", module: "history", type: "multi", required: true, title: "是否曾有以下經醫療人員確認的病史或事件？", titleEn: "Have you had any of the following clinician-confirmed conditions or events?", note: "可複選。骨折依最近 12 個月回答，其餘依是否曾被醫療人員診斷回答。", noteEn: "Select all that apply. For fracture, consider the past 12 months; for the others, report whether a clinician has ever diagnosed the condition.", field: "medical_history.vnext_diagnosed_conditions", noneOption: symptomNoneOption, unknownOption: symptomUnknownOption, options: [...vnextHistoryFeatureDefinitions.map(([label]) => label), symptomNoneOption, symptomUnknownOption] },
   // Sits after vnext_diagnosed_conditions, which asks about chronic pancreatitis.
   ...acutePancreatitisQuestions,
@@ -1042,7 +1130,21 @@ const questions = [
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
-  { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
+  // Sale: the Email the report goes to. Intake: no Email and no report; the
+  // last question is free text instead (type "longtext": kept out of every
+  // coded and feature row -- see buildFreeTextAnswers).
+  ...(QUESTIONNAIRE_MODE === "sale" ? [
+    { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
+  ] : [
+    {
+      id: "intake_recent_discomfort", module: "closing", type: "longtext", required: false, maxLength: 500,
+      title: "最近是否有任何身體不適？", titleEn: "Have you had any physical discomfort recently?",
+      note: "可留白。若有，請簡短描述哪裡不舒服、大約持續多久。請不要填寫姓名、電話等可以辨識您身分的資料。",
+      noteEn: "You may leave this blank. If so, briefly describe where and for about how long. Please do not include your name, phone number or anything else that identifies you.",
+      placeholder: "例如：最近兩週容易胃脹。", placeholderEn: "For example: bloating for the past two weeks.",
+      field: "intake.recent_discomfort"
+    }
+  ])
 ];
 
 const i18n = {
@@ -1152,6 +1254,7 @@ const i18n = {
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
       contact: ["Contact Information", "Enter the email address for the report."],
+      closing: ["Anything else", "A note on how you have been feeling recently (optional)."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -1249,6 +1352,7 @@ const i18n = {
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
+      "1 個月內": "Within 1 month", "1–6 個月": "1-6 months ago", "6–12 個月": "6-12 months ago", "1 年以上": "Over 1 year ago",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
       // 本對照表以中文原字串為鍵、全表共用，故泛用詞一旦在別題也拿來當選項就會互相蓋台。
@@ -1333,11 +1437,74 @@ const frozenSubmissionVectorCounts = Object.freeze({
   research_feature_columns: 1,
   rule_input_columns: 30
 });
+// Long free-text answers ("longtext") are a different kind of data from every
+// other answer: not a code, not a number, and liable to carry names, phone
+// numbers or hospitals the respondent types in. So they are kept out of
+// answer_code_rows (which promises codes), out of `rows` (which Power Automate
+// copies into mail and reports), and out of every feature row; the only way out
+// of the browser is buildFreeTextAnswers(), which a submission has to ask for
+// on purpose. Blank is recorded as unknown, never as "no discomfort" -- the
+// same rule as 不確定 elsewhere.
+const LONGTEXT_DEFAULT_MAX_LENGTH = 500;
+const longTextQuestionIds = new Set(
+  questions.filter((question) => question.type === "longtext").map((question) => question.id)
+);
 const canonicalAnswerQuestions = questions.filter(
   (question) => !question.isComposite
     && !question.excludeFromCanonicalContract
+    && !longTextQuestionIds.has(question.id)
     && !["consent_acknowledgement", "email"].includes(question.id)
 );
+
+function getLongTextMaxLength(question) {
+  const configured = Number(question?.maxLength);
+  return Number.isInteger(configured) && configured > 0 ? configured : LONGTEXT_DEFAULT_MAX_LENGTH;
+}
+
+// Same treatment on every path a value takes: CRLF folded to LF, control
+// characters other than newline dropped, tabs to spaces, runs of blank lines
+// capped at one, ends trimmed. Length is counted after normalizing, in UTF-16
+// units -- what the textarea's maxlength attribute counts too, so the counter
+// the respondent sees and the limit enforced here cannot disagree.
+function normalizeLongText(value) {
+  return String(value ?? "")
+    .replace(/\r\n?/gu, "\n")
+    .replace(/\t/gu, " ")
+    .replace(/[\u0000-\u0009\u000b-\u001f\u007f]/gu, "")
+    .replace(/\n{3,}/gu, "\n\n")
+    .trim();
+}
+
+function getLongTextValidationMessage(question, value) {
+  const normalized = normalizeLongText(value);
+  const maxLength = getLongTextMaxLength(question);
+  if (!normalized && question.required) {
+    return currentLang === "en" ? "Please enter your answer." : "請輸入您的回答。";
+  }
+  if (normalized.length > maxLength) {
+    return currentLang === "en"
+      ? `Please keep your answer within ${maxLength} characters.`
+      : `請將回答控制在 ${maxLength} 字以內。`;
+  }
+  return "";
+}
+
+function buildFreeTextAnswers() {
+  return questions
+    .filter((question) => longTextQuestionIds.has(question.id))
+    .map((question) => {
+      const applicable = !question.appliesIf || question.appliesIf(answers);
+      if (!applicable) return { question_id: question.id, status: "not_applicable", value: null };
+      const entry = answers[question.field];
+      const text = entry && entry.source !== "uncertain" ? normalizeLongText(entry.value) : "";
+      if (!text) return { question_id: question.id, status: "unknown", value: null };
+      return {
+        question_id: question.id,
+        status: "answered",
+        value: text.slice(0, getLongTextMaxLength(question))
+      };
+    });
+}
 
 const answers = {};
 let currentIndex = 0;
@@ -2044,6 +2211,41 @@ function renderQuickInput(question) {
     return;
   }
 
+  if (question.type === "longtext") {
+    const maxLength = getLongTextMaxLength(question);
+    const savedValue = answers[question.field]?.source === "uncertain" ? "" : answers[question.field]?.value;
+    const placeholder = questionCopy.placeholder || (currentLang === "en" ? "Please enter your answer" : "請輸入您的回答");
+    quickOptions.innerHTML = `
+      <div class="longtext-entry">
+        <textarea id="longTextInput" rows="5" maxlength="${maxLength}" placeholder="${escapeHtml(placeholder)}" aria-describedby="longTextCounter"></textarea>
+        <p class="longtext-counter" id="longTextCounter" aria-live="polite"></p>
+        <button class="secondary-action" id="saveLongTextBtn" type="button">${ui("saveContinue")}</button>
+      </div>
+    `;
+    const input = document.querySelector("#longTextInput");
+    const counter = document.querySelector("#longTextCounter");
+    // Set as a property, not inside the template: the respondent's own words
+    // never pass through innerHTML.
+    input.value = typeof savedValue === "string" ? savedValue : "";
+    const updateCounter = () => {
+      counter.textContent = currentLang === "en"
+        ? `${input.value.length} / ${maxLength} characters`
+        : `${input.value.length} / ${maxLength} 字`;
+    };
+    input.addEventListener("input", updateCounter);
+    updateCounter();
+    document.querySelector("#saveLongTextBtn").addEventListener("click", () => {
+      const validationMessage = getLongTextValidationMessage(question, input.value);
+      if (validationMessage) {
+        showInlineNotice(validationMessage);
+        return;
+      }
+      const value = normalizeLongText(input.value);
+      saveAnswer(value, value ? "longtext_input" : "longtext_blank");
+    });
+    return;
+  }
+
   if (question.type === "text") {
     freeText.placeholder = questionCopy.placeholder || (currentLang === "en" ? "Please enter your answer" : "請輸入您的回答");
     llmDraft = null;
@@ -2082,6 +2284,11 @@ function renderQuickInput(question) {
 
   if (question.type === "diet-matrix") {
     renderDietMatrix(question);
+    return;
+  }
+
+  if (question.type === "grouped-matrix") {
+    renderGroupedMatrix(question);
     return;
   }
 
@@ -2246,6 +2453,72 @@ function renderFrequencyMatrix(question) {
   });
 }
 
+// A matrix whose rows come and go with earlier answers, laid out as one card
+// per group (here: one per chronic condition the respondent checked), each card
+// holding that group's questions as radio rows. Cards rather than a table
+// because each row has up to five choices and the page has to work on a phone.
+// Only rows whose own appliesIf passes are shown or required; a row that no
+// longer applies (the condition was unchecked after answering) is dropped from
+// the answer store on save, so a stale answer cannot ride along.
+function getApplicableCompositeRows(question) {
+  return getCompositeRows(question).filter((row) => !row.appliesIf || row.appliesIf(answers));
+}
+
+function renderGroupedMatrix(question) {
+  const rows = getApplicableCompositeRows(question);
+  const groups = [];
+  rows.forEach((row) => {
+    let group = groups.find((item) => item.key === row.matrixGroup);
+    if (!group) {
+      group = { key: row.matrixGroup, label: currentLang === "en" ? row.matrixGroupLabelEn : row.matrixGroupLabel, rows: [] };
+      groups.push(group);
+    }
+    group.rows.push(row);
+  });
+  quickOptions.innerHTML = `
+    <div class="grouped-matrix" role="group" aria-label="${escapeHtml(getQuestionCopy(question).title)}">
+      ${groups.map((group) => `
+        <section class="grouped-matrix__group" aria-labelledby="grouped-matrix-${group.key}">
+          <h3 id="grouped-matrix-${group.key}">${escapeHtml(group.label)}</h3>
+          ${group.rows.map((row) => `
+            <div class="grouped-matrix__row" data-matrix-row="${row.id}" role="radiogroup" aria-labelledby="grouped-matrix-label-${row.id}">
+              <span class="grouped-matrix__label" id="grouped-matrix-label-${row.id}">${escapeHtml(currentLang === "en" ? row.matrixColumnLabelEn : row.matrixColumnLabel)}</span>
+              <div class="grouped-matrix__choices">
+                ${row.options.map((option) => {
+                  const checked = getAnswerValue(answers, row.field) === option;
+                  return `<label class="matrix-choice"><input type="radio" name="matrix-${row.id}" value="${escapeHtml(option)}"${checked ? " checked" : ""}><span>${escapeHtml(tx(option))}</span></label>`;
+                }).join("")}
+              </div>
+            </div>
+          `).join("")}
+        </section>
+      `).join("")}
+    </div>
+    <button class="secondary-action matrix-save" id="saveGroupedMatrixBtn" type="button">${ui("saveContinue")}</button>
+  `;
+  document.querySelector("#saveGroupedMatrixBtn").addEventListener("click", () => {
+    const selections = rows.map((row) => quickOptions.querySelector(`input[name="matrix-${row.id}"]:checked`)?.value);
+    if (selections.some((value) => !value)) {
+      showInlineNotice(currentLang === "en" ? "Please answer every row before continuing." : "請完成每一列後再繼續。");
+      return;
+    }
+    saveGroupedMatrixAnswers(question, selections, "matrix_choice");
+    finishCompositeQuestion(question);
+  });
+}
+
+// Pure (no DOM), so tests can drive it: writes one answer per applicable row
+// and removes answers left on rows that no longer apply.
+function saveGroupedMatrixAnswers(question, selections, source) {
+  const applicable = getApplicableCompositeRows(question);
+  getCompositeRows(question).forEach((row) => {
+    if (!applicable.includes(row)) delete answers[row.field];
+  });
+  applicable.forEach((row, index) => {
+    answers[row.field] = makeAnswerEntry(row, selections[index], source);
+  });
+}
+
 function renderDietMatrix(question) {
   const groups = getCompositeRows(question);
   quickOptions.innerHTML = `
@@ -2402,15 +2675,21 @@ function renderConfirmation() {
       </div>
       <div class="analysis-use-note">
         <strong>${currentLang === "en" ? "How your information will be used" : "送出後如何整理資料"}</strong>
-        <p>${currentLang === "en"
+        <p>${QUESTIONNAIRE_MODE === "intake"
+          ? (currentLang === "en"
+            ? "After submission, the information on this page will be kept as research data. No personal report is produced or sent."
+            : "送出後，本頁資料將作為研究資料保存，不會產生或寄送個人報告。")
+          : currentLang === "en"
           ? "After submission, the information listed on this page will be converted into structured health risk factors and used to create a personalized summary with the ten-cancer models. The service does not use this information to determine whether you have cancer."
           : "送出後，系統會將本頁資料轉換為結構化健康風險因子，並使用十大癌症模型產生個人化摘要。本服務不會依據這些資料判斷您是否罹患癌症。"}</p>
       </div>
       <div class="answer-review-list">
-        ${Object.values(answers).map((entry) => `
+        ${Object.values(answers).filter((entry) => !isInapplicableIntakeEntry(entry)).map((entry) => `
           <div class="answer-review-item">
             <b>${getEntryDisplayLabel(entry)}</b>
-            <span>${formatDisplayValue(entry.value)}</span>
+            ${longTextQuestionIds.has(entry.question_id)
+              ? `<span class="answer-review-longtext">${normalizeLongText(entry.value) ? escapeHtml(normalizeLongText(entry.value)) : ui("notFilled")}</span>`
+              : `<span>${formatDisplayValue(entry.value)}</span>`}
           </div>
         `).join("")}
       </div>
@@ -2445,6 +2724,8 @@ function calculateAge() {
 }
 
 function validateContactEmail() {
+  // Intake asks for no Email and sends no report.
+  if (QUESTIONNAIRE_MODE === "intake") return "";
   const email = String(getAnswerValue(answers, "contact.email") || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return currentLang === "en"
@@ -2706,11 +2987,23 @@ function checkOptimizedFeatureRow(row) {
   return messages;
 }
 
+// An intake-only answer whose question no longer applies -- the respondent
+// answered a chronic-condition follow-up, then went back and unchecked the
+// condition. answer_code_rows already reports it as not_applicable; this keeps
+// it out of `rows` and the confirmation page as well. Limited to intakeOnly
+// questions on purpose: the questionnaire on sale keeps its existing behavior.
+function isInapplicableIntakeEntry(entry) {
+  const question = questions.find((item) => item.id === entry.question_id);
+  return Boolean(question?.intakeOnly && question.appliesIf && !question.appliesIf(answers));
+}
+
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
   return Object.values(answers)
     .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field)
-      && !["full_name", "email"].includes(entry.question_id))
+      && !["full_name", "email"].includes(entry.question_id)
+      && !longTextQuestionIds.has(entry.question_id)
+      && !isInapplicableIntakeEntry(entry))
     .map((entry) => ({
     submitted_at: submittedAt,
     question_id: entry.question_id,
@@ -3091,6 +3384,30 @@ function buildContactRow(optimizedFeatureRow, submittedAt) {
   };
 }
 
+// The research-intake submission (lib/intake-contract.js has the full
+// description and the server-side check). Much smaller than the sale one: no
+// name, no Email, no feature rows, no report fields -- the coded answers, the
+// free text kept apart from them, and the consent record. record_id is not
+// sent: the server assigns it.
+const INTAKE_CONTRACT_VERSION = "intake-submission/1.0.0";
+
+function buildIntakeSubmission() {
+  const submittedAt = new Date().toISOString();
+  const submission = {
+    contract_version: INTAKE_CONTRACT_VERSION,
+    questionnaire_version: SUBMISSION_VERSIONS.questionnaire_version,
+    consent_version: SUBMISSION_VERSIONS.consent_version,
+    answer_code_schema_version: SUBMISSION_VERSIONS.answer_code_schema_version,
+    submitted_at: submittedAt,
+    language: currentLang,
+    consent_record: buildConsentRecord(submittedAt),
+    answer_code_rows: buildAnswerCodeRows(),
+    free_text_answers: buildFreeTextAnswers()
+  };
+  if (typeof window !== "undefined") window.latestSubmission = submission;
+  return submission;
+}
+
 function storeSubmissionForIntegration() {
   const submittedAt = new Date().toISOString();
   const rows = buildSubmissionRows();
@@ -3234,13 +3551,24 @@ function buildSubmitErrorMessage(responsePayload, status, lang) {
       : `已超過 ${hours} 小時的填答時間限制，這次的作答並未送出。請重新整理頁面後再次填答。`;
   }
 
+  // The server refuses research-intake answers until their own destination
+  // exists (server.js, receiveSubmission). Trying again cannot help, so the
+  // message does not suggest it.
+  if (responsePayload && responsePayload.code === "intake_submission_not_configured") {
+    return lang === "en"
+      ? "Submitting this research questionnaire is not open yet, so these answers were not sent. Please let the research staff know."
+      : "本研究問卷目前尚未開放送出，這次的作答並未送出。請告知研究人員。";
+  }
+
   return lang === "en"
     ? `Submission failed (reference ${status}). Please try again or contact support.`
     : `資料送出失敗（參考代碼 ${status}），請再試一次或聯繫服務人員。`;
 }
 
 async function submitSubmission(submission) {
-  validateSubmissionBeforeSend(submission);
+  // The sale payload is checked here against its frozen vectors. The intake
+  // payload has none of those; the server checks it in full.
+  if (submission.contract_version !== INTAKE_CONTRACT_VERSION) validateSubmissionBeforeSend(submission);
   const response = await fetch(SUBMISSION_ENDPOINT, {
     method: "POST",
     headers: {
@@ -3289,7 +3617,7 @@ async function renderResult() {
     showSubmitError(measurementError);
     return;
   }
-  const submission = storeSubmissionForIntegration();
+  const submission = QUESTIONNAIRE_MODE === "intake" ? buildIntakeSubmission() : storeSubmissionForIntegration();
   const runButton = document.querySelector("#runModelBtn");
   if (runButton) {
     runButton.disabled = true;
@@ -3330,6 +3658,7 @@ async function renderResult() {
     : (currentLang === "en"
       ? `Your submission was received. The report will be sent to ${submission.email} after processing.`
       : `本次健康探索已收件，報告處理完成後將寄送至 ${submission.email}。`);
+  const intakeResult = QUESTIONNAIRE_MODE === "intake";
   const resultSecondaryNote = storedLocallyOnly
     ? (currentLang === "en"
       ? "The local AI model and email service have not finished migration, so this submission will not generate an email report yet."
@@ -3345,15 +3674,22 @@ async function renderResult() {
   `).join("");
   sectionTitle.textContent = currentLang === "en" ? i18n.en.ui.completedSection : "完成送出";
   sectionSummary.textContent = currentLang === "en" ? i18n.en.ui.completedSummary : "感謝您的填答。";
-  guideMessage.textContent = resultGuide;
+  guideMessage.textContent = intakeResult
+    ? (currentLang === "en" ? "Your answers were submitted. Thank you for taking part in this study." : "您的填答已送出，感謝您參與本研究。")
+    : resultGuide;
 
   questionArea.innerHTML = `
     <div class="result-panel">
       <p class="eyebrow">${currentLang === "en" ? i18n.en.ui.completedSection : "已完成"}</p>
       <h2 class="question-title">${currentLang === "en" ? i18n.en.ui.completedTitle : "感謝您的填答"}</h2>
-      <p class="question-note">${resultPrimaryNote}</p>
-      <p class="question-note">${resultSecondaryNote}</p>
+      <p class="question-note">${intakeResult
+        ? (currentLang === "en" ? `Your answers were received. Reference: ${escapeHtml(referenceId)}.` : `您的填答已收件，參考編號：${escapeHtml(referenceId)}。`)
+        : resultPrimaryNote}</p>
+      <p class="question-note">${intakeResult
+        ? (currentLang === "en" ? "This research questionnaire does not produce or send a personal report." : "本研究問卷不會產生或寄送個人報告。")
+        : resultSecondaryNote}</p>
       <button class="text-link result-info-link" type="button" data-open-service-info>${currentLang === "en" ? i18n.en.ui.completedServiceInfo : "了解報告內容與服務限制"}</button>
+      ${intakeResult ? "" /* the intake payload has none of these sale rows */ : `
       <script type="application/json" id="submissionRowsJson">${safeJsonForHtml(submission.rows)}</script>
       <script type="application/json" id="structuredFeaturesJson">${safeJsonForHtml({
         schema_version: "10Cancer_AI_structure_data_v1_compatible",
@@ -3367,6 +3703,7 @@ async function renderResult() {
         research_row: submission.research_feature_row,
         data_quality: submission.data_quality
       })}</script>
+      `}
     </div>
   `;
   inputZone.hidden = true;
@@ -3460,6 +3797,11 @@ backBtn.addEventListener("click", () => {
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
   if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type)) return;
+  if (question?.type === "grouped-matrix") {
+    saveGroupedMatrixAnswers(question, getApplicableCompositeRows(question).map(() => "不確定"), "uncertain");
+    finishCompositeQuestion(question);
+    return;
+  }
   if (question?.isComposite) {
     getCompositeRows(question).forEach((row) => {
       answers[row.field] = makeAnswerEntry(row, "不確定", "uncertain");

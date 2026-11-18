@@ -302,3 +302,56 @@ const derivedParents = {
 | 觸發判斷 | `app.js`，`getRuleParentState`／`isRuleParentPositive` |
 | 動態文字／動態選項能力（新增） | `app.js`，`getQuestionCopy`（dynamicTitle）、單選題渲染處（filterOptions） |
 | 答案→規則欄位對應 | `app.js`，`buildRuleInputRow` |
+
+---
+
+## 六、收案版問卷（research intake，2026-11-18 新增）
+
+> 本節只說明收案版。上方第一～五節的版本號與題數（v19.5、79 題）已過期，現行販售版為
+> `questionnaire/2026-11-16-v19.14-phase1`；該部分待另行全面更新。
+
+### 6.1 哪份問卷由入口決定
+
+- `app.js` 頂端的 `QUESTIONNAIRE_MODE` 只有 `"sale"`（販售版）與 `"intake"`（收案版）兩種值；
+  只有頁面明確設定 `EG_QUESTIONNAIRE_MODE = "intake"` 才是收案版，其餘一律是販售版。
+- 這個值由伺服器寫進頁面：入口代碼若列在環境變數 `INTAKE_ENTRANCES`，兌換時研究代號
+  （`stu`）會封入已簽章的 session cookie，之後送出的 `index.html` 才帶收案模式
+  （`lib/questionnaire-mode.js`）。瀏覽器無法自行切換。
+- 收案 session 開啟 `/chat.html` 會被導回表單（對話版只有販售版題目）。
+
+### 6.2 收案版與販售版的差異
+
+| 項目 | 販售版 | 收案版 |
+|---|---|---|
+| `questionnaire_version` | `…-v19.14-phase1` | `questionnaire/2026-11-18-v19.14-intake1` |
+| 姓名 `full_name`、Email `email` | 有 | 無 |
+| 慢性病追問表 `chronic_followup_matrix` | 無 | 有（6.3） |
+| 最後一題 | Email | 開放性文字題 `intake_recent_discomfort`（6.4） |
+| 最後一個章節 | `contact` 聯絡資料 | `closing` 其他補充 |
+| 代碼目錄 | `contracts/v1/answer-code-manifest.json`（93 題／91 列） | `contracts/intake/answer-code-manifest.json`（123 題／121 列） |
+| 報告 | 產生並寄送 | 不產生、不寄送 |
+
+收案版代碼目錄用 `npm run generate:answer-codes:intake` 產生；`test-contract.js` 會檢查它與
+`app.js` 同步。
+
+### 6.3 慢性病追問表
+
+- `chronic_conditions` 勾選的每一項疾病（14 項慢性病＋「其他慢性疾病」）各問兩格：
+  - `chronic_care_<key>`：是否已就診（是／否／不確定）
+  - `chronic_last_episode_<key>`：最近一次發病距今（1 個月內／1–6 個月／6–12 個月／1 年以上／不確定）
+- 畫面上是一題（題型 `grouped-matrix`），每個勾選的疾病一張卡片；底層每格仍是獨立單選題
+  （`displayInComposite: true`），沿用 `mental_frequency_matrix` 的模式，所以每格都有凍結代碼。
+- 沒勾的疾病：`not_applicable`；選「不確定」或略過：`unknown`。
+- 使用者回頭取消勾選後，殘留的追問答案不會進 `rows`、不會出現在確認頁（`isInapplicableIntakeEntry`）；
+  重新存這一頁時直接刪除。
+- 判斷「有沒有勾」用的關鍵字與 `buildOptimizedFeatureRow` 的 `chronic_*` 推導相同；
+  `chronic_*` 推導本身沒有改動，追問答案不進 `ai_api_feature_row`。
+- 放在 `liver_disease_etiology` 之後。
+
+### 6.4 開放性文字題（題型 `longtext`）
+
+- 選填，上限 500 字（`maxLength`），可留白；留白、略過、未作答一律記為 `unknown`，不視為「沒有不適」。
+- 文字經 `normalizeLongText` 正規化（換行統一、移除控制字元、去頭尾空白）。
+- **不進** `answer_code_rows`、`rows`、任何 `*_feature_row`；唯一出口是 `buildFreeTextAnswers()`，
+  在送出資料中放在獨立的 `free_text_answers`。
+- 對話版 AI 分類器拒收此題型（`lib/chat-classify.js`），自由文字不送往模型。

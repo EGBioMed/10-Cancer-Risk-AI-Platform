@@ -6,13 +6,21 @@ const { getOptionCode } = answerCodeApi;
 
 const root = path.resolve(__dirname, "..");
 const appPath = path.join(root, "app.js");
-const outputPath = path.join(root, "contracts", "v1", "answer-code-manifest.json");
+// --mode intake writes the research-intake questionnaire's own list; the default
+// is the questionnaire on sale, at the path it has always had.
+const modeFlag = process.argv.indexOf("--mode");
+const mode = modeFlag >= 0 ? process.argv[modeFlag + 1] : "sale";
+if (!["sale", "intake"].includes(mode)) throw new Error(`Unknown --mode ${mode}; expected sale or intake.`);
+const outputPath = mode === "intake"
+  ? path.join(root, "contracts", "intake", "answer-code-manifest.json")
+  : path.join(root, "contracts", "v1", "answer-code-manifest.json");
 const source = fs.readFileSync(appPath, "utf8");
 const cutoff = source.indexOf("const answers = {};");
 
 if (cutoff < 0) throw new Error("Could not locate the questionnaire definition boundary in app.js.");
 
 const sandbox = { EGAnswerCodes: answerCodeApi };
+if (mode === "intake") sandbox.EG_QUESTIONNAIRE_MODE = "intake";
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
 globalThis.__manifestSource = {
@@ -48,7 +56,11 @@ const manifestQuestions = questions.filter(
     question_id: question.id,
     field: question.field,
     module: question.module,
+    // "free_text" (type: "longtext") is listed so the catalogue is complete,
+    // but it never appears in answer_code_rows -- see buildFreeTextAnswers in
+    // app.js. "string" is the email/name kind, which stays as it was.
     answer_type: question.type === "number" ? "number"
+      : question.type === "longtext" ? "free_text"
       : question.type === "email" || question.type === "text" ? "string"
         : question.type === "multi" ? "code_array" : "code",
     required_when_applicable: question.required === true,
@@ -63,6 +75,7 @@ const manifestQuestions = questions.filter(
       label_en: englishOption(option)
     }));
   }
+  if (question.type === "longtext") item.max_length = Number.isInteger(question.maxLength) && question.maxLength > 0 ? question.maxLength : 500;
   if (numberConstraints[question.id]) item.number_constraints = numberConstraints[question.id];
   if (question.repeatCount) item.number_constraints = { minimum: 1, maximum: 9, integer: true };
   if (question.intervalDays) item.number_constraints = { minimum: 1, maximum: 180, integer: true, unit: "days" };
@@ -92,7 +105,7 @@ const manifest = {
   status_values: ["answered", "unknown", "not_applicable"],
   display_labels_are_data_values: false,
   question_count: manifestQuestions.length,
-  canonical_answer_question_count: manifestQuestions.filter((question) => !["consent_acknowledgement", "email"].includes(question.question_id)).length,
+  canonical_answer_question_count: manifestQuestions.filter((question) => question.answer_type !== "free_text" && !["consent_acknowledgement", "email"].includes(question.question_id)).length,
   code_policy: {
     symptom_positive_options: "use the symptom feature column name",
     universal_codes: ["yes", "no", "none", "unknown"],
@@ -104,6 +117,15 @@ const manifest = {
   questions: manifestQuestions
 };
 
-fs.writeFileSync(outputPath, `${JSON.stringify(manifest, null, 2)}\n`);
+// Written only when the content changed, and atomically (temp file, then
+// rename): the test suite runs files in parallel and reruns this generator to
+// check freshness, so another test may be reading this file at that moment --
+// a plain rewrite let it read a half-written file.
+const content = `${JSON.stringify(manifest, null, 2)}\n`;
+if (!fs.existsSync(outputPath) || fs.readFileSync(outputPath, "utf8") !== content) {
+  const temp = `${outputPath}.tmp-${process.pid}`;
+  fs.writeFileSync(temp, content);
+  fs.renameSync(temp, outputPath);
+}
 console.log(`Wrote ${outputPath}`);
 console.log(`Questions: ${manifest.question_count}; canonical answers: ${manifest.canonical_answer_question_count}`);

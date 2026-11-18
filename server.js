@@ -50,6 +50,15 @@ const {
   recipientForInstitution,
   applyReportRecipient
 } = require("./lib/report-recipients");
+const {
+  QUESTIONNAIRE_MODES,
+  parseIntakeEntrances,
+  intakeStudyForEntrance,
+  intakeStudyForSession,
+  questionnaireModeForSession,
+  applyQuestionnaireMode
+} = require("./lib/questionnaire-mode");
+const { validateIntakeSubmission, buildIntakeFlowPayload } = require("./lib/intake-contract");
 const { createAnthropicClassifier, DEFAULT_MODEL, DEFAULT_EFFORT } = require("./lib/classifier");
 // 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
 const { buildApiSymptoms } = require("./api-symptoms");
@@ -183,6 +192,24 @@ setInterval(() => ssoLimiter.sweep(), 30 * 60 * 1000).unref();
 const reportRecipients = parseReportRecipients(process.env.INSTITUTION_REPORT_RECIPIENTS);
 for (const problem of reportRecipients.problems) {
   console.error("INSTITUTION_REPORT_RECIPIENTS: " + problem);
+}
+
+// Which entrances open the research-intake questionnaire (lib/questionnaire-mode.js).
+const intakeEntrances = parseIntakeEntrances(process.env.INTAKE_ENTRANCES);
+// Where intake submissions go: the intake flow's own HTTP trigger, never one of
+// the report flows above. Unset means intake submissions are refused.
+// A report flow's URL pasted here by mistake would mail intake answers as if
+// they were a paid report; it is refused, so intake fails closed instead.
+const INTAKE_POWER_AUTOMATE_WEBHOOK_URL = (() => {
+  const configured = String(process.env.INTAKE_POWER_AUTOMATE_WEBHOOK_URL || "").trim();
+  if (configured && [POWER_AUTOMATE_WEBHOOK_URL, POWER_AUTOMATE_WEBHOOK_URL_PUBLIC].includes(configured)) {
+    console.error("INTAKE_POWER_AUTOMATE_WEBHOOK_URL is the same as a report flow's webhook; intake submissions stay refused.");
+    return "";
+  }
+  return configured;
+})();
+for (const problem of intakeEntrances.problems) {
+  console.error("INTAKE_ENTRANCES: " + problem);
 }
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || "";
@@ -464,6 +491,30 @@ function getValidSubmissionFullName(submission) {
 }
 
 async function receiveSubmission(req, res, sessionPayload) {
+  // A research-intake session's answers go to the intake flow and nowhere
+  // else (receiveIntakeSubmission below). Until INTAKE_POWER_AUTOMATE_WEBHOOK_URL
+  // is set they have nowhere to go at all, for these reasons: the intake
+  // questionnaire has no Email, carries free text and extra coded rows, and
+  // the deployed Power Automate flow requires an Email and rejects unknown
+  // fields -- and it is also the flow that mails reports, which intake must
+  // never trigger. So without the intake flow, an intake session's submission
+  // is refused here, before the body is read, and goes nowhere: not to Power
+  // Automate, not to Postgres. The respondent is told plainly (app.js,
+  // buildSubmitErrorMessage).
+  const intakeStudy = intakeStudyForSession(intakeEntrances, sessionPayload);
+  if (intakeStudy) {
+    if (!INTAKE_POWER_AUTOMATE_WEBHOOK_URL) {
+      console.warn(`Intake submission refused: no intake destination configured (study ${intakeStudy.slug}).`);
+      sendJson(res, 503, {
+        ok: false,
+        code: "intake_submission_not_configured",
+        error: "Research-intake submissions are not being accepted yet."
+      });
+      return;
+    }
+    await receiveIntakeSubmission(req, res, sessionPayload, intakeStudy);
+    return;
+  }
   if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
     sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
     return;
@@ -651,9 +702,67 @@ async function receiveSubmission(req, res, sessionPayload) {
   }
 }
 
+// An intake session's submission: checked in full against the intake contract
+// (lib/intake-contract.js), given a server-generated record_id, and forwarded
+// to the intake flow only. It never reaches Postgres, the report flows, or the
+// sale contract checks, and its contents are never logged.
+async function receiveIntakeSubmission(req, res, sessionPayload, intakeStudy) {
+  if (!String(req.headers["content-type"] || "").toLowerCase().startsWith("application/json")) {
+    sendJson(res, 415, { ok: false, error: "Content-Type must be application/json." });
+    return;
+  }
+  let submission;
+  try {
+    submission = JSON.parse(await readRequestBody(req));
+  } catch (error) {
+    sendJson(res, 400, { ok: false, error: "Invalid JSON payload." });
+    return;
+  }
+  const contractErrors = validateIntakeSubmission(submission);
+  if (contractErrors.length > 0) {
+    sendJson(res, 422, {
+      ok: false,
+      error: "Submission does not match the intake contract.",
+      details: contractErrors.slice(0, 20)
+    });
+    return;
+  }
+  const payload = buildIntakeFlowPayload(submission, { study: intakeStudy.slug, recordId: crypto.randomUUID() });
+  try {
+    const response = await fetch(INTAKE_POWER_AUTOMATE_WEBHOOK_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+    if (!response.ok) {
+      console.error(`Intake flow rejected a submission: HTTP ${response.status} (study ${intakeStudy.slug}).`);
+      sendJson(res, 502, { ok: false, error: "The intake flow rejected the submission.", status: response.status });
+      return;
+    }
+  } catch (error) {
+    console.error(`Could not reach the intake flow (study ${intakeStudy.slug}).`);
+    sendJson(res, 502, { ok: false, error: "Could not forward submission." });
+    return;
+  }
+  sendJson(res, 200, {
+    ok: true,
+    record_id: payload.record_id,
+    storage: "intake_power_automate",
+    processing_status: "forwarded",
+    report_status: "none"
+  }, consumeSessionAndGetClearHeaders(sessionPayload));
+}
+
 function serveStatic(req, res) {
   const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(requestUrl.pathname);
+  // The conversational page asks the questionnaire on sale and has no intake
+  // version; an intake session sent there would answer the wrong questions,
+  // then be refused at submit. It goes to the form instead.
+  if (pathname === "/chat.html" && intakeStudyForSession(intakeEntrances, getSessionPayload(req))) {
+    redirectToHome(res);
+    return;
+  }
   const safePath = pathname === "/" ? "/index.html" : pathname;
   const filePath = path.normalize(path.join(PUBLIC_DIR, safePath));
 
@@ -683,8 +792,19 @@ function serveStatic(req, res) {
       // first thing they see. no-store above is what makes this safe to vary
       // per session -- a cached copy would hand one partner's page to the next
       // visitor.
+      const sessionPayload = getSessionPayload(req);
       const html = appAssets.applyTo(fs.readFileSync(filePath, "utf8"));
-      res.end(applyInstitutionBranding(html, brandForSession(getSessionPayload(req))));
+      // The questionnaire this session gets, written into the page before any
+      // script runs. Same no-store reasoning as the brand: it varies per
+      // session. Only index.html carries the questionnaire form; every other
+      // page is served unchanged.
+      const questionnaireMode = path.basename(filePath) === "index.html"
+        ? questionnaireModeForSession(intakeEntrances, sessionPayload)
+        : QUESTIONNAIRE_MODES.SALE;
+      res.end(applyQuestionnaireMode(
+        applyInstitutionBranding(html, brandForSession(sessionPayload)),
+        questionnaireMode
+      ));
       return;
     }
     fs.createReadStream(filePath).pipe(res);
@@ -779,8 +899,12 @@ function buildAccessSessionCookie(result, code = null) {
   // questions: Numia is co-branded and sends reports to each participant,
   // 雙和 is unbranded and sends them to the hospital.
   const brd = brandForEntrance(institutionBranding, { code, grantId });
+  // And which questionnaire: on sale, or a research-intake study's. Sealed
+  // for the same reason as the rest -- the page and the submission handler
+  // both read it from here, never from the browser.
+  const stu = intakeStudyForEntrance(intakeEntrances, { code, grantId });
   const cookieValue = signSessionCookie(
-    { grantId, mode, inst, brd, sid, exp: expiresAtSeconds },
+    { grantId, mode, inst, brd, stu, sid, exp: expiresAtSeconds },
     ACCESS_GATE_SESSION_SECRET
   );
   return buildCookieHeader(SESSION_COOKIE_NAME, cookieValue, {
@@ -1180,6 +1304,10 @@ const server = http.createServer(async (req, res) => {
       database_ready: REQUIRES_POSTGRES ? databaseReady : undefined,
       access_gate_backend: ACCESS_GATE_MODE === "enforced" ? ACCESS_GATE_BACKEND : undefined,
       access_gate_ready: ACCESS_GATE_MODE === "enforced" ? accessGateReadyNow : undefined,
+      // How many research-intake studies are configured; a count, never the
+      // codes. Zero is the normal state of the questionnaire on sale.
+      intake_studies_configured: intakeEntrances.studies.size,
+      intake_destination_configured: Boolean(INTAKE_POWER_AUTOMATE_WEBHOOK_URL),
       // Whether the free line has somewhere to go, and whether its payment
       // links can be signed. Booleans, never the values themselves.
       //
