@@ -457,9 +457,11 @@ function illustrationCreditHtml(options) {
 // Pictures under a question's own title (2026-11-17): the basic-information
 // questions, secondhand smoke, first-degree family (who counts as one), and
 // (2026-11-18) quit-smoking status, betel nut, cooking fumes, air pollution,
-// radiation, hormone medication, social support, and stress / sleep / low mood.
+// radiation, hormone medication, social support, stress / sleep / low mood,
+// and the Pap smear (anatomy and sampling brush only, no person).
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  pap_smear_timing: "assets/illustrations/pap-smear-history-anatomy.jpg",
   hormone_medication: "assets/illustrations/hormone-medication-history.jpg",
   // The three rows of the mood-and-sleep table carry theirs beside the row
   // label in the form, and under the title when the chat asks them one by one.
