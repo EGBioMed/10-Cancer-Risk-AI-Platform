@@ -14,6 +14,7 @@
     "generate:intake-flow-trigger-schema": "node scripts/generate-intake-flow-trigger-schema.js",
     "generate:questionnaire-review": "node scripts/generate-questionnaire-review.js",
     "generate:questionnaire-review-docx": "node scripts/build-questionnaire-review-docx.js",
+    "generate:clinician-review-docx": "node scripts/build-clinician-review-docx.js",
     "backup:local": "node scripts/backup-postgres.js",
     "export:research": "node scripts/export-postgres-data.js --dataset research --output local-exports/research.csv",
     "export:contacts": "node scripts/export-postgres-data.js --dataset contacts --output local-exports/contacts.csv",
