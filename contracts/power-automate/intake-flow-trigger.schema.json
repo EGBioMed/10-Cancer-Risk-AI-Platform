@@ -13,7 +13,7 @@
     "questionnaire_version": {
       "type": "string",
       "enum": [
-        "questionnaire/2026-11-18-v19.14-intake1"
+        "questionnaire/2026-11-18-v19.14-intake2"
       ]
     },
     "consent_version": {
@@ -631,6 +631,10 @@
         "family_self_types": {
           "type": "string",
           "description": "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "staff_diagnosis_basis": {
+          "type": "string",
+          "description": "【收案人員填寫】上述診斷的依據 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
         }
       },
       "required": [
@@ -642,7 +646,7 @@
     },
     "free_text_answers": {
       "type": "array",
-      "description": "Free-text questions: intake_recent_discomfort. value is a string or null.",
+      "description": "Free-text questions: intake_recent_discomfort, staff_diagnosis. value is a string or null.",
       "items": {
         "type": "object",
         "properties": {

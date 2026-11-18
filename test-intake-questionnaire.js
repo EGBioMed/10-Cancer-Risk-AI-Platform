@@ -25,9 +25,10 @@ test("intake asks for no name and no Email; the questionnaire on sale still asks
   assert(!app.questions.some((question) => String(question.field).startsWith("contact.")));
 });
 
-test("the last intake question is the optional free-text question, capped at 500 characters", () => {
+test("the respondent's last question is the optional free-text question, capped at 500 characters", () => {
   const app = intake();
-  const last = app.questions[app.questions.length - 1];
+  const respondentQuestions = app.questions.filter((question) => question.module !== "staff");
+  const last = respondentQuestions[respondentQuestions.length - 1];
   assert.equal(last.id, "intake_recent_discomfort");
   assert.equal(last.type, "longtext");
   assert.equal(last.required, false);
@@ -35,13 +36,29 @@ test("the last intake question is the optional free-text question, capped at 500
   assert.equal(last.title, "最近是否有任何身體不適？");
 });
 
+test("the research staff answer last: a free-text diagnosis, then its coded basis", () => {
+  const app = intake();
+  const [diagnosis, basis] = app.questions.slice(-2);
+  assert.equal(diagnosis.id, "staff_diagnosis");
+  assert.equal(diagnosis.type, "longtext");
+  assert.equal(diagnosis.required, true);
+  assert.equal(app.getLongTextMaxLength(diagnosis), 200);
+  assert.match(diagnosis.note, /將裝置交給收案人員/);
+  assert.equal(basis.id, "staff_diagnosis_basis");
+  assert.equal(basis.type, "single");
+  assert.deepEqual(Array.from(basis.options), ["病理確診", "影像或臨床診斷", "僅依病人口述", "尚未確診"]);
+  for (const question of [diagnosis, basis]) assert.equal(question.module, "staff");
+  // Neither exists in the questionnaire on sale.
+  assert(!loadApp().questions.some((question) => question.module === "staff"));
+});
+
 test("intake has its own questionnaire version; the version on sale is unchanged", () => {
   const saleManifest = require("./contracts/v1/answer-code-manifest.json");
   const intakeManifest = require("./contracts/intake/answer-code-manifest.json");
   assert.equal(saleManifest.questionnaire_version, "questionnaire/2026-11-16-v19.14-phase1");
-  assert.equal(intakeManifest.questionnaire_version, "questionnaire/2026-11-18-v19.14-intake1");
+  assert.equal(intakeManifest.questionnaire_version, "questionnaire/2026-11-18-v19.14-intake2");
   assert.equal(saleManifest.canonical_answer_question_count, 91);
-  assert.equal(intakeManifest.canonical_answer_question_count, 121);
+  assert.equal(intakeManifest.canonical_answer_question_count, 122);
 
   const freeText = intakeManifest.questions.find((question) => question.question_id === "intake_recent_discomfort");
   assert.equal(freeText.answer_type, "free_text");
@@ -49,10 +66,11 @@ test("intake has its own questionnaire version; the version on sale is unchanged
   assert(!intakeManifest.questions.some((question) => ["email", "full_name"].includes(question.question_id)));
 });
 
-test("intake's last section is not called contact details", () => {
+test("intake's last sections are not called contact details", () => {
   const app = intake();
-  const last = app.questions[app.questions.length - 1];
-  assert.equal(last.module, "closing");
+  const freeText = app.questions.find((question) => question.id === "intake_recent_discomfort");
+  assert.equal(freeText.module, "closing");
+  assert.equal(app.questions[app.questions.length - 1].module, "staff");
   // Both module lists are written in app.js; the intake one must not keep the
   // Email promise in its summary.
   assert.match(appSource, /\{ id: "closing", title: "其他補充"/);
@@ -93,14 +111,16 @@ test("a completed intake questionnaire builds a submission with no name or Email
   app.answers[freeText.field] = app.makeAnswerEntry(freeText, "最近兩週胃脹", "longtext_input");
 
   const submission = plain(app.storeSubmissionForIntegration());
-  assert.equal(submission.questionnaire_version, "questionnaire/2026-11-18-v19.14-intake1");
+  assert.equal(submission.questionnaire_version, "questionnaire/2026-11-18-v19.14-intake2");
   assert.equal(submission.email, "");
   assert.equal(submission.full_name, "");
-  assert.equal(submission.answer_code_rows.length, 121);
+  assert.equal(submission.answer_code_rows.length, 122);
   // The free text is still nowhere in the body: where it goes is decided with
   // the intake destination, not here.
   assert(!JSON.stringify(submission).includes("胃脹"));
   assert.deepEqual(plain(app.buildFreeTextAnswers()), [
-    { question_id: "intake_recent_discomfort", status: "answered", value: "最近兩週胃脹" }
+    { question_id: "intake_recent_discomfort", status: "answered", value: "最近兩週胃脹" },
+    // The staff diagnosis was not filled in this test: unknown, never a guess.
+    { question_id: "staff_diagnosis", status: "unknown", value: null }
   ]);
 });

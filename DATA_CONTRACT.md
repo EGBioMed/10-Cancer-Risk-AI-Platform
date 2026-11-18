@@ -390,13 +390,15 @@ session, and its `/api/submit` is handled by `receiveIntakeSubmission` in
 `contract_version` `intake-submission/1.0.0`. Exactly these fields; anything else
 (notably `email`, `full_name`, `record_id`, `rows`) is rejected:
 
-- `contract_version`, `questionnaire_version` (`questionnaire/2026-11-18-v19.14-intake1`),
+- `contract_version`, `questionnaire_version` (`questionnaire/2026-11-18-v19.14-intake2`),
   `consent_version`, `answer_code_schema_version`
 - `submitted_at`, `language` (`zh` | `en`)
 - `consent_record` (same shape as the sale contract)
-- `answer_code_rows`: 121 rows, frozen order of `contracts/intake/answer-code-manifest.json`
-- `free_text_answers`: one row per free-text question, `{question_id, status, value}`;
-  answered values are 1-500 characters with no control characters except newline
+- `answer_code_rows`: 122 rows, frozen order of `contracts/intake/answer-code-manifest.json`
+- `free_text_answers`: one row per free-text question, `{question_id, status, value}`, in
+  manifest order: the respondent's `intake_recent_discomfort` (up to 500 characters) and the
+  research staff's `staff_diagnosis` (up to 200). Answered values have no control characters
+  except newline. The staff's `staff_diagnosis_basis` is an ordinary coded row.
 
 Validated by `validateIntakeSubmission` in `lib/intake-contract.js`.
 

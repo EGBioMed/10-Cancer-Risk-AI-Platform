@@ -50,9 +50,11 @@ test("intake adds one table and two coded rows for each of the 15 conditions", (
   const sale = loadApp();
   const app = intakeApp();
   assert.equal(app.QUESTIONNAIRE_MODE, "intake");
-  // +31 for the table and its 30 cells, -2 for name and Email, +1 free text.
-  assert.equal(app.questions.length, sale.questions.length + 31 - 2 + 1);
-  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30);
+  // +31 for the table and its 30 cells, -2 for name and Email, +1 free text,
+  // +2 for the research staff's diagnosis and its basis.
+  assert.equal(app.questions.length, sale.questions.length + 31 - 2 + 1 + 2);
+  // +1: the staff's diagnosis basis is coded; the diagnosis itself is free text.
+  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 1);
 
   // Every chronic_conditions option except 以上皆無 has its pair of rows.
   const chronic = app.questions.find((item) => item.id === "chronic_conditions");

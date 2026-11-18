@@ -19,6 +19,7 @@ const {
 // INTAKE_POWER_AUTOMATE_WEBHOOK_URL.
 
 const FREE_TEXT = "最近兩週胃脹，0912-345-678";
+const STAFF_DIAGNOSIS = "大腸直腸癌";
 const plain = (value) => JSON.parse(JSON.stringify(value));
 
 function completedIntakeSubmission() {
@@ -42,6 +43,8 @@ function completedIntakeSubmission() {
   app.saveGroupedMatrixAnswers(matrix, ["是", "1 年以上", "不確定", "1–6 個月"], "matrix_choice");
   const freeText = app.questions.find((question) => question.id === "intake_recent_discomfort");
   app.answers[freeText.field] = app.makeAnswerEntry(freeText, FREE_TEXT, "longtext_input");
+  const diagnosis = app.questions.find((question) => question.id === "staff_diagnosis");
+  app.answers[diagnosis.field] = app.makeAnswerEntry(diagnosis, STAFF_DIAGNOSIS, "longtext_input");
   // The browser's JSON.stringify, then the server's JSON.parse.
   return plain(app.buildIntakeSubmission());
 }
@@ -53,7 +56,7 @@ function completedIntakeSubmission() {
 test("a completed intake questionnaire passes the intake contract", () => {
   const submission = completedIntakeSubmission();
   assert.deepEqual(validateIntakeSubmission(submission), []);
-  assert.equal(submission.answer_code_rows.length, 121);
+  assert.equal(submission.answer_code_rows.length, 122);
   assert.deepEqual(Object.keys(submission).sort(), [
     "answer_code_rows", "answer_code_schema_version", "consent_record", "consent_version",
     "contract_version", "free_text_answers", "language", "questionnaire_version", "submitted_at"
@@ -85,7 +88,8 @@ test("coded answers are checked against the intake code list", () => {
 
 test("free text: length, control characters and blank-as-answered are refused", () => {
   const base = completedIntakeSubmission();
-  const withText = (row) => ({ ...base, free_text_answers: [row] });
+  // Replaces the respondent's row and keeps the staff diagnosis row as built.
+  const withText = (row) => ({ ...base, free_text_answers: [row, base.free_text_answers[1]] });
   const id = "intake_recent_discomfort";
   assert(validateIntakeSubmission(withText({ question_id: id, status: "answered", value: "字".repeat(501) }))
     .some((error) => error.code === "too_long"));
@@ -135,6 +139,20 @@ test("the flow payload carries no name, no Email and no model features; free tex
   assert(!JSON.stringify(payload.research_row).includes("0912"), "free text leaked into research_row");
   assert(!JSON.stringify(payload.answer_code_rows).includes("0912"), "free text leaked into answer_code_rows");
   assert.equal(payload.free_text_answers[0].value, FREE_TEXT);
+});
+
+test("the staff diagnosis travels as free text, its basis as a coded research column", () => {
+  const payload = buildIntakeFlowPayload(completedIntakeSubmission(), { study: "study2026", recordId: "rec-1" });
+  assert.deepEqual(payload.free_text_answers[1], { question_id: "staff_diagnosis", status: "answered", value: STAFF_DIAGNOSIS });
+  assert.equal(payload.research_row.staff_diagnosis_basis, "staff_diagnosis_basis.option_01");
+  assert(!("staff_diagnosis" in payload.research_row), "the free-text diagnosis must not be a research_row column");
+  assert(!JSON.stringify(payload.answer_code_rows).includes(STAFF_DIAGNOSIS));
+});
+
+test("a staff diagnosis longer than 200 characters is refused", () => {
+  const submission = completedIntakeSubmission();
+  submission.free_text_answers[1] = { question_id: "staff_diagnosis", status: "answered", value: "癌".repeat(201) };
+  assert(validateIntakeSubmission(submission).some((error) => error.path === "$.free_text_answers[1].value" && error.code === "too_long"));
 });
 
 // ---------------------------------------------------------------------------

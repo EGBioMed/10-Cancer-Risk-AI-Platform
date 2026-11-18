@@ -19,7 +19,7 @@ const SUBMISSION_VERSIONS = Object.freeze({
   // (no name or Email, the chronic follow-up table, a free-text question) and
   // its own code list, contracts/intake/answer-code-manifest.json.
   questionnaire_version: QUESTIONNAIRE_MODE === "intake"
-    ? "questionnaire/2026-11-18-v19.14-intake1"
+    ? "questionnaire/2026-11-18-v19.14-intake2"
     : "questionnaire/2026-11-16-v19.14-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
@@ -48,6 +48,11 @@ const modules = [
   QUESTIONNAIRE_MODE === "intake"
     ? { id: "closing", title: "其他補充", summary: "最近身體狀況的補充說明（可留白）。" }
     : { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
+  // Intake only: the research staff's own page, filled after the respondent
+  // hands the device over.
+  ...(QUESTIONNAIRE_MODE === "intake"
+    ? [{ id: "staff", title: "收案人員填寫", summary: "由收案人員填寫診斷與診斷依據。" }]
+    : []),
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -1143,6 +1148,26 @@ const questions = [
       noteEn: "You may leave this blank. If so, briefly describe where and for about how long. Please do not include your name, phone number or anything else that identifies you.",
       placeholder: "例如：最近兩週容易胃脹。", placeholderEn: "For example: bloating for the past two weeks.",
       field: "intake.recent_discomfort"
+    },
+    // Filled by the research staff, not the respondent (2026-11-18): the
+    // diagnosis as free text -- so, like the question above, it never enters
+    // the coded rows or any feature row -- and how that diagnosis was
+    // established, as a coded single choice, so an analysis can keep only
+    // pathology-confirmed cases.
+    {
+      id: "staff_diagnosis", module: "staff", type: "longtext", required: true, maxLength: 200,
+      title: "【收案人員填寫】此受試者目前的診斷", titleEn: "[Research staff] This participant's current diagnosis",
+      note: "以下由收案人員填寫：受試者請到此停止，將裝置交給收案人員。請填寫目前的診斷（例如癌別）；若非癌症請寫明，尚未確定請填「待確認」。請不要填寫姓名、病歷號等可辨識身分的資料。",
+      noteEn: "To be completed by research staff: participants, please stop here and hand the device to the staff. Enter the current diagnosis (for example, the cancer type); state it if not cancer, or enter \"pending\" if not yet known. Do not enter names, medical record numbers or anything else that identifies the participant.",
+      placeholder: "例如：大腸直腸癌", placeholderEn: "For example: colorectal cancer",
+      field: "staff.diagnosis"
+    },
+    {
+      id: "staff_diagnosis_basis", module: "staff", type: "single", required: true,
+      title: "【收案人員填寫】上述診斷的依據", titleEn: "[Research staff] What the diagnosis above is based on",
+      note: "請選擇最接近的一項。", noteEn: "Choose the closest one.",
+      options: ["病理確診", "影像或臨床診斷", "僅依病人口述", "尚未確診"],
+      field: "staff.diagnosis_basis"
     }
   ])
 ];
@@ -1255,6 +1280,7 @@ const i18n = {
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
       contact: ["Contact Information", "Enter the email address for the report."],
       closing: ["Anything else", "A note on how you have been feeling recently (optional)."],
+      staff: ["Research staff", "Diagnosis and its basis, entered by the research staff."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -1352,6 +1378,7 @@ const i18n = {
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
+      "病理確診": "Confirmed by pathology", "影像或臨床診斷": "Imaging or clinical diagnosis", "僅依病人口述": "Reported by the participant only", "尚未確診": "Not yet confirmed",
       "1 個月內": "Within 1 month", "1–6 個月": "1-6 months ago", "6–12 個月": "6-12 months ago", "1 年以上": "Over 1 year ago",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",

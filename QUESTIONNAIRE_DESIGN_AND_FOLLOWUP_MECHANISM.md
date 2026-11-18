@@ -323,12 +323,13 @@ const derivedParents = {
 
 | 項目 | 販售版 | 收案版 |
 |---|---|---|
-| `questionnaire_version` | `…-v19.14-phase1` | `questionnaire/2026-11-18-v19.14-intake1` |
+| `questionnaire_version` | `…-v19.14-phase1` | `questionnaire/2026-11-18-v19.14-intake2` |
 | 姓名 `full_name`、Email `email` | 有 | 無 |
 | 慢性病追問表 `chronic_followup_matrix` | 無 | 有（6.3） |
-| 最後一題 | Email | 開放性文字題 `intake_recent_discomfort`（6.4） |
-| 最後一個章節 | `contact` 聯絡資料 | `closing` 其他補充 |
-| 代碼目錄 | `contracts/v1/answer-code-manifest.json`（93 題／91 列） | `contracts/intake/answer-code-manifest.json`（123 題／121 列） |
+| 受試者最後一題 | Email | 開放性文字題 `intake_recent_discomfort`（6.4） |
+| 收案人員填寫頁 | 無 | 診斷（文字）與診斷依據（6.5） |
+| 最後的章節 | `contact` 聯絡資料 | `closing` 其他補充、`staff` 收案人員填寫 |
+| 代碼目錄 | `contracts/v1/answer-code-manifest.json`（93 題／91 列） | `contracts/intake/answer-code-manifest.json`（125 題／122 列） |
 | 報告 | 產生並寄送 | 不產生、不寄送 |
 
 收案版代碼目錄用 `npm run generate:answer-codes:intake` 產生；`test-contract.js` 會檢查它與
@@ -355,3 +356,15 @@ const derivedParents = {
 - **不進** `answer_code_rows`、`rows`、任何 `*_feature_row`；唯一出口是 `buildFreeTextAnswers()`，
   在送出資料中放在獨立的 `free_text_answers`。
 - 對話版 AI 分類器拒收此題型（`lib/chat-classify.js`），自由文字不送往模型。
+
+### 6.5 收案人員填寫頁（`staff` 章節）
+
+受試者填完開放性文字題後，下一頁的說明請受試者停下、把裝置交給收案人員。以下兩題由收案人員填寫：
+
+- `staff_diagnosis`：此受試者目前的診斷，**文字填答**（題型 `longtext`，必填，上限 200 字）。
+  與 6.4 相同，不進代碼化資料、`research_row` 或任何特徵欄位，只放在 `free_text_answers`。
+  說明中提示：尚未確定請填「待確認」，不要填寫姓名、病歷號。
+- `staff_diagnosis_basis`：上述診斷的依據，代碼化單選：病理確診／影像或臨床診斷／僅依病人口述／尚未確診
+  （`staff_diagnosis_basis.option_01`～`04`）。分析時可以只取病理確診的資料。
+
+限制：這一頁在同一台裝置上，受試者看得到、也點得到；標註正確與否要靠現場流程把關。
