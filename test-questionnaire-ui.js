@@ -282,6 +282,6 @@ test("every question picture sits on a live question and its file exists", () =>
     assert(fs.existsSync(path.join(__dirname, src)), `${src} does not exist`);
     assert.equal(questionIllustrationFor(byId(id)), src);
   }
-  assert.equal(questionIllustrationFor(byId("email")), null);
+  assert.equal(questionIllustrationFor(byId("email")), "assets/illustrations/remaining-topics-08.jpg");
   assert.equal(questionIllustrationFor(undefined), null);
 });

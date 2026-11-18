@@ -411,6 +411,74 @@ const optionIllustrations = Object.freeze({
 // so a set keyed here never leaks into another question. (PSA history had a
 // set here; it was taken off on request the same day.)
 const questionOptionIllustrations = Object.freeze({
+  personal_cancer_types: Object.freeze({
+  "乳癌": "assets/illustrations/remaining-cancer-01.jpg",
+  "攝護腺癌": "assets/illustrations/remaining-cancer-02.jpg",
+  "肺癌": "assets/illustrations/remaining-cancer-03.jpg",
+  "頭頸癌": "assets/illustrations/remaining-cancer-04.jpg",
+  "胰臟癌": "assets/illustrations/remaining-cancer-05.jpg",
+  "肝癌": "assets/illustrations/remaining-cancer-06.jpg",
+  "大腸直腸癌": "assets/illustrations/remaining-cancer-07.jpg",
+  "胃癌": "assets/illustrations/remaining-cancer-08.jpg",
+  "子宮內膜癌": "assets/illustrations/remaining-cancer-09.jpg",
+  "膀胱癌": "assets/illustrations/remaining-cancer-10.jpg",
+  "腎癌": "assets/illustrations/remaining-cancer-11.jpg",
+  "其他癌種": "assets/illustrations/remaining-cancer-12.jpg"
+}),
+  family_self_types: Object.freeze({
+  "乳癌": "assets/illustrations/remaining-cancer-01.jpg",
+  "攝護腺癌": "assets/illustrations/remaining-cancer-02.jpg",
+  "肺癌": "assets/illustrations/remaining-cancer-03.jpg",
+  "頭頸癌": "assets/illustrations/remaining-cancer-04.jpg",
+  "胰臟癌": "assets/illustrations/remaining-cancer-05.jpg",
+  "肝癌": "assets/illustrations/remaining-cancer-06.jpg",
+  "大腸直腸癌": "assets/illustrations/remaining-cancer-07.jpg",
+  "胃癌": "assets/illustrations/remaining-cancer-08.jpg",
+  "子宮內膜癌": "assets/illustrations/remaining-cancer-09.jpg",
+  "膀胱癌": "assets/illustrations/remaining-cancer-10.jpg",
+  "腎癌": "assets/illustrations/remaining-cancer-11.jpg",
+  "其他癌種": "assets/illustrations/remaining-cancer-12.jpg"
+}),
+  chronic_conditions: Object.freeze({
+  "高血壓": "assets/illustrations/remaining-chronic-a-01.jpg",
+  "糖尿病／高血糖": "assets/illustrations/remaining-chronic-a-02.jpg",
+  "高血脂／高膽固醇": "assets/illustrations/remaining-chronic-a-03.jpg",
+  "肝病（B 型肝炎／C 型肝炎／肝硬化）": "assets/illustrations/remaining-chronic-a-04.jpg",
+  "胃食道逆流": "assets/illustrations/remaining-chronic-a-05.jpg",
+  "心臟病／心律不整": "assets/illustrations/remaining-chronic-a-06.jpg",
+  "甲狀腺疾病": "assets/illustrations/remaining-chronic-a-07.jpg",
+  "氣喘／慢性肺阻塞（COPD）": "assets/illustrations/remaining-chronic-a-08.jpg",
+  "痛風／高尿酸": "assets/illustrations/remaining-chronic-a-09.jpg",
+  "關節炎（含類風濕性）": "assets/illustrations/remaining-chronic-b-01.jpg",
+  "憂鬱症／焦慮症": "assets/illustrations/remaining-chronic-b-02.jpg",
+  "中風病史": "assets/illustrations/remaining-chronic-b-03.jpg",
+  "腎臟病／洗腎": "assets/illustrations/remaining-chronic-b-04.jpg",
+  "自體免疫疾病（乾燥症、紅斑性狼瘡等）": "assets/illustrations/remaining-chronic-b-05.jpg",
+  "其他慢性疾病": "assets/illustrations/remaining-chronic-b-06.jpg"
+}),
+  liver_disease_etiology: Object.freeze({
+  "B 型肝炎": "assets/illustrations/remaining-liver-events-01.jpg",
+  "C 型肝炎": "assets/illustrations/remaining-liver-events-02.jpg",
+  "肝硬化": "assets/illustrations/remaining-liver-events-03.jpg",
+  "代謝功能障礙相關脂肪性肝病（MASLD）": "assets/illustrations/remaining-liver-events-04.jpg",
+  "酒精性肝病": "assets/illustrations/remaining-liver-events-05.jpg",
+  "其他肝病": "assets/illustrations/remaining-liver-events-06.jpg"
+}),
+  vnext_diagnosed_conditions: Object.freeze({
+  "過去 12 個月內曾發生骨折": "assets/illustrations/remaining-liver-events-07.jpg",
+  "曾由醫師診斷深層靜脈栓塞或肺栓塞（DVT／PE）": "assets/illustrations/remaining-liver-events-08.jpg",
+  "曾由牙醫或醫師診斷口腔黏膜下纖維化": "assets/illustrations/remaining-liver-events-09.jpg",
+  "曾由醫師診斷慢性胰臟炎": "assets/illustrations/remaining-liver-events-10.jpg",
+  "曾由醫師診斷膽結石或膽道結石": "assets/illustrations/remaining-liver-events-11.jpg"
+}),
+  acute_pancreatitis_cause: Object.freeze({
+  "膽結石或膽道結石": "assets/illustrations/remaining-acute-causes-01.jpg",
+  "喝酒": "assets/illustrations/remaining-acute-causes-02.jpg",
+  "血中三酸甘油酯很高": "assets/illustrations/remaining-acute-causes-03.jpg",
+  "藥物引起": "assets/illustrations/remaining-acute-causes-04.jpg",
+  "其他原因": "assets/illustrations/remaining-acute-causes-05.jpg",
+  "醫師沒有說明，或找不到原因": "assets/illustrations/remaining-acute-causes-06.jpg"
+}),
   diet_type: Object.freeze({
     "一般飲食（平常會吃肉類或海鮮）": "assets/illustrations/diettype-omnivore.jpg",
     "蔬食為主（主要吃植物性食物，但仍會吃肉類或海鮮）": "assets/illustrations/diettype-mostly-plant.jpg",
@@ -463,6 +531,21 @@ function illustrationCreditHtml(options) {
 // encode no age or length).
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  pap_smear: "assets/illustrations/pap-smear-history-anatomy.jpg",
+  benign_gynae_disease: "assets/illustrations/remaining-topics-01.jpg",
+  personal_cancer: "assets/illustrations/remaining-topics-02.jpg",
+  psych_rumination: "assets/illustrations/remaining-topics-03.jpg",
+  psych_neuroticism_informant: "assets/illustrations/remaining-topics-04.jpg",
+  smoking_ever: "assets/illustrations/remaining-topics-05.jpg",
+  cooking_frequency: "assets/illustrations/remaining-topics-06.jpg",
+  consent_acknowledgement: "assets/illustrations/remaining-topics-07.jpg",
+  email: "assets/illustrations/remaining-topics-08.jpg",
+  acute_pancreatitis: "assets/illustrations/remaining-liver-events-12.jpg",
+  orchitis_epididymitis: "assets/illustrations/remaining-followup-01.jpg",
+  stool_loose_or_frequent: "assets/illustrations/remaining-followup-02.jpg",
+  appetite_loss_intake_effect: "assets/illustrations/remaining-followup-03.jpg",
+  early_satiety_intake_effect: "assets/illustrations/remaining-followup-03.jpg",
+  symptom_hn_lump_site: "assets/illustrations/remaining-followup-04.jpg",
   menarche_age: "assets/illustrations/menarche-history.jpg",
   menopause_status: "assets/illustrations/menopause-status.jpg",
   breastfeeding: "assets/illustrations/breastfeeding-history.jpg",
