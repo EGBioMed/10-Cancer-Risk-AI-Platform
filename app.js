@@ -458,9 +458,11 @@ function illustrationCreditHtml(options) {
 // questions, secondhand smoke, first-degree family (who counts as one), and
 // (2026-11-18) quit-smoking status, betel nut, cooking fumes, air pollution,
 // radiation, hormone medication, social support, stress / sleep / low mood,
-// and the Pap smear (anatomy and sampling brush only, no person).
+// the Pap smear (anatomy and sampling brush only, no person), and first
+// pregnancy (a topic picture; it encodes no age).
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  first_pregnancy_age: "assets/illustrations/first-pregnancy-history.jpg",
   pap_smear_timing: "assets/illustrations/pap-smear-history-anatomy.jpg",
   hormone_medication: "assets/illustrations/hormone-medication-history.jpg",
   // The three rows of the mood-and-sleep table carry theirs beside the row
