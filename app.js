@@ -459,9 +459,12 @@ function illustrationCreditHtml(options) {
 // (2026-11-18) quit-smoking status, betel nut, cooking fumes, air pollution,
 // radiation, hormone medication, social support, stress / sleep / low mood,
 // the Pap smear (anatomy and sampling brush only, no person), and first
-// pregnancy and breastfeeding (topic pictures; they encode no age or length).
+// pregnancy, breastfeeding, menarche and menopause (topic pictures; they
+// encode no age or length).
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  menarche_age: "assets/illustrations/menarche-history.jpg",
+  menopause_status: "assets/illustrations/menopause-status.jpg",
   breastfeeding: "assets/illustrations/breastfeeding-history.jpg",
   first_pregnancy_age: "assets/illustrations/first-pregnancy-history.jpg",
   pap_smear_timing: "assets/illustrations/pap-smear-history-anatomy.jpg",
