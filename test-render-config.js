@@ -134,6 +134,8 @@ test("the keys that must survive a sync are declared", () => {
   for (const key of [
     "ACCESS_GATE_SESSION_SECRET", // 2026-09-09: pruned, site down next deploy
     "INSTITUTION_BRANDING", // partner entrances render unbranded, no error
+    "INTAKE_ENTRANCES", // intake entrances fall back to the questionnaire on sale, no error
+    "INTAKE_POWER_AUTOMATE_WEBHOOK_URL", // every intake submission refused
     "REPORT_TICKET_SECRET", // every payment link fails a generic ticket check
     "AZURE_ACCESS_GATE_API_KEY" // no gate backend: /api/health drops to 503
   ]) {

@@ -1,0 +1,690 @@
+{
+  "title": "EG BioMed research-intake flow trigger",
+  "description": "Sent by the Render server after it has validated the submission in full. Carries no name, no Email and no model features. Free text is in free_text_answers only -- never in research_row.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "type": "string",
+      "enum": [
+        "intake-submission/1.0.0"
+      ]
+    },
+    "questionnaire_version": {
+      "type": "string",
+      "enum": [
+        "questionnaire/2026-11-18-v19.14-intake1"
+      ]
+    },
+    "consent_version": {
+      "type": "string"
+    },
+    "answer_code_schema_version": {
+      "type": "string"
+    },
+    "record_id": {
+      "type": "string"
+    },
+    "study": {
+      "type": "string"
+    },
+    "submitted_at": {
+      "type": "string"
+    },
+    "received_at": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string",
+      "enum": [
+        "zh",
+        "en"
+      ]
+    },
+    "consent_record": {
+      "type": "object",
+      "properties": {
+        "consent_version": {
+          "type": "string"
+        },
+        "accepted_at": {
+          "type": "string"
+        },
+        "accepted_item_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "consent_version",
+        "accepted_at",
+        "accepted_item_ids"
+      ]
+    },
+    "answer_code_rows": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "value": {}
+        },
+        "required": [
+          "question_id",
+          "status",
+          "value"
+        ]
+      }
+    },
+    "research_row": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string"
+        },
+        "study": {
+          "type": "string"
+        },
+        "submitted_at": {
+          "type": "string"
+        },
+        "questionnaire_version": {
+          "type": "string"
+        },
+        "birth_year": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "您的出生年（西元） -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "height_cm": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "身高（公分） -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "weight_kg": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "體重（公斤） -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "sex": {
+          "type": "string",
+          "description": "您的性別？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "country": {
+          "type": "string",
+          "description": "您目前居住的國家／地區？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "weight_change": {
+          "type": "string",
+          "description": "近半年內，您的體重是否明顯「下降」？（超過體重5%） -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "exercise_time": {
+          "type": "string",
+          "description": "每週運動時間 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_general": {
+          "type": "string",
+          "description": "全身性症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "appetite_loss_onset": {
+          "type": "string",
+          "description": "「食慾比平常下降」第一次出現，大約是多久以前？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "appetite_loss_course": {
+          "type": "string",
+          "description": "「食慾比平常下降」的情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "appetite_loss_intake_effect": {
+          "type": "string",
+          "description": "「食慾比平常下降」有沒有讓您平常吃的量變少？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_upper_digestive": {
+          "type": "string",
+          "description": "上消化道症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "early_satiety_onset": {
+          "type": "string",
+          "description": "「吃比較少就飽」第一次出現，大約是多久以前？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "early_satiety_course": {
+          "type": "string",
+          "description": "「吃比較少就飽」的情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "early_satiety_intake_effect": {
+          "type": "string",
+          "description": "「吃比較少就飽」有沒有讓您平常吃的量變少？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_bowel_abdominal": {
+          "type": "string",
+          "description": "腸道與下腹部症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "stool_loose_or_frequent": {
+          "type": "string",
+          "description": "最近 6 個月內，排便習慣改變時，是否主要是大便變稀或排便次數變多？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_hematochezia_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，鮮紅色血便總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_hepatobiliary": {
+          "type": "string",
+          "description": "肝膽胰症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_jaundice_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，黃疸總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_respiratory": {
+          "type": "string",
+          "description": "呼吸系統症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_shortness_of_breath_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，呼吸喘或呼吸急促總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_breast": {
+          "type": "string",
+          "description": "乳房症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_breast_lump_course": {
+          "type": "string",
+          "description": "這個乳房腫塊，情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_breast_lump_duration_band": {
+          "type": "string",
+          "description": "這個乳房腫塊，到現在（或第一次到最近一次）大概經過多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_urinary": {
+          "type": "string",
+          "description": "泌尿系統症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_male_reproductive": {
+          "type": "string",
+          "description": "男性生殖系統症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_testicular_lump_course": {
+          "type": "string",
+          "description": "這個睪丸腫塊，情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_testicular_lump_duration_band": {
+          "type": "string",
+          "description": "這個睪丸腫塊，到現在（或第一次到最近一次）大概經過多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "testicular_pain_pattern": {
+          "type": "string",
+          "description": "睪丸疼痛發生的情況 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_gynecological": {
+          "type": "string",
+          "description": "婦科相關症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_pelvic_discomfort_or_increased_girth_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，骨盆腔不適或腹圍增加總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_oral_throat": {
+          "type": "string",
+          "description": "口腔與喉嚨症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_oral_ulcer_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，口腔潰瘍總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_oral_ulcer_interval_days": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，兩次口腔潰瘍之間最短相隔幾天？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_sore_throat_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，喉嚨痛總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_mouth_symptoms_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，上述口腔症狀總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_mouth_symptoms_interval_days": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，兩次上述口腔症狀之間最短相隔幾天？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_head_neck_nasal": {
+          "type": "string",
+          "description": "頭頸與鼻部症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_hn_lump_site": {
+          "type": "string",
+          "description": "你剛才提到不只一處腫塊，接下來想請你針對其中一個回答，請問是哪一個？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_hn_lump_course": {
+          "type": "string",
+          "description": "這個腫塊，情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_hn_lump_duration_band": {
+          "type": "string",
+          "description": "這個腫塊，到現在（或第一次到最近一次）大概經過多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_mass_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，原因不明的腫塊總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_mass_interval_days": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，兩次原因不明的腫塊之間最短相隔幾天？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_neurological": {
+          "type": "string",
+          "description": "神經系統症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptoms_bone_hematologic": {
+          "type": "string",
+          "description": "骨骼、血液與淋巴症狀 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_back_pain_repeat_count": {
+          "type": [
+            "number",
+            "string"
+          ],
+          "description": "最近 6 個月內，背痛總共出現過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_lymphadenopathy_course": {
+          "type": "string",
+          "description": "這個腫起來的淋巴結，情況比較接近哪一種？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "symptom_lymphadenopathy_duration_band": {
+          "type": "string",
+          "description": "這個腫起來的淋巴結，到現在（或第一次到最近一次）大概經過多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "constipation": {
+          "type": "string",
+          "description": "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "mastalgia": {
+          "type": "string",
+          "description": "最近 6 個月內，您的乳房是否曾有疼痛或脹痛？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "menarche_age": {
+          "type": "string",
+          "description": "初經（第一次月經）來潮年齡 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "menopause_status": {
+          "type": "string",
+          "description": "目前停經（更年期）狀態 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "first_pregnancy_age": {
+          "type": "string",
+          "description": "第一胎懷孕年齡 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "breastfeeding": {
+          "type": "string",
+          "description": "產後是否曾哺餵母乳？若有，哺乳時間多長？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "pap_smear": {
+          "type": "string",
+          "description": "是否曾做過子宮頸抹片檢查？結果如何？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "pap_smear_timing": {
+          "type": "string",
+          "description": "您最近一次子宮頸抹片檢查是在什麼時候？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "hormone_medication": {
+          "type": "string",
+          "description": "過去是否曾使用賀爾蒙藥物？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "benign_gynae_disease": {
+          "type": "string",
+          "description": "醫師是否曾診斷您有子宮肌瘤、卵巢囊腫、子宮內膜異位或其他婦科良性疾病？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "smoking_ever": {
+          "type": "string",
+          "description": "是否有抽菸習慣（現在或過去）？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "smoking_quit": {
+          "type": "string",
+          "description": "若有抽菸習慣，是否已戒菸？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "secondhand_smoke": {
+          "type": "string",
+          "description": "是否長期處在二手菸的生活或工作環境？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "betel_nut": {
+          "type": "string",
+          "description": "是否有嚼檳榔習慣（現在或過去）？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "cooking_fume": {
+          "type": "string",
+          "description": "工作或生活環境是否經常接觸油煙？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "cooking_frequency": {
+          "type": "string",
+          "description": "每週平均烹調次數 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "air_pollution": {
+          "type": "string",
+          "description": "工作或生活是否長期暴露在空氣污染環境？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "radiation": {
+          "type": "string",
+          "description": "工作或生活是否常接觸輻射？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "stress": {
+          "type": "string",
+          "description": "過去一個月，每週感到緊張或焦慮的頻率 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "sleep_problem": {
+          "type": "string",
+          "description": "過去一個月，每週睡不好或失眠的頻率 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "low_mood": {
+          "type": "string",
+          "description": "過去一個月，每週情緒低落或憂鬱的頻率 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "psych_rumination": {
+          "type": "string",
+          "description": "過去一個月，我會反覆回想已經發生的事，想著當時應該怎麼說或怎麼做才對。 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "psych_social_support": {
+          "type": "string",
+          "description": "當我遇到困難或需要幫助時，身邊有人可以依靠。 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "psych_neuroticism_informant": {
+          "type": "string",
+          "description": "身邊的人（家人、朋友、同事）曾說過我容易緊張、想太多，或太容易受影響。 -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "diet_type": {
+          "type": "string",
+          "description": "以下哪一項最接近您平常的飲食方式？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "meat_processed_foods": {
+          "type": "string",
+          "description": "肉類、加工及高溫烹調食物 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "sugar_fat_foods": {
+          "type": "string",
+          "description": "高糖與高脂食物 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "plant_dairy_habits": {
+          "type": "string",
+          "description": "蔬果、豆類與乳製品 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "beverage_habits": {
+          "type": "string",
+          "description": "飲品習慣 -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "personal_cancer": {
+          "type": "string",
+          "description": "您目前是否正在罹患癌症，或過去曾被診斷為癌症？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "personal_cancer_types": {
+          "type": "string",
+          "description": "目前或過去曾被診斷的癌別為何？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_conditions": {
+          "type": "string",
+          "description": "是否有以下慢性疾病？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "liver_disease_etiology": {
+          "type": "string",
+          "description": "您曾被診斷的肝病種類為何？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_hypertension": {
+          "type": "string",
+          "description": "高血壓：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_hypertension": {
+          "type": "string",
+          "description": "高血壓：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_diabetes": {
+          "type": "string",
+          "description": "糖尿病／高血糖：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_diabetes": {
+          "type": "string",
+          "description": "糖尿病／高血糖：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_hyperlipidemia": {
+          "type": "string",
+          "description": "高血脂／高膽固醇：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_hyperlipidemia": {
+          "type": "string",
+          "description": "高血脂／高膽固醇：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_liver_disease": {
+          "type": "string",
+          "description": "肝病（B 型肝炎／C 型肝炎／肝硬化）：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_liver_disease": {
+          "type": "string",
+          "description": "肝病（B 型肝炎／C 型肝炎／肝硬化）：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_gerd": {
+          "type": "string",
+          "description": "胃食道逆流：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_gerd": {
+          "type": "string",
+          "description": "胃食道逆流：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_heart_disease": {
+          "type": "string",
+          "description": "心臟病／心律不整：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_heart_disease": {
+          "type": "string",
+          "description": "心臟病／心律不整：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_thyroid": {
+          "type": "string",
+          "description": "甲狀腺疾病：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_thyroid": {
+          "type": "string",
+          "description": "甲狀腺疾病：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_asthma_copd": {
+          "type": "string",
+          "description": "氣喘／慢性肺阻塞（COPD）：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_asthma_copd": {
+          "type": "string",
+          "description": "氣喘／慢性肺阻塞（COPD）：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_gout": {
+          "type": "string",
+          "description": "痛風／高尿酸：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_gout": {
+          "type": "string",
+          "description": "痛風／高尿酸：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_arthritis": {
+          "type": "string",
+          "description": "關節炎（含類風濕性）：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_arthritis": {
+          "type": "string",
+          "description": "關節炎（含類風濕性）：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_mental": {
+          "type": "string",
+          "description": "憂鬱症／焦慮症：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_mental": {
+          "type": "string",
+          "description": "憂鬱症／焦慮症：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_stroke": {
+          "type": "string",
+          "description": "中風病史：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_stroke": {
+          "type": "string",
+          "description": "中風病史：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_kidney": {
+          "type": "string",
+          "description": "腎臟病／洗腎：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_kidney": {
+          "type": "string",
+          "description": "腎臟病／洗腎：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_autoimmune": {
+          "type": "string",
+          "description": "自體免疫疾病（乾燥症、紅斑性狼瘡等）：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_autoimmune": {
+          "type": "string",
+          "description": "自體免疫疾病（乾燥症、紅斑性狼瘡等）：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_care_other_unclassified": {
+          "type": "string",
+          "description": "其他慢性疾病：是否已就診？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "chronic_last_episode_other_unclassified": {
+          "type": "string",
+          "description": "其他慢性疾病：最近一次發病距今多久？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "vnext_diagnosed_conditions": {
+          "type": "string",
+          "description": "是否曾有以下經醫療人員確認的病史或事件？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "acute_pancreatitis": {
+          "type": "string",
+          "description": "醫師是否曾診斷您得過「急性胰臟炎」？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "acute_pancreatitis_episodes": {
+          "type": "string",
+          "description": "急性胰臟炎總共發作過幾次？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "acute_pancreatitis_last_episode": {
+          "type": "string",
+          "description": "最近一次急性胰臟炎發作，大約是多久以前？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "acute_pancreatitis_cause": {
+          "type": "string",
+          "description": "醫師說急性胰臟炎主要是什麼原因引起的？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "orchitis_epididymitis": {
+          "type": "string",
+          "description": "醫師是否曾診斷您有睪丸炎或副睪炎？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "psa_history": {
+          "type": "string",
+          "description": "您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "family_cancer": {
+          "type": "string",
+          "description": "家族成員（一等親內）是否有癌症史？ -- answered: the code; otherwise \"unknown\" or \"not_applicable\"."
+        },
+        "family_self_types": {
+          "type": "string",
+          "description": "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？ -- answered: the codes joined with |; otherwise \"unknown\" or \"not_applicable\"."
+        }
+      },
+      "required": [
+        "record_id",
+        "study",
+        "submitted_at",
+        "questionnaire_version"
+      ]
+    },
+    "free_text_answers": {
+      "type": "array",
+      "description": "Free-text questions: intake_recent_discomfort. value is a string or null.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question_id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "answered",
+              "unknown",
+              "not_applicable"
+            ]
+          },
+          "value": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "question_id",
+          "status",
+          "value"
+        ]
+      }
+    }
+  },
+  "required": [
+    "contract_version",
+    "questionnaire_version",
+    "consent_version",
+    "answer_code_schema_version",
+    "record_id",
+    "study",
+    "submitted_at",
+    "received_at",
+    "language",
+    "consent_record",
+    "answer_code_rows",
+    "research_row",
+    "free_text_answers"
+  ]
+}

@@ -372,3 +372,55 @@ npm test
 The tests verify the accepted v19.5 phase-1 payload and rejection of field-order
 drift, missing vector fields, identifier leakage, and unversioned questionnaire
 changes. A production CI pipeline should make this command a required check.
+
+## 11. Research-intake submission (2026-11-18)
+
+The research-intake questionnaire (see `QUESTIONNAIRE_DESIGN_AND_FOLLOWUP_MECHANISM.md`
+section 6) has its own, much smaller contract. It shares nothing with the
+transitional `/api/submit` payload above except the coded-answer row rules
+(`checkAnswerCodeRows` in `lib/transitional-contract.js`, used by both).
+
+Which contract applies is decided by the session, never by the body: a session
+whose signed cookie names a study listed in `INTAKE_ENTRANCES` is an intake
+session, and its `/api/submit` is handled by `receiveIntakeSubmission` in
+`server.js`.
+
+### 11.1 Browser to server
+
+`contract_version` `intake-submission/1.0.0`. Exactly these fields; anything else
+(notably `email`, `full_name`, `record_id`, `rows`) is rejected:
+
+- `contract_version`, `questionnaire_version` (`questionnaire/2026-11-18-v19.14-intake1`),
+  `consent_version`, `answer_code_schema_version`
+- `submitted_at`, `language` (`zh` | `en`)
+- `consent_record` (same shape as the sale contract)
+- `answer_code_rows`: 121 rows, frozen order of `contracts/intake/answer-code-manifest.json`
+- `free_text_answers`: one row per free-text question, `{question_id, status, value}`;
+  answered values are 1-500 characters with no control characters except newline
+
+Validated by `validateIntakeSubmission` in `lib/intake-contract.js`.
+
+### 11.2 Server to the intake flow
+
+Forwarded only to `INTAKE_POWER_AUTOMATE_WEBHOOK_URL` -- a separate Power
+Automate flow, never one of the report flows (the server refuses that URL if it
+equals either report webhook). Unset means every intake submission is refused
+with `intake_submission_not_configured` and goes nowhere: not to Postgres, not to
+Power Automate.
+
+The server adds `record_id` (UUID), `study`, `received_at`, and `research_row`:
+the coded answers flattened into one object keyed by `question_id` (answered:
+the code, multiple codes joined with `|`, or the number; otherwise the literal
+status `unknown` / `not_applicable`). Free text is only in `free_text_answers`,
+never in `research_row`.
+
+The trigger schema to paste into the flow is
+`contracts/power-automate/intake-flow-trigger.schema.json`
+(`npm run generate:intake-flow-trigger-schema`). Like the sale flow's schema it
+has no `pattern` and pins no counts; the server has already validated the rows.
+
+### 11.3 Open items
+
+- The intake consent text and its `consent_version` are not written yet; intake
+  currently records the sale `consent_version`.
+- Whether free text is also written into the research Excel is undecided.

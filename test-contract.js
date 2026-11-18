@@ -130,6 +130,17 @@ test("generated answer-code manifest is synchronized with app.js", () => {
   assert.equal(after, before, "Run the generator, review the changed codes, and bump the questionnaire/code schema version.");
 });
 
+test("generated intake answer-code manifest is synchronized with app.js", () => {
+  const manifestPath = path.join(__dirname, "contracts", "intake", "answer-code-manifest.json");
+  const before = fs.readFileSync(manifestPath, "utf8");
+  execFileSync(process.execPath, [path.join(__dirname, "scripts", "generate-answer-code-manifest.js"), "--mode", "intake"], {
+    cwd: __dirname,
+    stdio: "pipe"
+  });
+  const after = fs.readFileSync(manifestPath, "utf8");
+  assert.equal(after, before, "Run npm run generate:answer-codes:intake, review the changed codes, and bump the intake questionnaire version.");
+});
+
 test("Power Automate answer-row limits match the canonical answer contract", () => {
   const schema = require("./contracts/power-automate/transitional-submission.schema.json");
   const expectedCount = answerCodeManifest.canonical_answer_question_count;

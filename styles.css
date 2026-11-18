@@ -2757,3 +2757,72 @@ pre {
 .illustration-credit a {
   color: inherit;
 }
+
+/* Long free-text answer (type: "longtext"). */
+.longtext-entry {
+  display: grid;
+  gap: 8px;
+}
+
+.longtext-entry textarea {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+}
+
+.longtext-counter {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--muted, #5f6b7a);
+  text-align: right;
+}
+
+.longtext-entry .secondary-action {
+  justify-self: start;
+}
+
+.answer-review-item .answer-review-longtext {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+/* Grouped matrix (type: "grouped-matrix"): one card per group, e.g. per
+   chronic condition in the intake questionnaire's follow-up. */
+.grouped-matrix {
+  grid-column: 1 / -1;
+  display: grid;
+  gap: 12px;
+}
+
+.grouped-matrix__group {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: #fff;
+}
+
+.grouped-matrix__group h3 {
+  margin: 0 0 8px;
+  font-size: 1rem;
+}
+
+.grouped-matrix__row {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0;
+}
+
+.grouped-matrix__row + .grouped-matrix__row {
+  border-top: 1px dashed var(--line);
+}
+
+.grouped-matrix__label {
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.grouped-matrix__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+}
