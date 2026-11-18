@@ -456,9 +456,18 @@ function illustrationCreditHtml(options) {
 
 // Pictures under a question's own title (2026-11-17): the basic-information
 // questions, secondhand smoke, first-degree family (who counts as one), and
-// (2026-11-18) quit-smoking status, betel nut, cooking fumes and air pollution.
+// (2026-11-18) quit-smoking status, betel nut, cooking fumes, air pollution,
+// radiation, hormone medication, social support, and stress / sleep / low mood.
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  hormone_medication: "assets/illustrations/hormone-medication-history.jpg",
+  // The three rows of the mood-and-sleep table carry theirs beside the row
+  // label in the form, and under the title when the chat asks them one by one.
+  stress: "assets/illustrations/mental-stress.jpg",
+  sleep_problem: "assets/illustrations/mental-sleep-problem.jpg",
+  low_mood: "assets/illustrations/mental-low-mood.jpg",
+  psych_social_support: "assets/illustrations/social-support.jpg",
+  radiation: "assets/illustrations/radiation-exposure.jpg",
   air_pollution: "assets/illustrations/air-pollution-exposure.jpg",
   cooking_fume: "assets/illustrations/cooking-fume-exposure.jpg",
   betel_nut: "assets/illustrations/betel-nut-habit.jpg",
@@ -2122,7 +2131,7 @@ function renderFrequencyMatrix(question) {
       </div>
       ${rows.map((row) => `
         <div class="frequency-matrix__row" data-matrix-row="${row.id}" role="radiogroup" aria-labelledby="matrix-label-${row.id}">
-          <span class="matrix-row-label" id="matrix-label-${row.id}">${escapeHtml(currentLang === "en" ? row.matrixLabelEn : row.matrixLabel)}</span>
+          <span class="matrix-row-label" id="matrix-label-${row.id}">${questionIllustrationFor(row) ? `<img class="mental-row-picture" src="${questionIllustrationFor(row)}" alt="" />` : ""}<span>${escapeHtml(currentLang === "en" ? row.matrixLabelEn : row.matrixLabel)}</span></span>
           ${row.options.map((option) => {
             const checked = getAnswerValue(answers, row.field) === option;
             return `<label class="matrix-choice"><input type="radio" name="matrix-${row.id}" value="${escapeHtml(option)}"${checked ? " checked" : ""}><span>${escapeHtml(tx(option))}</span></label>`;

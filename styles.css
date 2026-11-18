@@ -2736,6 +2736,13 @@ pre {
   .diet-row-picture { width: 72px; height: 54px; }
 }
 
+/* Mood-and-sleep rows: a portrait beside each row (2026-11-18). */
+.frequency-matrix__row .matrix-row-label { gap: 12px; }
+.mental-row-picture { flex: none; width: 72px; height: 96px; object-fit: cover; object-position: top; border-radius: 10px; border: 1px solid var(--line); background: #fbf6ee; }
+@media (max-width: 720px) {
+  .mental-row-picture { width: 60px; height: 80px; }
+}
+
 /* Credit line required by CC BY 4.0 for the Servier-based pictures (2026-11-17). */
 .illustration-credit {
   flex: 1 1 100%;
