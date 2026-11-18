@@ -550,6 +550,9 @@ const questionIllustrations = Object.freeze({
   menopause_status: "assets/illustrations/menopause-status.jpg",
   breastfeeding: "assets/illustrations/breastfeeding-history.jpg",
   first_pregnancy_age: "assets/illustrations/first-pregnancy-history.jpg",
+  // PSA: one topic picture (2026-11-18, redesigned) in place of the earlier
+  // per-answer set; it shows the blood test and the prostate, not a result.
+  psa_history: "assets/illustrations/psa-history-redesigned.jpg",
   pap_smear_timing: "assets/illustrations/pap-smear-history-anatomy.jpg",
   hormone_medication: "assets/illustrations/hormone-medication-history.jpg",
   // The three rows of the mood-and-sleep table carry theirs beside the row
