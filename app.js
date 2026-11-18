@@ -455,9 +455,14 @@ function illustrationCreditHtml(options) {
 }
 
 // Pictures under a question's own title (2026-11-17): the basic-information
-// questions, secondhand smoke, and first-degree family (who counts as one).
+// questions, secondhand smoke, first-degree family (who counts as one), and
+// (2026-11-18) quit-smoking status, betel nut and cooking fumes.
 // They introduce the question without encoding an answer.
 const questionIllustrations = Object.freeze({
+  air_pollution: "assets/illustrations/air-pollution-exposure.jpg",
+  cooking_fume: "assets/illustrations/cooking-fume-exposure.jpg",
+  betel_nut: "assets/illustrations/betel-nut-habit.jpg",
+  smoking_quit: "assets/illustrations/smoking-quit-status-no-text.jpg",
   secondhand_smoke: "assets/illustrations/secondhand-smoke.jpg",
   family_cancer: "assets/illustrations/family-first-degree.jpg",
   full_name: "assets/illustrations/basic/full_name.jpg",
