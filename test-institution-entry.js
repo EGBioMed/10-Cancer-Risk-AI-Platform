@@ -253,7 +253,7 @@ test("a research-intake session is sent from the chat page to the form; a 雙和
   assert.equal(clinic.status, 200);
 });
 
-test("the 收案平台 badge is in the header for a research-intake session only", async () => {
+test("the 收案平台 badge is in the header and the answer area's title bar for a research-intake session only", async () => {
   const pageFor = async (cookie) => (await fetch(`${base}/`, { headers: cookie ? { Cookie: cookie } : {} })).text();
   const badge = '<span class="brand-intake-badge">收案平台</span>';
   const research = await pageFor(sessionFrom(await scan(RESEARCH_CODE)));
@@ -262,9 +262,14 @@ test("the 收案平台 badge is in the header for a research-intake session only
   const start = research.indexOf('<div class="brand-row">');
   const row = research.slice(start, research.indexOf("</div>", start));
   assert(row.includes(badge), "the badge is not in the header's brand row");
+  // And again in the answer area's title bar, beside "AI Health Guide".
+  const titleStart = research.indexOf('<div class="panel-header__title">');
+  const title = research.slice(titleStart, research.indexOf("</div>", titleStart));
+  assert(titleStart > 0 && title.includes(badge), "the badge is not in the answer area's title bar");
+  assert.equal(research.split(badge).length - 1, 2, "expected the badge exactly twice");
   for (const [name, page] of [["雙和", await pageFor(sessionFrom(await scan(SHUANGHO_CODE)))], ["no session", await pageFor(null)]]) {
     assert(!page.includes("brand-intake-badge"), `badge shown for ${name}`);
-    assert(!page.includes("<!--BRAND:INTAKE-->"), `marker left in the page for ${name}`);
+    assert(!page.includes("<!--BRAND:INTAKE"), `marker left in the page for ${name}`);
   }
 });
 

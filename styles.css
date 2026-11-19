@@ -880,6 +880,20 @@ html[lang="en"] h1 {
   line-height: 1.65;
 }
 
+/* "AI Health Guide" and, at a research-intake entrance, the 收案平台 badge
+   beside it on one line. */
+.panel-header__title {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 6px;
+}
+
+.panel-header__title .eyebrow {
+  margin: 0;
+}
+
 .question-area {
   padding: 30px 0 20px;
   animation: question-in 220ms ease-out both;
