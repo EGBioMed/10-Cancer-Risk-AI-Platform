@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-19-v19.15-phase1",
+  "questionnaire_version": "questionnaire/2026-11-19-v19.16-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 125,
-  "canonical_answer_question_count": 122,
+  "question_count": 129,
+  "canonical_answer_question_count": 124,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -2579,6 +2579,78 @@
       ]
     },
     {
+      "question_id": "personal_cancer_other_name",
+      "field": "medical_history.personal_cancer_other_name",
+      "module": "history",
+      "answer_type": "free_text",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」是什麼癌症？",
+      "title_en": "Which cancer is the \"other cancer type\" you selected?",
+      "max_length": 50
+    },
+    {
+      "question_id": "personal_cancer_other_care",
+      "field": "medical_history.personal_cancer_other.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」：是否已就診？",
+      "title_en": "The \"other cancer type\" you selected: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "personal_cancer_other_last_episode",
+      "field": "medical_history.personal_cancer_other.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」：最近一次發病距今多久？",
+      "title_en": "The \"other cancer type\" you selected: how long ago was the last episode?",
+      "options": [
+        {
+          "code": "personal_cancer_other_last_episode.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
       "question_id": "chronic_conditions",
       "field": "medical_history.chronic_conditions",
       "module": "history",
@@ -2714,6 +2786,16 @@
           "label_en": "Not sure of the liver disease type"
         }
       ]
+    },
+    {
+      "question_id": "chronic_other_name",
+      "field": "medical_history.chronic_other_name",
+      "module": "history",
+      "answer_type": "free_text",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他慢性疾病」是什麼疾病？",
+      "title_en": "Which disease is the \"other chronic disease\" you selected?",
+      "max_length": 50
     },
     {
       "question_id": "chronic_care_hypertension",

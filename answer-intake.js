@@ -210,7 +210,17 @@
 
     // No options to match against: free text whose shape this module cannot
     // check. Refuse an empty one and pass the rest through unchanged.
-    if (typeof candidate === "string" && candidate.trim()) return answered(candidate.trim());
+    if (typeof candidate === "string" && candidate.trim()) {
+      // The form's textarea stops at maxLength (app.js, getLongTextMaxLength);
+      // a conversation has no such stop, so the same limit is checked here.
+      // Rejected, not degraded: the person can say it shorter, so the caller
+      // asks again rather than recording "unknown" for an answer they gave.
+      const text = candidate.trim();
+      if (Number.isInteger(question.maxLength) && text.length > question.maxLength) {
+        return rejected("too_long", [text]);
+      }
+      return answered(text);
+    }
     return degrade(question, "empty");
   }
 

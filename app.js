@@ -5,9 +5,10 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  // v19.15 (2026-11-19): the chronic-condition follow-up table, and the
-  // research-staff diagnosis page shown only at research-intake entrances.
-  questionnaire_version: "questionnaire/2026-11-19-v19.15-phase1",
+  // v19.16 (2026-11-19): "other chronic disease" and "other cancer type" ask
+  // which disease it is, and the other cancer gets the care / last-episode
+  // follow-up. v19.15: the chronic follow-up table and the research-staff page.
+  questionnaire_version: "questionnaire/2026-11-19-v19.16-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -1037,6 +1038,47 @@ const chronicFollowUpQuestions = [
   ...chronicFollowUpRowQuestions
 ];
 
+// "Other" is the one option whose answer says nothing about what the person
+// has (v19.16, 2026-11-19). Ticking "其他慢性疾病" or "其他癌種" now asks which
+// disease it is -- a short text ("longtext": in `rows` only, never a code or a
+// feature) -- before the care and last-episode follow-up. The chronic one
+// keeps its row in the follow-up table above; the cancer one asks the same two
+// questions on its own, for that cancer only.
+const OTHER_CONDITION_NAME_MAX_LENGTH = 50;
+const otherChronicNameQuestion = {
+  id: "chronic_other_name", module: "history", type: "longtext", required: true, maxLength: OTHER_CONDITION_NAME_MAX_LENGTH,
+  dropWhenInapplicable: true,
+  title: "您勾選的「其他慢性疾病」是什麼疾病？", titleEn: "Which disease is the \"other chronic disease\" you selected?",
+  note: "請填寫疾病名稱；有多項請用頓號（、）分開。", noteEn: "Enter the name of the disease; separate several with commas.",
+  placeholder: "請填寫疾病名稱", placeholderEn: "Name of the disease",
+  field: "medical_history.chronic_other_name",
+  appliesIf: () => hasSelected("medical_history.chronic_conditions", "其他慢性疾病")
+};
+const isOtherPersonalCancer = () => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history"))
+  && hasSelected("medical_history.personal_cancer_types", "其他癌種");
+const otherCancerQuestions = [
+  {
+    id: "personal_cancer_other_name", module: "history", type: "longtext", required: true, maxLength: OTHER_CONDITION_NAME_MAX_LENGTH,
+    dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」是什麼癌症？", titleEn: "Which cancer is the \"other cancer type\" you selected?",
+    note: "請填寫癌症名稱；有多項請用頓號（、）分開。", noteEn: "Enter the name of the cancer; separate several with commas.",
+    placeholder: "請填寫癌症名稱", placeholderEn: "Name of the cancer",
+    field: "medical_history.personal_cancer_other_name", appliesIf: isOtherPersonalCancer
+  },
+  {
+    id: "personal_cancer_other_care", module: "history", type: "single", required: true, dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」：是否已就診？", titleEn: "The \"other cancer type\" you selected: have you seen a doctor for it?",
+    field: "medical_history.personal_cancer_other.care", options: chronicCareOptions, appliesIf: isOtherPersonalCancer
+  },
+  {
+    id: "personal_cancer_other_last_episode", module: "history", type: "single", required: true, dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」：最近一次發病距今多久？", titleEn: "The \"other cancer type\" you selected: how long ago was the last episode?",
+    note: "「最近一次發病」指最近一次症狀明顯或需要就醫處理的時間；不記得請選「不確定」。",
+    noteEn: "\"Last episode\" means the most recent time symptoms were noticeable or needed medical care; choose \"Not sure\" if you do not remember.",
+    field: "medical_history.personal_cancer_other.last_episode", options: chronicLastEpisodeOptions, appliesIf: isOtherPersonalCancer
+  }
+];
+
 // Set at startup from /api/session/delivery: true only when this session came
 // in through an entrance configured as a research-intake entrance
 // (INSTITUTION_REPORT_RECIPIENTS, "staffDiagnosis": true). The browser cannot
@@ -1133,8 +1175,10 @@ const questions = [
 
   { id: "personal_cancer", module: "history", type: "single", required: true, title: "您目前是否正在罹患癌症，或過去曾被診斷為癌症？", note: "請依照目前或過去是否曾被醫療人員診斷為癌症回答。", field: "medical_history.personal_cancer_history", options: ["是，目前正在治療或追蹤中", "是，過去曾被診斷，目前已完成治療或追蹤", "否，未曾被診斷為癌症"] },
   { id: "personal_cancer_types", module: "history", type: "multi", required: true, title: "目前或過去曾被診斷的癌別為何？", note: "可複選；若不確定癌別，請選其他癌種。", field: "medical_history.personal_cancer_types", options: cancerOptions, appliesIf: (answers) => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history")) },
+  ...otherCancerQuestions,
   { id: "chronic_conditions", module: "history", type: "multi", required: true, title: "是否有以下慢性疾病？", note: "可複選；若無相關病史可選以上皆無。", field: "medical_history.chronic_conditions", options: ["高血壓", "糖尿病／高血糖", "高血脂／高膽固醇", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "胃食道逆流", "心臟病／心律不整", "甲狀腺疾病", "氣喘／慢性肺阻塞（COPD）", "痛風／高尿酸", "關節炎（含類風濕性）", "憂鬱症／焦慮症", "中風病史", "腎臟病／洗腎", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "以上皆無", "其他慢性疾病"] },
   { id: "liver_disease_etiology", module: "history", type: "multi", required: true, title: "您曾被診斷的肝病種類為何？", titleEn: "Which liver condition were you diagnosed with?", note: "可複選；請依醫療人員告知的診斷回答。", noteEn: "Select all that apply based on diagnoses given by a healthcare professional.", field: "medical_history.liver_disease_etiology", noneOption: "不確定肝病種類", options: liverEtiologyOptions, appliesIf: () => hasSelected("medical_history.chronic_conditions", "肝病") },
+  otherChronicNameQuestion,
   ...chronicFollowUpQuestions,
   { id: "vnext_diagnosed_conditions", module: "history", type: "multi", required: true, title: "是否曾有以下經醫療人員確認的病史或事件？", titleEn: "Have you had any of the following clinician-confirmed conditions or events?", note: "可複選。骨折依最近 12 個月回答，其餘依是否曾被醫療人員診斷回答。", noteEn: "Select all that apply. For fracture, consider the past 12 months; for the others, report whether a clinician has ever diagnosed the condition.", field: "medical_history.vnext_diagnosed_conditions", noneOption: symptomNoneOption, unknownOption: symptomUnknownOption, options: [...vnextHistoryFeatureDefinitions.map(([label]) => label), symptomNoneOption, symptomUnknownOption] },
   // Sits after vnext_diagnosed_conditions, which asks about chronic pancreatitis.
@@ -1441,8 +1485,9 @@ const frozenSubmissionVectorCounts = Object.freeze({
   rule_input_columns: 30
 });
 // Long free-text answers ("longtext") are a different kind of data from every
-// other answer: not a code and not a number. The only one is staff_diagnosis,
-// typed by the research staff at a research-intake entrance. It travels in
+// other answer: not a code and not a number: staff_diagnosis (typed by the
+// research staff at a research-intake entrance) and, since v19.16, the names of
+// an "other" chronic disease or cancer type. Each travels in
 // `rows` (question, text) like every other answer, and is kept out of
 // answer_code_rows (which promises codes) and out of every feature row.
 const LONGTEXT_DEFAULT_MAX_LENGTH = 500;

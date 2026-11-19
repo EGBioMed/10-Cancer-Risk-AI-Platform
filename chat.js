@@ -34,6 +34,7 @@
       intro: "您好，我會用對話的方式請教您一些健康相關的問題。您可以直接用自己的話回答，也可以點下面的選項。",
       retry: "抱歉，我沒有把您的回答對應到任何一個選項。可以換個說法，或直接點下面的選項嗎？",
       retryNoOptions: "抱歉，我沒有看懂。可以再說一次嗎？",
+      tooLong: (max) => `請精簡到 ${max} 字以內，再說一次。`,
       retryNumber: "請給我一個數字就好。",
       disambiguate: "您的意思比較接近哪一個？",
       gaveUp: "這題先記成「不確定」，我們繼續往下。您之後可以再補。",
@@ -61,6 +62,7 @@
       intro: "Hello. I'll ask you some health questions in a conversation. Answer in your own words, or tap one of the options below.",
       retry: "Sorry, I couldn't match that to any of the options. Could you put it another way, or tap one below?",
       retryNoOptions: "Sorry, I didn't follow that. Could you say it again?",
+      tooLong: (max) => `Please keep it within ${max} characters and say it again.`,
       retryNumber: "A number on its own, please.",
       disambiguate: "Which of these is closer to what you meant?",
       gaveUp: "I'll record this one as \"not sure\" and move on. You can come back to it later.",
@@ -367,7 +369,9 @@
     if (turn.kind === "retry") {
       say(turn.pending && turn.pending.reason === "contradictory_selection"
         ? copy.contradictory
-        : retryLine(turn.question), "bot");
+        : turn.pending && turn.pending.reason === "too_long"
+          ? copy.tooLong(turn.question.maxLength)
+          : retryLine(turn.question), "bot");
     }
     else if (turn.kind === "disambiguate") say(copy.disambiguate, "bot");
     // A correction lands here too: after "好的，那我們再一次。" the question
