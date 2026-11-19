@@ -15,6 +15,9 @@ PostgreSQL 與 Caddy，提交資料不再依賴 Power Automate／Excel 逐筆寫
   pgAdmin、Windows 服務、HTTPS 憑證，到除錯、備份及日常操作。
 - [地端 PostgreSQL 部署手冊](ON_PREMISES_DEPLOYMENT.md)：資料庫結構、權限邊界與
   正式上線前仍需完成的事項。
+- [各癌別問卷涵蓋對照表](CLINICIAN_REVIEW_BY_CANCER.md)：十個癌別各自涵蓋了哪些
+  題目、我們自己已知的缺口，以及要請該科醫師回答的問題。供專科醫師審閱用，
+  `npm run generate:clinician-review-docx` 可切成十份獨立 Word。
 - [資料契約](DATA_CONTRACT.md)：提交格式、欄位與版本管理規則。
 - [Power Automate 舊架構手冊](POWER_AUTOMATE_RUNBOOK.md)：只供舊系統回溯與緊急
   回復使用，新開發預設不得使用。
