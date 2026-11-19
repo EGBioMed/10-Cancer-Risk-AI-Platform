@@ -40,8 +40,17 @@ const modules = [
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
 
+// The first consent item is the only one that names what the respondent hands
+// over and what we do with it. At an entrance whose reports all go to one
+// mailbox (INSTITUTION_REPORT_RECIPIENTS) the respondent never supplies an
+// email address, so the stock sentence asks them to consent to something that
+// does not happen. loadForcedReportRecipient swaps in the forced wording once
+// /api/session/delivery answers; both strings are translated in i18n.en.options.
+const consentDataUseOwnEmail = "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。";
+const consentDataUseForcedRecipient = "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名辨識受試者；我了解結果報告不會寄給我本人，而是統一寄送至本入口指定的機構信箱，再由該機構交付給我。";
+
 const consentOptions = [
-  "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。",
+  consentDataUseOwnEmail,
   "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。",
   "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。"
 ];
@@ -1394,6 +1403,7 @@ const i18n = {
     },
     options: {
       "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名與 Email 辨識受試者及寄送結果報告。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name and email address to identify the participant and deliver the result report.",
+      "我已閱讀並了解資料使用說明，同意愛立基生醫股份有限公司依上述目的，以去識別化方式處理我的問卷與健康資料，並使用我提供的姓名辨識受試者；我了解結果報告不會寄給我本人，而是統一寄送至本入口指定的機構信箱，再由該機構交付給我。": "I have read and understood the data use notice. I consent to EG BioMed Co. Ltd. processing my questionnaire and health data in de-identified form for the purposes stated above and using my name to identify the participant. I understand that the result report is not sent to me directly: it goes to the institution mailbox set for this entrance, and that institution gives me my copy.",
       "我了解本評估結果的準確度受限於數據庫與演算法，若風險不高不代表沒有風險，若風險較高也不代表已罹病。": "I understand that the accuracy of this assessment is limited by the database and algorithm. A lower risk does not mean no risk, and a higher risk does not mean I have cancer.",
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
@@ -1627,10 +1637,24 @@ async function loadForcedReportRecipient() {
     // anyone testing the entrance.
     return;
   }
+  applyForcedConsentCopy();
   // The email question may already be on screen by the time this returns, and
   // the section list gains the staff section at a research-intake entrance.
   if (getCurrentQuestion()?.type === "email") renderQuestion();
   else if (staffDiagnosisEntrance && typeof renderModules === "function" && getCurrentQuestion()) renderModules();
+}
+
+// Swapping the first consent item in place keeps the questions array -- which
+// holds a reference to consentOptions -- in step without rebuilding it. Left
+// alone once anything is selected, because multiSelection stores the option
+// label itself and would be holding a string that no longer exists. In
+// practice this runs at startup, long before the notice has been read.
+function applyForcedConsentCopy() {
+  if (!forcedReportRecipient) return;
+  if (consentOptions[0] === consentDataUseForcedRecipient) return;
+  if (multiSelection.size > 0) return;
+  consentOptions[0] = consentDataUseForcedRecipient;
+  if (getCurrentQuestion()?.id === "consent_acknowledgement") renderQuestion();
 }
 
 function getQuestionCopy(question) {
@@ -1912,8 +1936,12 @@ function renderConsentNotice() {
           <dl>
             <div><dt>Who handles the data</dt><dd>EG BioMed Co. Ltd.</dd></div>
             <div><dt>Why we collect it</dt><dd>To organize personalized cancer-related health risk factors, produce your health information report, and support model training and validation.</dd></div>
-            <div><dt>What we collect</dt><dd>Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and the participant name and email address for identification and report delivery.</dd></div>
-            <div><dt>How we protect your identity</dt><dd>All questionnaire and health data are de-identified, with a coded record ID used in place of the participant name and email address. The name, email, and code mapping are stored separately in a restricted contact record. The name and email are used only to identify the participant and prepare or deliver the report; they are not used as model features or included in research analysis.</dd></div>
+            <div><dt>What we collect</dt><dd>${forcedReportRecipient
+              ? "Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and the participant name for identification and report preparation. This entrance does not ask you for a personal email address."
+              : "Basic information such as age, sex, height, and weight; self-reported health information such as recent symptoms, medical history, family history, and lifestyle habits; and the participant name and email address for identification and report delivery."}</dd></div>
+            <div><dt>How we protect your identity</dt><dd>${forcedReportRecipient
+              ? `All questionnaire and health data are de-identified, with a coded record ID used in place of the participant name. The name and code mapping is stored separately in a restricted contact record and is used only to identify the participant and prepare the result report; it is not used as a model feature or included in research analysis. Reports are delivered to the mailbox for ${escapeHtml(forcedReportRecipient.label)}, not to a personal address.`
+              : "All questionnaire and health data are de-identified, with a coded record ID used in place of the participant name and email address. The name, email, and code mapping are stored separately in a restricted contact record. The name and email are used only to identify the participant and prepare or deliver the report; they are not used as model features or included in research analysis."}</dd></div>
             <div><dt>Where it is stored</dt><dd>Microsoft cloud servers in the United States, which meet GDPR and SOC 2 Type II security standards.</dd></div>
             <div><dt>How long it is kept</dt><dd>Research and contact records are kept separately for 5 years from the date of completion. At the end of this period, the contact record and the mapping between your identity and coded record ID will be deleted. The research record will either be destroyed or retained only in a form that can no longer be linked back to you.</dd></div>
             <div><dt>Who may use it</dt><dd>Only authorized EG BioMed staff responsible for research and model validation may use the de-identified data. We will not sell your data or provide it to other companies for advertising, marketing, or unrelated commercial use.</dd></div>
@@ -1951,8 +1979,12 @@ function renderConsentNotice() {
         <dl>
           <div><dt>由誰處理資料</dt><dd>愛立基生醫股份有限公司（EG BioMed Co. Ltd.）。</dd></div>
           <div><dt>為什麼收集</dt><dd>用來整理個人化癌症相關健康風險因子、製作您的健康資訊報告，以及進行模型訓練與驗證。</dd></div>
-          <div><dt>會收集哪些資料</dt><dd>年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及辨識受試者與寄送報告所需的姓名及 Email。</dd></div>
-          <div><dt>如何保護您的身分</dt><dd>問卷與健康資料皆已去識別化處理，並以代碼編號取代姓名與 Email。姓名、Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。姓名與 Email 只用來辨識受試者、製作及寄送結果報告，不會作為模型特徵，也不會納入研究分析。</dd></div>
+          <div><dt>會收集哪些資料</dt><dd>${forcedReportRecipient
+            ? "年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及辨識受試者與製作報告所需的姓名。此入口不會向您索取個人 Email。"
+            : "年齡、性別、身高、體重等基本資料；近期症狀、病史、家族史與生活習慣等自行填寫的健康資料；以及辨識受試者與寄送報告所需的姓名及 Email。"}</dd></div>
+          <div><dt>如何保護您的身分</dt><dd>${forcedReportRecipient
+            ? `問卷與健康資料皆已去識別化處理，並以代碼編號取代姓名。姓名與代碼的對應資料會另外存放在限制權限的聯絡資料表中，只用來辨識受試者與製作結果報告，不會作為模型特徵，也不會納入研究分析。報告寄送使用的是${escapeHtml(forcedReportRecipient.label)}的信箱，不是您的個人信箱。`
+            : "問卷與健康資料皆已去識別化處理，並以代碼編號取代姓名與 Email。姓名、Email 與代碼的對應資料會另外存放在限制權限的聯絡資料表中。姓名與 Email 只用來辨識受試者、製作及寄送結果報告，不會作為模型特徵，也不會納入研究分析。"}</dd></div>
           <div><dt>資料存放在哪裡</dt><dd>Microsoft 位於美國的雲端伺服器，符合 GDPR 與 SOC 2 Type II 安全標準。</dd></div>
           <div><dt>保存多久</dt><dd>研究資料與聯絡資料會分開保存，自填寫日起保存 5 年。期滿後會刪除聯絡資料及可將代碼連回個人的對應關係；研究資料則會銷毀，或僅以無法再連回您的形式保留。</dd></div>
           <div><dt>誰可以使用</dt><dd>只有愛立基生醫內部經授權、負責研究與模型驗證的工作人員可以使用去識別化資料。我們不會販售您的資料，也不會提供其他公司作廣告、行銷或與本服務無關的商業用途。</dd></div>

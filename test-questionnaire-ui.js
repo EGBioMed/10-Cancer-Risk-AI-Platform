@@ -10,9 +10,9 @@ const cutoff = source.indexOf("const answers = {};");
 const sandbox = { EGAnswerCodes: answerCodes };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor };`, sandbox);
+globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor, consentOptions, consentDataUseOwnEmail, consentDataUseForcedRecipient };`, sandbox);
 
-const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor } = sandbox.__uiDefinitions;
+const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor, consentOptions, consentDataUseOwnEmail, consentDataUseForcedRecipient } = sandbox.__uiDefinitions;
 const byId = (id) => questions.find((question) => question.id === id);
 
 test("mental matrix preserves all three canonical answer fields", () => {
@@ -287,4 +287,32 @@ test("every question picture sits on a live question and its file exists", () =>
   }
   assert.equal(questionIllustrationFor(byId("email")), "assets/illustrations/remaining-topics-08.jpg");
   assert.equal(questionIllustrationFor(undefined), null);
+});
+
+// A 雙和-style entrance forces every report to one mailbox and never asks the
+// respondent for an address, so the stock first consent item -- which has them
+// agree to us using "my name and Email ... to deliver the result report" --
+// describes something that does not happen to them. The forced wording has to
+// exist, has to be translated, and has to be reachable: the questions array
+// holds a reference to consentOptions, so swapping index 0 in place is what
+// makes it show, and a copy would silently keep the stock sentence on screen.
+test("the consent item about name and email has a forced-recipient wording", () => {
+  const consentQuestion = byId("consent_acknowledgement");
+  assert.equal(consentQuestion.options, consentOptions, "the question must hold the live array, not a copy");
+  assert.equal(consentOptions[0], consentDataUseOwnEmail);
+
+  assert(consentDataUseOwnEmail.includes("我提供的姓名與 Email"));
+  assert(!consentDataUseForcedRecipient.includes("我提供的姓名與 Email"),
+    "the forced wording must not have the respondent consent to an address they never give");
+  assert(!consentDataUseForcedRecipient.includes("寄送結果報告。"),
+    "the forced wording must not promise delivery to the respondent");
+  assert(consentDataUseForcedRecipient.includes("機構信箱"));
+
+  for (const sentence of [consentDataUseOwnEmail, consentDataUseForcedRecipient]) {
+    const english = i18n.en.options[sentence];
+    assert(typeof english === "string" && english.length > 0, "both wordings need a translation");
+  }
+  assert(i18n.en.options[consentDataUseOwnEmail].includes("email address"));
+  assert(!i18n.en.options[consentDataUseForcedRecipient].includes("and email address to identify"));
+  assert(i18n.en.options[consentDataUseForcedRecipient].includes("institution mailbox"));
 });

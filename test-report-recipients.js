@@ -259,6 +259,71 @@ test("only the email question is reworded", async () => {
   }
 });
 
+// The consent item the respondent ticks is the other place the stock copy
+// promises something a forced entrance never does: it has them agree to us
+// using "my name and Email ... to deliver the result report", on an entrance
+// that never asks for an address and sends the report somewhere else. Asking
+// for consent to a thing that does not happen is the one wording mistake on
+// this page that is not merely untidy.
+test("a forced entrance also rewrites the consent item about email", async () => {
+  const app = loadApp({ fetch: reply(CLINIC) });
+  const consent = app.questions.find((question) => question.id === "consent_acknowledgement");
+  assert.match(consent.options[0], /我提供的姓名與 Email/, "the stock wording moved");
+
+  await app.loadForcedReportRecipient();
+
+  assert.doesNotMatch(consent.options[0], /我提供的姓名與 Email/);
+  assert.match(consent.options[0], /機構信箱/);
+  // The other two items are about the model's limits, not about delivery.
+  assert.equal(consent.options.length, 3);
+  assert.match(consent.options[1], /準確度受限/);
+});
+
+test("an entrance with no forced recipient keeps the stock consent item", async () => {
+  const app = loadApp({ fetch: reply({ ok: true, forced: false }) });
+  const consent = app.questions.find((question) => question.id === "consent_acknowledgement");
+  await app.loadForcedReportRecipient();
+  assert.match(consent.options[0], /我提供的姓名與 Email/);
+});
+
+// The告知事項 the respondent scrolls through lists what we collect and how we
+// protect it, and both entries name an email address they are about to be
+// asked for. On a forced entrance they are not asked, so both entries are
+// wrong in the same direction as the consent item above them. Checked in both
+// languages: the Chinese branch is the one a clinic's respondents read.
+test("a forced entrance rewrites the two notice entries that name an email (zh)", async () => {
+  const app = loadApp({ fetch: reply(CLINIC), navigatorLanguage: "zh-TW" });
+
+  const before = app.renderConsentNotice();
+  assert.match(before, /姓名及 Email/);
+  assert.match(before, /取代姓名與 Email/);
+
+  await app.loadForcedReportRecipient();
+
+  const after = app.renderConsentNotice();
+  assert.doesNotMatch(after, /姓名及 Email/);
+  assert.doesNotMatch(after, /取代姓名與 Email/);
+  assert.match(after, /此入口不會向您索取個人 Email/);
+  assert.match(after, /雙和醫院的信箱/);
+  // The entries that have nothing to do with delivery are left alone.
+  assert.match(after, /Microsoft 位於美國的雲端伺服器/);
+  assert.match(after, /保存 5 年/);
+});
+
+test("a forced entrance rewrites the two notice entries that name an email (en)", async () => {
+  const app = loadApp({ fetch: reply(CLINIC) });
+
+  const before = app.renderConsentNotice();
+  assert.match(before, /participant name and email address for identification/);
+
+  await app.loadForcedReportRecipient();
+
+  const after = app.renderConsentNotice();
+  assert.doesNotMatch(after, /participant name and email address for identification/);
+  assert.match(after, /does not ask you for a personal email address/);
+  assert.match(after, /Reports are delivered to the mailbox for 雙和醫院/);
+});
+
 test("an entrance with no forced recipient is untouched", async () => {
   const app = loadApp({ fetch: reply({ ok: true, forced: false }) });
   const email = app.questions.find((question) => question.type === "email");
