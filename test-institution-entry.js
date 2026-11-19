@@ -253,6 +253,21 @@ test("a research-intake session is sent from the chat page to the form; a 雙和
   assert.equal(clinic.status, 200);
 });
 
+test("the 收案平台 badge is in the header for a research-intake session only", async () => {
+  const pageFor = async (cookie) => (await fetch(`${base}/`, { headers: cookie ? { Cookie: cookie } : {} })).text();
+  const badge = '<span class="brand-intake-badge">收案平台</span>';
+  const research = await pageFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert(research.includes(badge), "no badge at the research-intake entrance");
+  // Beside our name, in the hero's brand row.
+  const start = research.indexOf('<div class="brand-row">');
+  const row = research.slice(start, research.indexOf("</div>", start));
+  assert(row.includes(badge), "the badge is not in the header's brand row");
+  for (const [name, page] of [["雙和", await pageFor(sessionFrom(await scan(SHUANGHO_CODE)))], ["no session", await pageFor(null)]]) {
+    assert(!page.includes("brand-intake-badge"), `badge shown for ${name}`);
+    assert(!page.includes("<!--BRAND:INTAKE-->"), `marker left in the page for ${name}`);
+  }
+});
+
 test("an institution code nobody whitelisted still gets in, and is asked for an email", async () => {
   // The whitelist decides where reports go. It does not decide who may enter
   // -- that is the grant's job, and conflating the two would lock out every
