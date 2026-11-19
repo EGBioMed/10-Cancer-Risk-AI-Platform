@@ -211,7 +211,9 @@ test("the page and the submission ask the same question", () => {
   const path = require("node:path");
   const source = fs.readFileSync(path.join(__dirname, "server.js"), "utf8");
   const callers = source.match(/recipientForSession\(/g) || [];
-  assert.equal(callers.length, 3, "expected the definition plus the two callers");
+  // The definition, the two callers above, and the chat-page redirect for a
+  // research-intake entrance (2026-11-19), which asks the same question.
+  assert.equal(callers.length, 4, "expected the definition plus the three callers");
   assert.match(source, /const recipient = recipientForSession\(payload\);/, "the delivery endpoint resolves it some other way");
 });
 

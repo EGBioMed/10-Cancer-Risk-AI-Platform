@@ -116,6 +116,17 @@ schema.required = schema.required.filter(
     && !POWER_AUTOMATE_OPTIONAL_ROOT_FIELDS.includes(field)
 );
 schema.properties.contract_version.enum = [POWER_AUTOMATE_CONTRACT_VERSION];
+// The Flows also accept the questionnaire version before the current one, so a
+// questionnaire change can be rolled out without a window in which every
+// submission is refused: re-paste this schema into the Flows first (the site
+// still sends the previous version, which they now accept), then deploy the
+// site. Render validates the exact current version before forwarding, so this
+// widens nothing a respondent can send. Drop the old entry at the next change.
+const FLOW_TRANSITION_QUESTIONNAIRE_VERSIONS = ["questionnaire/2026-11-16-v19.14-phase1"];
+schema.properties.questionnaire_version.enum = [
+  ...schema.properties.questionnaire_version.enum,
+  ...FLOW_TRANSITION_QUESTIONNAIRE_VERSIONS.filter((version) => !schema.properties.questionnaire_version.enum.includes(version))
+];
 schema.title = "EG BioMed deployed Power Automate Flow trigger (adapted shape)";
 
 fs.writeFileSync(outputPath, `${JSON.stringify(schema, null, 2)}\n`);

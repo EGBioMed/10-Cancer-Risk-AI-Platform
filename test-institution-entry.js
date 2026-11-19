@@ -24,11 +24,19 @@ const { parseEntryCode, isExemptFromGate, hashToken, normalizeCode } = require("
 
 const SHUANGHO_CODE = "egshuangho2026xxxxxxxxxxxxxxxxxx";
 const UNLISTED_CODE = "egsomeoneelse9";
+const RESEARCH_CODE = "egresearchintake01";
 const WHITELIST = {
   shuangho: {
     label: "雙和醫院",
     email: "reports@shuangho.example.org",
     codes: [SHUANGHO_CODE]
+  },
+  // A research-intake entrance: 雙和's shape plus the staff page.
+  research: {
+    label: "研究收案",
+    email: "intake@example.org",
+    codes: [RESEARCH_CODE],
+    staffDiagnosis: true
   }
 };
 
@@ -37,7 +45,8 @@ const WHITELIST = {
 // refuses a code that does not exist.
 const GRANTS = new Map([
   [hashToken(SHUANGHO_CODE), { ok: true, grantId: 61, deliveryMode: "institution" }],
-  [hashToken(UNLISTED_CODE), { ok: true, grantId: 77, deliveryMode: "institution" }]
+  [hashToken(UNLISTED_CODE), { ok: true, grantId: 77, deliveryMode: "institution" }],
+  [hashToken(RESEARCH_CODE), { ok: true, grantId: 88, deliveryMode: "institution" }]
 ]);
 
 function freePort() {
@@ -221,6 +230,27 @@ test("the session that scan opened knows where its report goes", async () => {
     label: "雙和醫院",
     email: "reports@shuangho.example.org"
   });
+});
+
+test("a research-intake entrance tells the page to add the staff page; 雙和 does not", async () => {
+  const { body } = await deliveryFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert.deepEqual(body, {
+    ok: true,
+    forced: true,
+    label: "研究收案",
+    email: "intake@example.org",
+    staff_diagnosis: true
+  });
+  const clinic = await deliveryFor(sessionFrom(await scan(SHUANGHO_CODE)));
+  assert.equal("staff_diagnosis" in clinic.body, false);
+});
+
+test("a research-intake session is sent from the chat page to the form; a 雙和 session is not", async () => {
+  const chatFor = (cookie) => fetch(`${base}/chat.html`, { redirect: "manual", headers: { Cookie: cookie } });
+  const research = await chatFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert.equal(research.status, 302);
+  const clinic = await chatFor(sessionFrom(await scan(SHUANGHO_CODE)));
+  assert.equal(clinic.status, 200);
 });
 
 test("an institution code nobody whitelisted still gets in, and is asked for an email", async () => {
