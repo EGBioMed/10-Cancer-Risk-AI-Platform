@@ -42,7 +42,8 @@ const {
   parseInstitutionBranding,
   brandForEntrance,
   brandForSlug,
-  applyInstitutionBranding
+  applyInstitutionBranding,
+  applyIntakeBadge
 } = require("./lib/institution-branding");
 const {
   parseReportRecipients,
@@ -709,7 +710,9 @@ function serveStatic(req, res) {
       // per session -- a cached copy would hand one partner's page to the next
       // visitor.
       const html = appAssets.applyTo(fs.readFileSync(filePath, "utf8"));
-      res.end(applyInstitutionBranding(html, brandForSession(getSessionPayload(req))));
+      const sessionPayload = getSessionPayload(req);
+      const isIntakeEntrance = Boolean(recipientForSession(sessionPayload)?.staffDiagnosis);
+      res.end(applyIntakeBadge(applyInstitutionBranding(html, brandForSession(sessionPayload)), isIntakeEntrance));
       return;
     }
     fs.createReadStream(filePath).pipe(res);
@@ -723,10 +726,10 @@ function buildGatedIndexHtml() {
   // The gate view is shown to someone with no session, so there is no
   // entrance to brand yet. Stripping the marker keeps it out of the cached
   // HTML rather than leaving a comment in the one page strangers can see.
-  cachedGatedIndexHtml = applyInstitutionBranding(
+  cachedGatedIndexHtml = applyIntakeBadge(applyInstitutionBranding(
     renderGatedIndexHtml(appAssets.applyTo(indexHtml)),
     null
-  );
+  ), false);
   return cachedGatedIndexHtml;
 }
 

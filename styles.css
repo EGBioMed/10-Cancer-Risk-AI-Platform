@@ -122,6 +122,24 @@ button {
   align-items: center;
 }
 
+/* The research-intake badge (lib/institution-branding.js, applyIntakeBadge).
+   A solid amber pill with dark text, so it reads the same over the dark hero
+   photograph and on the plain header below 840px: it is the one thing on the
+   page that tells research staff they are in the right place. */
+.brand-intake-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 12px;
+  border-radius: 999px;
+  background: #f5b335;
+  color: #2b1d00;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
 .brand-partner img {
   display: block;
   /* --brand-partner-scale is set per partner by lib/institution-branding.js,
