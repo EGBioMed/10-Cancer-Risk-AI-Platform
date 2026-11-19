@@ -373,54 +373,33 @@ The tests verify the accepted v19.5 phase-1 payload and rejection of field-order
 drift, missing vector fields, identifier leakage, and unversioned questionnaire
 changes. A production CI pipeline should make this command a required check.
 
-## 11. Research-intake submission (2026-11-18)
+## 11. v19.15: chronic follow-up and research-intake entrances (2026-11-19)
 
-The research-intake questionnaire (see `QUESTIONNAIRE_DESIGN_AND_FOLLOWUP_MECHANISM.md`
-section 6) has its own, much smaller contract. It shares nothing with the
-transitional `/api/submit` payload above except the coded-answer row rules
-(`checkAnswerCodeRows` in `lib/transitional-contract.js`, used by both).
+There is one submission contract for every entrance. (A separate research-intake
+contract, `intake-submission/1.0.0` with its own Power Automate flow, existed on
+main from 2026-11-18 and was removed before it was ever configured in
+production.)
 
-Which contract applies is decided by the session, never by the body: a session
-whose signed cookie names a study listed in `INTAKE_ENTRANCES` is an intake
-session, and its `/api/submit` is handled by `receiveIntakeSubmission` in
-`server.js`.
+Changes against v19.14:
 
-### 11.1 Browser to server
+- `questionnaire_version` is `questionnaire/2026-11-19-v19.15-phase1`.
+- `answer_code_rows` has 122 rows (was 91): 30 chronic follow-up cells
+  (`chronic_care_<key>`, `chronic_last_episode_<key>`) and
+  `staff_diagnosis_basis`. The staff diagnosis itself (`staff_diagnosis`) is
+  free text and is listed in the manifest as `answer_type: "free_text"`, never
+  in `answer_code_rows`.
+- `rows` may hold up to 150 answers (was 100).
+- No feature row changes: `ai_api_feature_row` and every other vector are
+  exactly as in v19.14.
 
-`contract_version` `intake-submission/1.0.0`. Exactly these fields; anything else
-(notably `email`, `full_name`, `record_id`, `rows`) is rejected:
+A research-intake entrance is an `INSTITUTION_REPORT_RECIPIENTS` entry with
+`"staffDiagnosis": true` (see `ACCESS_GATE.md`). For a session from such an
+entrance the server requires `staff_diagnosis_basis` answered and a non-empty
+`staff_diagnosis` row of at most 200 characters; from every other entrance it
+requires `staff_diagnosis_basis` to be `not_applicable` and no staff row.
+Either mismatch is a 422 before anything is stored or forwarded.
 
-- `contract_version`, `questionnaire_version` (`questionnaire/2026-11-18-v19.14-intake1`),
-  `consent_version`, `answer_code_schema_version`
-- `submitted_at`, `language` (`zh` | `en`)
-- `consent_record` (same shape as the sale contract)
-- `answer_code_rows`: 121 rows, frozen order of `contracts/intake/answer-code-manifest.json`
-- `free_text_answers`: one row per free-text question, `{question_id, status, value}`;
-  answered values are 1-500 characters with no control characters except newline
-
-Validated by `validateIntakeSubmission` in `lib/intake-contract.js`.
-
-### 11.2 Server to the intake flow
-
-Forwarded only to `INTAKE_POWER_AUTOMATE_WEBHOOK_URL` -- a separate Power
-Automate flow, never one of the report flows (the server refuses that URL if it
-equals either report webhook). Unset means every intake submission is refused
-with `intake_submission_not_configured` and goes nowhere: not to Postgres, not to
-Power Automate.
-
-The server adds `record_id` (UUID), `study`, `received_at`, and `research_row`:
-the coded answers flattened into one object keyed by `question_id` (answered:
-the code, multiple codes joined with `|`, or the number; otherwise the literal
-status `unknown` / `not_applicable`). Free text is only in `free_text_answers`,
-never in `research_row`.
-
-The trigger schema to paste into the flow is
-`contracts/power-automate/intake-flow-trigger.schema.json`
-(`npm run generate:intake-flow-trigger-schema`). Like the sale flow's schema it
-has no `pattern` and pins no counts; the server has already validated the rows.
-
-### 11.3 Open items
-
-- The intake consent text and its `consent_version` are not written yet; intake
-  currently records the sale `consent_version`.
-- Whether free text is also written into the research Excel is undecided.
+The Power Automate trigger schemas (`contracts/power-automate/deployed-flow-trigger*.schema.json`)
+accept both the v19.15 and the v19.14 questionnaire version, so they can be
+re-pasted into the flows before the site is deployed; and their `rows` limit is
+150.

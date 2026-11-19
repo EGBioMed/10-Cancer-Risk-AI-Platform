@@ -147,10 +147,12 @@ test("submission validation count follows the canonical questionnaire definition
   // A literal on purpose: adding a question should have to be stated here, not
   // absorbed silently. 76 -> 77 -> 78 -> 81 (2026-10-27, three psychological
   // items) -> 87 (2026-11-16, six pancreatic early-symptom follow-ups) -> 91
-  // (2026-11-16, acute pancreatitis and its three follow-ups). The
+  // (2026-11-16, acute pancreatitis and its three follow-ups) -> 122
+  // (2026-11-19, v19.15: the chronic follow-up table's 30 rows and the staff
+  // diagnosis basis; the staff diagnosis itself is free text, not a code). The
   // three contracts that pin the same number are cross-checked against this
   // manifest in test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 91);
+  assert.equal(canonicalAnswerQuestions.length, 122);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

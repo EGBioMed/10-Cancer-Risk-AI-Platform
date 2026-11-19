@@ -6,21 +6,13 @@ const { getOptionCode } = answerCodeApi;
 
 const root = path.resolve(__dirname, "..");
 const appPath = path.join(root, "app.js");
-// --mode intake writes the research-intake questionnaire's own list; the default
-// is the questionnaire on sale, at the path it has always had.
-const modeFlag = process.argv.indexOf("--mode");
-const mode = modeFlag >= 0 ? process.argv[modeFlag + 1] : "sale";
-if (!["sale", "intake"].includes(mode)) throw new Error(`Unknown --mode ${mode}; expected sale or intake.`);
-const outputPath = mode === "intake"
-  ? path.join(root, "contracts", "intake", "answer-code-manifest.json")
-  : path.join(root, "contracts", "v1", "answer-code-manifest.json");
+const outputPath = path.join(root, "contracts", "v1", "answer-code-manifest.json");
 const source = fs.readFileSync(appPath, "utf8");
 const cutoff = source.indexOf("const answers = {};");
 
 if (cutoff < 0) throw new Error("Could not locate the questionnaire definition boundary in app.js.");
 
 const sandbox = { EGAnswerCodes: answerCodeApi };
-if (mode === "intake") sandbox.EG_QUESTIONNAIRE_MODE = "intake";
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
 globalThis.__manifestSource = {
@@ -57,8 +49,8 @@ const manifestQuestions = questions.filter(
     field: question.field,
     module: question.module,
     // "free_text" (type: "longtext") is listed so the catalogue is complete,
-    // but it never appears in answer_code_rows -- see buildFreeTextAnswers in
-    // app.js. "string" is the email/name kind, which stays as it was.
+    // but it never appears in answer_code_rows: its text travels in `rows`
+    // (see longTextQuestionIds in app.js). "string" is the email/name kind, which stays as it was.
     answer_type: question.type === "number" ? "number"
       : question.type === "longtext" ? "free_text"
       : question.type === "email" || question.type === "text" ? "string"

@@ -228,6 +228,30 @@ under:
 consent text on the form has to say so. That is an IRB question, not a
 configuration one.
 
+### Research-intake entrances: `"staffDiagnosis": true`
+
+An entry may add `"staffDiagnosis": true` (2026-11-19). That entrance behaves
+exactly like 雙和's -- the name is asked, the Email question shows the listed
+mailbox, the report goes there -- and the questionnaire gains a last page the
+research staff fill in: the participant's current diagnosis as free text, and
+its basis as a single choice. Every other entrance never sees that page, and the
+server refuses staff answers from it; a research-intake submission without them
+is refused too. Research-intake sessions are sent from `/chat.html` to the form.
+
+```json
+{
+  "research": {
+    "label": "研究收案",
+    "email": "intake@example.org",
+    "codes": ["<the research code>"],
+    "staffDiagnosis": true
+  }
+}
+```
+
+Only `true` or `false` is accepted; any other value drops the entry and logs
+the problem at startup, like every other malformed entry.
+
 ## Environment variables
 
 | Variable | Purpose | Default |
