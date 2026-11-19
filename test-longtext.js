@@ -3,21 +3,22 @@ const assert = require("node:assert/strict");
 const { loadApp } = require("./lib/load-app-sandbox");
 const { UNCLASSIFIABLE_TYPES } = require("./lib/chat-classify");
 
-// The "longtext" question type (2026-11-18): a long free-text answer. Since
-// v19.15 (2026-11-19) the only one is staff_diagnosis, typed by the research
-// staff at a research-intake entrance (test-staff-diagnosis.js covers where it
-// travels). What these tests pin down:
+// The "longtext" question type (2026-11-18): a free-text answer. Since v19.16
+// (2026-11-19) there are three: staff_diagnosis, typed by the research staff at
+// a research-intake entrance (test-staff-diagnosis.js covers where it travels),
+// and the names of an "other" chronic disease or cancer type
+// (test-other-condition-followup.js). What these tests pin down:
 //   1. a longtext answer is never a coded answer;
 //   2. its text is normalized the same way on every path;
 //   3. its limits come from the question definition.
 
 const staffDiagnosis = (app) => app.questions.find((item) => item.id === "staff_diagnosis");
 
-test("staff_diagnosis is the only longtext question, and it is kept out of answer_code_rows", () => {
+test("the longtext questions are the staff diagnosis and the two other-disease names, kept out of answer_code_rows", () => {
   const app = loadApp({ staffDiagnosisEntrance: true });
   assert.deepEqual(
     JSON.parse(JSON.stringify(app.questions.filter((question) => question.type === "longtext").map((question) => question.id))),
-    ["staff_diagnosis"]
+    ["personal_cancer_other_name", "chronic_other_name", "staff_diagnosis"]
   );
   assert(!app.canonicalAnswerQuestions.some((question) => question.type === "longtext"));
   const question = staffDiagnosis(app);

@@ -149,10 +149,11 @@ test("submission validation count follows the canonical questionnaire definition
   // items) -> 87 (2026-11-16, six pancreatic early-symptom follow-ups) -> 91
   // (2026-11-16, acute pancreatitis and its three follow-ups) -> 122
   // (2026-11-19, v19.15: the chronic follow-up table's 30 rows and the staff
-  // diagnosis basis; the staff diagnosis itself is free text, not a code). The
-  // three contracts that pin the same number are cross-checked against this
-  // manifest in test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 122);
+  // diagnosis basis; the staff diagnosis itself is free text, not a code) -> 124
+  // (2026-11-19, v19.16: the other cancer type's care and last episode; the
+  // two other-disease names are free text). The three contracts that pin the
+  // same number are cross-checked against this manifest in test-contract.js.
+  assert.equal(canonicalAnswerQuestions.length, 124);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

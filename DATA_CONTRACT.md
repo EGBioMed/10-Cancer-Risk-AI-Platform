@@ -400,6 +400,31 @@ requires `staff_diagnosis_basis` to be `not_applicable` and no staff row.
 Either mismatch is a 422 before anything is stored or forwarded.
 
 The Power Automate trigger schemas (`contracts/power-automate/deployed-flow-trigger*.schema.json`)
-accept both the v19.15 and the v19.14 questionnaire version, so they can be
-re-pasted into the flows before the site is deployed; and their `rows` limit is
+accepted both the v19.15 and the v19.14 questionnaire version at the time (see
+§12 for the current pair), so they could be
+re-pasted into the flows before the site was deployed; and their `rows` limit is
 150.
+
+## 12. v19.16: what the "other" disease is (2026-11-19)
+
+Ticking "其他慢性疾病" (chronic_conditions) or "其他癌種" (personal_cancer_types)
+now asks which disease it is.
+
+- `questionnaire_version` is `questionnaire/2026-11-19-v19.16-phase1`.
+- Two free-text questions, at most 50 characters each, listed in the manifest
+  as `answer_type: "free_text"` and travelling only in `rows`:
+  `chronic_other_name` and `personal_cancer_other_name`.
+- `answer_code_rows` has 124 rows (was 122): `personal_cancer_other_care` and
+  `personal_cancer_other_last_episode`, with the same options as the chronic
+  follow-up cells. The other chronic disease keeps its row in the chronic
+  follow-up table (`chronic_care_other_unclassified`,
+  `chronic_last_episode_other_unclassified`).
+- No feature row changes: `ai_api_feature_row` and every other vector are
+  exactly as in v19.15.
+
+The Power Automate trigger schemas accept both v19.16 and v19.15, so they can be
+re-pasted into the flows before the site is deployed. **Paste
+`deployed-flow-trigger.schema.json` into flow A (institution line) and
+`deployed-flow-trigger-public.schema.json` into flow B (free line)** -- on
+2026-11-19 the public one ended up in flow A and every institution submission
+was refused with `TriggerInputSchemaMismatch` until it was swapped back.

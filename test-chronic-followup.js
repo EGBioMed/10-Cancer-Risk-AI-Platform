@@ -45,8 +45,9 @@ test("one table and two coded rows for each of the 15 conditions", () => {
   const app = intakeApp();
   assert.equal(app.questions.filter((question) => question.matrixGroup).length, 30);
   assert(app.questions.some((question) => question.id === "chronic_followup_matrix"));
-  // 91 before v19.15, +30 cells, +1 staff_diagnosis_basis.
-  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 1);
+  // 91 before v19.15, +30 cells, +1 staff_diagnosis_basis; v19.16 +2 (the
+  // other cancer type's care and last episode; the disease names are text).
+  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 1 + 2);
 
   // Every chronic_conditions option except 以上皆無 has its pair of rows.
   const chronic = app.questions.find((item) => item.id === "chronic_conditions");
@@ -57,10 +58,11 @@ test("one table and two coded rows for each of the 15 conditions", () => {
   assert.deepEqual(plain(groupLabels), plain(diseases));
 });
 
-test("the table sits right after the liver follow-up and shows only when a condition is checked", () => {
+test("the table sits after the liver follow-up and the other disease's name, and shows only when a condition is checked", () => {
   const app = intakeApp();
   const order = app.questions.map((question) => question.id);
-  assert.equal(order.indexOf("chronic_followup_matrix"), order.indexOf("liver_disease_etiology") + 1);
+  assert.equal(order.indexOf("chronic_other_name"), order.indexOf("liver_disease_etiology") + 1);
+  assert.equal(order.indexOf("chronic_followup_matrix"), order.indexOf("chronic_other_name") + 1);
 
   assert(!activeIds(app).includes("chronic_followup_matrix"), "shown before chronic_conditions was answered");
   checkConditions(app, ["以上皆無"]);
