@@ -1220,7 +1220,15 @@ const server = http.createServer(async (req, res) => {
       // land?" should be a question with an answer, and this one decides
       // whether the conversational page can resolve a reply the rules cannot.
       chat_classifier_configured: Boolean(ANTHROPIC_API_KEY),
-      chat_classifier_model: ANTHROPIC_API_KEY ? CHAT_CLASSIFIER_MODEL : undefined
+      chat_classifier_model: ANTHROPIC_API_KEY ? CHAT_CLASSIFIER_MODEL : undefined,
+      // Whether the JoiiUp hand-off has everything it needs to verify a token.
+      // A boolean, never which of the eight variables is missing: this endpoint
+      // is outside the gate. The entrance refuses every failure to one page on
+      // purpose, so without this the only way to tell "configured" from "not
+      // configured" is the startup log -- and those eight variables were
+      // undeclared in render.yaml until 2026-11-18, which makes a silent prune
+      // the likeliest reason this would ever turn false on its own.
+      sso_entrance_configured: ssoConfig.enabled
     });
     return;
   }

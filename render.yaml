@@ -76,6 +76,36 @@ services:
       - key: RUN_DATABASE_MIGRATIONS
         sync: false
 
+      # --- JoiiUp hand-off entrance (SSO) -------------------------------------
+      # All eight are read by lib/sso-entrance.js, which composes their names
+      # from a prefix constant instead of naming them literally. The scan in
+      # test-render-config.js could not see a composed name until 2026-11-18,
+      # so these eight sat undeclared while the guard reported all clear --
+      # the same state ACCESS_GATE_SESSION_SECRET was in before 2026-09-09.
+      #
+      # Losing any one of them raises no error. The entrance needs ALGORITHMS,
+      # KEYS, ISSUER and ORG_GRANTS to report itself enabled; with one missing
+      # it simply stops admitting anyone, and the partner sees the same
+      # refusal page as a bad signature. /api/health reports
+      # sso_entrance_configured so that question has an answer without
+      # reading the startup log.
+      - key: SSO_JOIIUP_ALGORITHMS
+        sync: false
+      - key: SSO_JOIIUP_KEYS
+        sync: false
+      - key: SSO_JOIIUP_ISSUER
+        sync: false
+      - key: SSO_JOIIUP_AUDIENCE
+        sync: false
+      - key: SSO_JOIIUP_ORG_GRANTS
+        sync: false
+      - key: SSO_JOIIUP_DEEP_LINK
+        sync: false
+      - key: SSO_JOIIUP_REQUIRE_JTI
+        sync: false
+      - key: SSO_JOIIUP_STORE_SUBJECT
+        sync: false
+
       # --- Conversational page classifier ------------------------------------
       # Unset today (/api/health reports chat_classifier_configured: false);
       # declared so that setting it later survives the next sync.

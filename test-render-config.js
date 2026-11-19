@@ -50,17 +50,57 @@ function collectSourceFiles() {
   return files;
 }
 
+// Reads whose name is built from a prefix constant instead of written out:
+//
+//   const ENV_PREFIX = "SSO_JOIIUP_";
+//   const keys = readKeys(env[`${ENV_PREFIX}KEYS`], problems);
+//
+// lib/sso-entrance.js names all eight of its variables this way, so the literal
+// scan below saw none of them: the eight SSO_JOIIUP_* keys were undeclared in
+// render.yaml while this file reported all clear. A guard with a hole in it is
+// worse than no guard, because people stop checking by hand. Found 2026-11-18,
+// the day those variables were first given values.
+//
+// `env` as well as `process.env`, because the parsing function takes the
+// environment as a parameter -- `parseSsoConfig(process.env)` -- and reads it
+// under that name.
+function readComposedEnvNames(text) {
+  const prefixes = new Map();
+  const constPattern = /const\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*=\s*["']([A-Za-z0-9_]*)["']\s*;/g;
+  let declaration = constPattern.exec(text);
+  while (declaration) {
+    prefixes.set(declaration[1], declaration[2]);
+    declaration = constPattern.exec(text);
+  }
+
+  const resolved = [];
+  const unresolved = [];
+  const readPattern = /(?:process\.)?env\[\s*`\$\{([A-Za-z_$][A-Za-z0-9_$]*)\}([A-Z0-9_]+)`\s*\]/g;
+  let read = readPattern.exec(text);
+  while (read) {
+    const prefix = prefixes.get(read[1]);
+    if (prefix === undefined) unresolved.push(`\${${read[1]}}${read[2]}`);
+    else resolved.push(prefix + read[2]);
+    read = readPattern.exec(text);
+  }
+  return { resolved, unresolved };
+}
+
 function readEnvNames() {
   const names = new Map();
   for (const file of collectSourceFiles()) {
     const text = fs.readFileSync(file, "utf8");
+    const relative = path.relative(__dirname, file);
     // process.env.NAME and process.env["NAME"] / process.env['NAME'].
     const pattern = /process\.env(?:\.([A-Z0-9_]+)|\[\s*["']([A-Z0-9_]+)["']\s*\])/g;
     let match = pattern.exec(text);
     while (match) {
       const name = match[1] || match[2];
-      if (!names.has(name)) names.set(name, path.relative(__dirname, file));
+      if (!names.has(name)) names.set(name, relative);
       match = pattern.exec(text);
+    }
+    for (const name of readComposedEnvNames(text).resolved) {
+      if (!names.has(name)) names.set(name, relative);
     }
   }
   return names;
@@ -135,8 +175,31 @@ test("the keys that must survive a sync are declared", () => {
     "ACCESS_GATE_SESSION_SECRET", // 2026-09-09: pruned, site down next deploy
     "INSTITUTION_BRANDING", // partner entrances render unbranded, no error
     "REPORT_TICKET_SECRET", // every payment link fails a generic ticket check
-    "AZURE_ACCESS_GATE_API_KEY" // no gate backend: /api/health drops to 503
+    "AZURE_ACCESS_GATE_API_KEY", // no gate backend: /api/health drops to 503
+    "SSO_JOIIUP_KEYS", // JoiiUp hand-off stops admitting anyone, no error
+    "SSO_JOIIUP_ORG_GRANTS" // same: the entrance reports itself disabled
   ]) {
     assert.equal(declared.has(key), true, `${key} must be declared in render.yaml`);
   }
+});
+
+test("every composed environment read resolves to a name", () => {
+  // The hole this file had until 2026-11-18 was a read the scan could not see.
+  // A read built from a prefix the scan cannot resolve is the same hole again:
+  // it contributes no name, so the key it needs is never checked against
+  // render.yaml and nothing reports a problem. Fail loudly instead.
+  const unresolved = [];
+  for (const file of collectSourceFiles()) {
+    const text = fs.readFileSync(file, "utf8");
+    for (const read of readComposedEnvNames(text).unresolved) {
+      unresolved.push(`${path.relative(__dirname, file)}: env[\`${read}\`]`);
+    }
+  }
+  assert.deepStrictEqual(
+    unresolved,
+    [],
+    "A composed environment read whose prefix is not a string constant in the "
+      + "same file. The scan cannot name the variable, so render.yaml is not "
+      + `checked for it: ${unresolved.join(", ")}`
+  );
 });
