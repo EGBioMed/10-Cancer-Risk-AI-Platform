@@ -5,13 +5,20 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
+  // v19.18 (2026-11-23): clinician review of the head-and-neck and male
+  // reproductive factor lists. Adds the nasopharyngeal cluster (nosebleed,
+  // blood-streaked discharge, one-sided aural fullness or hearing loss,
+  // tinnitus, double vision, one-sided facial numbness), choking on liquids,
+  // three colorectal symptoms the rule layer asks for separately, an
+  // untreated-nasal-polyp history question, 鼻咽癌 / 卵巢癌 / 食道癌 as family
+  // cancer options, and which relative had lung or liver cancer.
   // v19.17 (2026-11-23): the research-staff diagnosis page is replaced by a
   // staff page for the participant's identity (name, medical record number,
   // hospital); the diagnosis is filled in later from medical records.
   // v19.16 (2026-11-19): "other chronic disease" and "other cancer type" ask
   // which disease it is, and the other cancer gets the care / last-episode
   // follow-up. v19.15: the chronic follow-up table and the research-staff page.
-  questionnaire_version: "questionnaire/2026-11-23-v19.17-phase1",
+  questionnaire_version: "questionnaire/2026-11-23-v19.18-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -50,7 +57,14 @@ const consentOptions = [
   "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。"
 ];
 
-const cancerOptions = ["乳癌", "攝護腺癌", "肺癌", "頭頸癌", "胰臟癌", "肝癌", "大腸直腸癌", "胃癌", "子宮內膜癌", "膀胱癌", "腎癌", "其他癌種"];
+// 鼻咽癌, 卵巢癌 and 食道癌 are appended after 其他癌種 rather than slotted in
+// beside the other cancers, because answer-codes.js derives option_NN from
+// indexOf: inserting mid-list would renumber every code after it and silently
+// change what every stored row means. Display order is the cost; code
+// stability is the reason. Added 2026-11-23 for rules B-83 (鼻咽癌 family
+// history), B-82 (卵巢癌) and B-88 (食道癌), which could not be derived while
+// those three cancers had no option of their own.
+const cancerOptions = ["乳癌", "攝護腺癌", "肺癌", "頭頸癌", "胰臟癌", "肝癌", "大腸直腸癌", "胃癌", "子宮內膜癌", "膀胱癌", "腎癌", "其他癌種", "鼻咽癌", "卵巢癌", "食道癌"];
 
 const symptomNoneOption = "以上皆無";
 const symptomUnknownOption = "不確定";
@@ -118,7 +132,10 @@ const symptomGroups = [
     note: "血便或黑便即使只發生一次也請勾選；其他不適請勾選持續、反覆或明顯新發生的情況。",
     noteEn: "Select bloody or black stools even if they occurred once. For other symptoms, select those that were persistent, recurrent, or clearly new.",
     extraOptions: [
-      ["便秘（排便困難或排便次數減少）", "Constipation (difficulty passing stool or fewer bowel movements)"]
+      ["便秘（排便困難或排便次數減少）", "Constipation (difficulty passing stool or fewer bowel movements)"],
+      ["經常腹瀉（稀便或水便，持續或反覆）", "Frequent diarrhea with loose or watery stools, persistent or recurrent"],
+      ["排便次數明顯增加", "A clear increase in how often you have a bowel movement"],
+      ["突然很想排便、難以忍住（排便急迫感）", "A sudden urgent need to have a bowel movement that is hard to hold"]
     ],
     options: [
       ["經常腹脹", "Frequent abdominal bloating", "symptom_bloating"],
@@ -253,7 +270,8 @@ const symptomGroups = [
       ["持續聲音沙啞超過 3 週（非感冒引起）", "Hoarseness lasting more than 3 weeks and not caused by a cold", "symptom_hoarseness"],
       ["口腔白斑或紅斑", "A white or red patch in the mouth", "symptom_oral_white_red_patch"],
       ["持續或反覆喉嚨痛（非一般感冒）", "Persistent or recurrent sore throat not explained by a common cold", "symptom_sore_throat"],
-      ["持續或反覆耳痛，且耳部檢查沒有明確原因", "Persistent or recurrent ear pain without a clear ear-related cause", "symptom_otalgia"]
+      ["持續或反覆耳痛，且耳部檢查沒有明確原因", "Persistent or recurrent ear pain without a clear ear-related cause", "symptom_otalgia"],
+      ["喝水或喝湯時容易嗆到", "Choking or coughing when drinking water or soup", "symptom_aspiration_on_liquids"]
     ]
   },
   {
@@ -261,13 +279,19 @@ const symptomGroups = [
     title: "頭頸與鼻部症狀",
     titleEn: "Head, Neck, and Nasal Symptoms",
     field: "symptoms.head_neck_nasal",
-    note: "新出現的腫塊即使只發現一次也請勾選；鼻塞或鼻漏請勾選持續、反覆或單側發生的情況。",
-    noteEn: "Select a newly found mass even if noticed once. For nasal blockage or discharge, select persistent, recurrent, or one-sided symptoms.",
+    note: "新出現的腫塊或流鼻血，即使只發生一次也請勾選；鼻塞、鼻漏、耳朵與臉部的症狀，請特別留意是不是只發生在單側。",
+    noteEn: "Select a newly found mass or a nosebleed even if it happened once. For nasal, ear, and facial symptoms, note whether they occur on one side only.",
     options: [
       ["頸部摸得到腫塊或硬塊", "A palpable lump or hard mass in the neck", "symptom_neck_lump"],
       ["頭部、臉部或頸部出現新的腫塊", "A new mass in the head, face, or neck", "symptom_head_neck_mass"],
       ["鼻腔內或鼻部出現腫塊", "A mass in or around the nose", "symptom_nasal_mass"],
-      ["持續、反覆或單側鼻塞／鼻漏", "Persistent, recurrent, or one-sided nasal blockage or discharge", "symptom_nasal_discharge"]
+      ["持續、反覆或單側鼻塞／鼻漏", "Persistent, recurrent, or one-sided nasal blockage or discharge", "symptom_nasal_discharge"],
+      ["不明原因流鼻血", "Unexplained nosebleeds", "symptom_epistaxis"],
+      ["鼻涕或痰中帶血絲", "Blood-streaked nasal discharge or phlegm", "symptom_blood_streaked_nasal_discharge"],
+      ["單側耳朵悶塞感或聽力變差", "A blocked feeling or reduced hearing in one ear", "symptom_unilateral_aural_fullness_or_hearing_loss"],
+      ["耳鳴", "Ringing in the ears", "symptom_tinnitus"],
+      ["看東西出現雙影（複視）", "Double vision", "symptom_diplopia"],
+      ["單側臉部麻木", "Numbness on one side of the face", "symptom_unilateral_facial_numbness"]
     ]
   },
   {
@@ -1152,6 +1176,14 @@ const questions = [
   ...symptomQuestionsWithInlineFollowUps,
 
   { id: "constipation", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？", titleEn: "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_constipation", ruleField: "symptom_constipation", options: ["是", "否", "不確定"] },
+  // Three bowel symptoms the rule layer scores separately (B-76, B-77,
+  // B-79-B-81). Shown as checkboxes in the bowel group and kept as rule-input
+  // questions for the same reason constipation is: an ordinary group option
+  // would have added three columns to the 84-column symptom vector the model
+  // reads, and the model takes a fixed feature set.
+  { id: "diarrhea", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否經常腹瀉（稀便或水便，持續或反覆）？", titleEn: "During the past 6 months, have you often had diarrhea with loose or watery stools, persistent or recurrent?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_diarrhea", ruleField: "symptom_diarrhea", options: ["是", "否", "不確定"] },
+  { id: "stool_frequency_increased", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您的排便次數是否明顯增加？", titleEn: "During the past 6 months, has the number of bowel movements you have clearly increased?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_stool_frequency_increased", ruleField: "symptom_stool_frequency_increased", options: ["是", "否", "不確定"] },
+  { id: "bowel_urgency", module: "symptoms", type: "single", required: true, displayInComposite: true, title: "最近 6 個月內，您是否曾突然很想排便、難以忍住？", titleEn: "During the past 6 months, have you had a sudden urgent need to have a bowel movement that was hard to hold?", note: "已併入腸道與下腹部症狀題組。", noteEn: "This item is included in the bowel and lower abdominal symptom group.", field: "rule_inputs.symptom_bowel_urgency", ruleField: "symptom_bowel_urgency", options: ["是", "否", "不確定"] },
   // Sits with constipation, the other question answered through a symptom
   // group's extraOptions rather than on its own screen.
   mastalgiaQuestion,
@@ -1201,9 +1233,21 @@ const questions = [
   // Sits after vnext_diagnosed_conditions, which asks about chronic pancreatitis.
   ...acutePancreatitisQuestions,
   { id: "orchitis_epididymitis", module: "history", type: "single", required: true, title: "醫師是否曾診斷您有睪丸炎或副睪炎？", titleEn: "Has a clinician ever diagnosed you with orchitis or epididymitis?", note: "請依醫療人員曾告知的診斷回答。", noteEn: "Answer based on a diagnosis previously given by a healthcare professional.", field: "rule_inputs.dx_orchitis_epididymitis", ruleField: "dx_orchitis_epididymitis", options: ["是，曾由醫師診斷", "否", "不確定"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" },
+  // Rule B-87 (鼻咽癌) scores an untreated nasal polyp, so "has one" is not the
+  // question the rule asks -- whether it was dealt with is. Three answers, not
+  // two, for that reason.
+  { id: "nasal_polyp", module: "history", type: "single", required: true, title: "醫師是否曾告訴您有鼻息肉？目前處理狀況是？", titleEn: "Has a clinician ever told you that you have a nasal polyp, and was it treated?", note: "請依醫療人員曾告知的診斷回答。", noteEn: "Answer based on a diagnosis previously given by a healthcare professional.", field: "rule_inputs.nasal_polyp_untreated", ruleField: "nasal_polyp_untreated", options: ["是，但尚未治療", "是，已接受治療", "否", "不確定"] },
   { id: "psa_history", module: "history", type: "single", required: true, title: "您過去是否做過 PSA（攝護腺特異抗原）檢查？結果是否曾被告知偏高？", titleEn: "Have you previously had a PSA (prostate-specific antigen) test, and were you told that the result was elevated?", note: "本題只詢問既往檢查紀錄，不要求您另外接受抽血檢查。", noteEn: "This asks only about a previous test result and does not ask you to undergo a new blood test.", field: "rule_inputs.screen_psa_elevated", ruleField: "screen_psa_elevated", options: ["做過且曾被告知偏高", "做過且結果正常", "沒做過", "不記得"], appliesIf: () => getAnswerValue(answers, "demographics.sex") === "男性" && calculateAge() >= 50 },
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
+  // Asked only for lung and liver, and only when that cancer was selected,
+  // because those are the two rules whose evidence is relationship-specific:
+  // B-89 is a sibling's lung cancer and B-90 is a mother's liver cancer. A
+  // general "which relatives had cancer" question would not answer either --
+  // it cannot pair a relative with a cancer, so a household with a sibling's
+  // breast cancer and a parent's lung cancer would satisfy B-89 falsely.
+  { id: "family_lung_relatives", module: "history", type: "multi", required: true, title: "罹患肺癌的一等親是哪一位？", titleEn: "Which first-degree relative had lung cancer?", note: "可複選。研究中，兄弟姊妹罹患肺癌與本人風險的關聯最明確，因此需要分辨是哪一位。", noteEn: "Select all that apply. A sibling's lung cancer has the clearest link to personal risk, which is why the relationship is asked.", field: "rule_inputs.family_cancer_history_lung_sibling", ruleField: "family_cancer_history_lung_sibling", noneOption: symptomUnknownOption, options: ["父親", "母親", "兄弟姊妹", "子女", symptomUnknownOption], appliesIf: () => hasSelected("family_history.cancer_types_self_side", "肺癌") },
+  { id: "family_liver_relatives", module: "history", type: "multi", required: true, title: "罹患肝癌的一等親是哪一位？", titleEn: "Which first-degree relative had liver cancer?", note: "可複選。研究中，母親罹患肝癌與本人風險的關聯最明確，因此需要分辨是哪一位。", noteEn: "Select all that apply. A mother's liver cancer has the clearest link to personal risk, which is why the relationship is asked.", field: "rule_inputs.family_cancer_history_liver_mother", ruleField: "family_cancer_history_liver_mother", noneOption: symptomUnknownOption, options: ["父親", "母親", "兄弟姊妹", "子女", symptomUnknownOption], appliesIf: () => hasSelected("family_history.cancer_types_self_side", "肝癌") },
 
   { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" },
 
@@ -1440,7 +1484,8 @@ const i18n = {
       "是，過去曾被診斷，目前已完成治療或追蹤": "Yes, diagnosed in the past; treatment or follow-up has been completed",
       "否，未曾被診斷為癌症": "No, never diagnosed with cancer",
       "高血壓": "Hypertension", "糖尿病／高血糖": "Diabetes / high blood glucose", "高血脂／高膽固醇": "Hyperlipidemia / high cholesterol", "肝病（B 型肝炎／C 型肝炎／肝硬化）": "Liver disease (HBV / HCV / cirrhosis)", "胃食道逆流": "Gastroesophageal reflux disease", "心臟病／心律不整": "Heart disease / arrhythmia", "甲狀腺疾病": "Thyroid disease", "氣喘／慢性肺阻塞（COPD）": "Asthma / COPD", "痛風／高尿酸": "Gout / high uric acid", "關節炎（含類風濕性）": "Arthritis (including rheumatoid arthritis)", "憂鬱症／焦慮症": "Depression / anxiety", "中風病史": "History of stroke", "腎臟病／洗腎": "Kidney disease / dialysis", "自體免疫疾病（乾燥症、紅斑性狼瘡等）": "Autoimmune disease", "以上皆無": "None of the above", "其他慢性疾病": "Other chronic disease",
-      "乳癌": "Breast cancer", "攝護腺癌": "Prostate cancer", "肺癌": "Lung cancer", "頭頸癌": "Head and neck cancer", "胰臟癌": "Pancreatic cancer", "肝癌": "Liver cancer", "大腸直腸癌": "Colorectal cancer", "胃癌": "Stomach cancer", "子宮內膜癌": "Endometrial cancer", "膀胱癌": "Bladder cancer", "腎癌": "Kidney cancer", "其他癌種": "Other cancer type",
+      "乳癌": "Breast cancer", "攝護腺癌": "Prostate cancer", "肺癌": "Lung cancer", "頭頸癌": "Head and neck cancer", "胰臟癌": "Pancreatic cancer", "肝癌": "Liver cancer", "大腸直腸癌": "Colorectal cancer", "胃癌": "Stomach cancer", "子宮內膜癌": "Endometrial cancer", "膀胱癌": "Bladder cancer", "腎癌": "Kidney cancer", "其他癌種": "Other cancer type", "鼻咽癌": "Nasopharyngeal cancer", "卵巢癌": "Ovarian cancer", "食道癌": "Esophageal cancer",
+      "父親": "Father", "母親": "Mother", "兄弟姊妹": "Sibling", "子女": "Child",
       "一直都在，沒有消掉過": "It has stayed present the whole time and never went away", "消掉過，但後來又出現": "It went away but came back later", "消掉之後就沒有再出現": "It went away and has not come back", "不確定怎麼回答": "Not sure how to answer",
       "不到2週": "Less than 2 weeks", "2週到不滿6週": "2 to less than 6 weeks", "6週到不滿6個月": "6 weeks to less than 6 months", "6個月以上": "6 months or more",
       "頸部腫塊": "Neck lump", "頭臉頸腫塊": "Head/face/neck lump", "鼻部腫塊": "Nasal lump"
@@ -1488,17 +1533,20 @@ const ruleDirectFeatureColumns = [
   "symptom_lymphadenopathy_course", "symptom_lymphadenopathy_duration_band",
   "symptom_hn_lump_course", "symptom_hn_lump_duration_band", "symptom_hn_lump_site",
   "symptom_breast_lump_course", "symptom_breast_lump_duration_band",
-  "symptom_testicular_lump_course", "symptom_testicular_lump_duration_band"
+  "symptom_testicular_lump_course", "symptom_testicular_lump_duration_band",
+  "symptom_diarrhea", "symptom_stool_frequency_increased", "symptom_bowel_urgency",
+  "nasal_polyp_untreated",
+  "family_cancer_history_lung_sibling", "family_cancer_history_liver_mother"
 ];
 const ruleRepeatFeatureColumns = ruleRepeatDefinitions.map(([, , , countField]) => countField);
 const ruleIntervalFeatureColumns = ruleRepeatDefinitions.flatMap(([, , , , intervalField]) => intervalField ? [intervalField] : []);
 const ruleInputColumns = [...ruleDirectFeatureColumns, ...ruleRepeatFeatureColumns, ...ruleIntervalFeatureColumns];
 const frozenSubmissionVectorCounts = Object.freeze({
   optimized_feature_columns: 71,
-  symptom_feature_columns: 84,
+  symptom_feature_columns: 91,
   vnext_feature_columns: 33,
   research_feature_columns: 1,
-  rule_input_columns: 30
+  rule_input_columns: 36
 });
 // Long free-text answers ("longtext") are a different kind of data from every
 // other answer: not a code and not a number. Since v19.17 (2026-11-23) they are
@@ -3265,19 +3313,43 @@ function resolveHnLumpSite() {
   return null;
 }
 
+// A relationship answer is a list, and the rule wants one relative out of it.
+// Not asked and "不確定" are both null: neither is evidence that this relative
+// did not have that cancer. Whether it was asked is decided by the family
+// cancer list rather than by whether an answer is sitting in `answers`, the
+// same way symptom_stool_loose_or_frequent consults its parent -- an answer
+// given before the respondent went back and unticked that cancer would
+// otherwise be read as a real 0.
+function relativeFlag(field, relative, cancerLabel) {
+  if (!hasSelected("family_history.cancer_types_self_side", cancerLabel)) return null;
+  const value = getAnswerValue(answers, field);
+  if (!Array.isArray(value) || value.length === 0) return null;
+  if (value.length === 1 && value[0] === symptomUnknownOption) return null;
+  return value.includes(relative) ? 1 : 0;
+}
+
 function buildRuleInputRow(symptomFeatureRow) {
   const papTiming = getAnswerValue(answers, "rule_inputs.screen_pap_overdue_or_out_of_range");
   const psaHistory = getAnswerValue(answers, "rule_inputs.screen_psa_elevated");
+  const nasalPolyp = getAnswerValue(answers, "rule_inputs.nasal_polyp_untreated");
   const row = {
     symptom_stool_loose_or_frequent: getRuleParentState("symptom_bowel_habit_change") === 0
       ? 9
       : mapRuleBinary("rule_inputs.symptom_stool_loose_or_frequent"),
     symptom_mastalgia: mapRuleBinary("rule_inputs.symptom_mastalgia"),
     symptom_constipation: mapRuleBinary("rule_inputs.symptom_constipation"),
+    symptom_diarrhea: mapRuleBinary("rule_inputs.symptom_diarrhea"),
+    symptom_stool_frequency_increased: mapRuleBinary("rule_inputs.symptom_stool_frequency_increased"),
+    symptom_bowel_urgency: mapRuleBinary("rule_inputs.symptom_bowel_urgency"),
     dx_orchitis_epididymitis: mapRuleBinary("rule_inputs.dx_orchitis_epididymitis"),
     hx_benign_gynae_disease: mapRuleBinary("rule_inputs.hx_benign_gynae_disease"),
     screen_pap_overdue_or_out_of_range: ({ "3 年內": 1, "3 年以上": 2, "從未做過": 3 }[papTiming] ?? null),
     screen_psa_elevated: ({ "做過且曾被告知偏高": 1, "做過且結果正常": 2, "沒做過": 0 }[psaHistory] ?? null),
+    // "treated" is a 0, not a null: the rule is about an untreated polyp, and
+    // a treated one is evidence the rule does not fire, not missing evidence.
+    nasal_polyp_untreated: ({ "是，但尚未治療": 1, "是，已接受治療": 0, "否": 0 }[nasalPolyp] ?? null),
+    family_cancer_history_lung_sibling: relativeFlag("rule_inputs.family_cancer_history_lung_sibling", "兄弟姊妹", "肺癌"),
+    family_cancer_history_liver_mother: relativeFlag("rule_inputs.family_cancer_history_liver_mother", "母親", "肝癌"),
     symptom_mass: getRuleParentState("symptom_mass"),
     symptom_shortness_of_breath: symptomFeatureRow.symptom_shortness_of_breath ?? null,
     ...buildCourseDurationPair("symptom_lymphadenopathy"),

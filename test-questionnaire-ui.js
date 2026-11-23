@@ -10,9 +10,9 @@ const cutoff = source.indexOf("const answers = {};");
 const sandbox = { EGAnswerCodes: answerCodes };
 vm.createContext(sandbox);
 vm.runInContext(`${source.slice(0, cutoff)}
-globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor };`, sandbox);
+globalThis.__uiDefinitions = { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor, cancerOptions };`, sandbox);
 
-const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor } = sandbox.__uiDefinitions;
+const { questions, symptomGroups, symptomOptionTranslations, i18n, canonicalAnswerQuestions, optionIllustrations, illustrationFor, answerIconFor, questionIllustrations, questionIllustrationFor, cancerOptions } = sandbox.__uiDefinitions;
 const byId = (id) => questions.find((question) => question.id === id);
 
 test("mental matrix preserves all three canonical answer fields", () => {
@@ -152,10 +152,12 @@ test("submission validation count follows the canonical questionnaire definition
   // diagnosis basis; the staff diagnosis itself is free text, not a code) -> 124
   // (2026-11-19, v19.16: the other cancer type's care and last episode; the
   // two other-disease names are free text) -> 123 (2026-11-23, v19.17: the
-  // staff diagnosis basis removed with the staff page). The three contracts
+  // staff diagnosis basis removed with the staff page) -> 129 (2026-11-23,
+  // v19.18: three bowel rule inputs, an untreated nasal polyp, and which
+  // relative had lung or liver cancer -- the clinician review). The contracts
   // that pin the same number are cross-checked against this manifest in
   // test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 123);
+  assert.equal(canonicalAnswerQuestions.length, 129);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);
@@ -289,4 +291,42 @@ test("every question picture sits on a live question and its file exists", () =>
   }
   assert.equal(questionIllustrationFor(byId("email")), "assets/illustrations/remaining-topics-08.jpg");
   assert.equal(questionIllustrationFor(undefined), null);
+});
+
+// answer-codes.js numbers an option by indexOf, and the manifest freezes the
+// result, so the position of an existing option is part of the data contract.
+// 鼻咽癌, 卵巢癌 and 食道癌 were appended after 其他癌種 for that reason, which
+// looks wrong and is not: moving them up beside the other cancers would
+// renumber every code after them and change what stored rows mean.
+test("new cancer options are appended, so existing option codes keep their position", () => {
+  assert.equal(cancerOptions.indexOf("乳癌"), 0);
+  assert.equal(cancerOptions.indexOf("腎癌"), 10);
+  assert.equal(cancerOptions.indexOf("其他癌種"), 11);
+  assert.deepEqual(Array.from(cancerOptions.slice(12)), ["鼻咽癌", "卵巢癌", "食道癌"]);
+  for (const option of ["鼻咽癌", "卵巢癌", "食道癌"]) {
+    assert(typeof i18n.en.options[option] === "string", `${option} 沒有英文翻譯`);
+  }
+});
+
+// The clinician review asked for the nasopharyngeal presentation, which the
+// head-and-neck group did not have: it listed masses and nasal blockage only,
+// and NPC shows up as bleeding, one-sided ear and cranial nerve signs.
+test("the nasopharyngeal cluster sits in the head and neck group with its own columns", () => {
+  const group = symptomGroups.find((item) => item.id === "symptoms_head_neck_nasal");
+  const columns = Array.from(group.options, ([, , column]) => column);
+  assert.deepEqual(Array.from(columns.slice(4)), [
+    "symptom_epistaxis",
+    "symptom_blood_streaked_nasal_discharge",
+    "symptom_unilateral_aural_fullness_or_hearing_loss",
+    "symptom_tinnitus",
+    "symptom_diplopia",
+    "symptom_unilateral_facial_numbness"
+  ]);
+  assert(group.options.every(([zh, en]) => zh && en), "每個選項都要有中英文");
+  // One-sidedness is the point of half of them, so the group note has to say so.
+  assert.match(group.note, /單側/);
+  assert.match(group.noteEn, /one side/);
+
+  const throat = symptomGroups.find((item) => item.id === "symptoms_oral_throat");
+  assert.equal(throat.options.at(-1)[2], "symptom_aspiration_on_liquids");
 });
