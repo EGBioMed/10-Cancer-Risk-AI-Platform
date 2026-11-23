@@ -336,25 +336,21 @@ const derivedParents = {
   `chronic_*` 推導本身沒有改動，追問答案不進 `ai_api_feature_row`，模型輸入不變。
 - 放在 `liver_disease_etiology` 之後。
 
-### 6.3 收案入口：比照雙和，多一頁收案人員填寫
+### 6.3 收案入口：比照雙和
 
 - 收案入口就是 `INSTITUTION_REPORT_RECIPIENTS` 裡的一筆機構設定（與雙和相同），多一個
   `"staffDiagnosis": true`。效果：
   - 和雙和一樣：仍問姓名；Email 題變成唯讀，顯示機構信箱；報告照常產生，寄到該信箱。
-  - 多一頁「收案人員填寫」（章節 `staff`，在資料確認頁之前）：
-    - `staff_diagnosis`：此受試者目前的診斷，文字填答（題型 `longtext`，必填，上限 200 字）
-    - `staff_diagnosis_basis`：診斷依據，單選（病理確診／影像或臨床診斷／僅依病人口述／尚未確診）
-  - 這兩題不能略過；不知道時寫「待確認」／選「尚未確診」。
-- 其他入口看不到這一頁，章節列表也不顯示；`staff_diagnosis_basis` 在 `answer_code_rows` 為
-  `not_applicable`。
-- 頁面從 `/api/session/delivery` 得知是否為收案入口（回應多 `"staff_diagnosis": true`）；
-  但最後由伺服器依入口檢查（`staffAnswerProblems`，`lib/report-recipients.js`）：非收案入口送來
-  人員作答、或收案入口缺人員作答，一律 422。
-- 收案入口開 `/chat.html` 會被導回表單（對話版沒有人員填寫頁）。
+  - 頁首公司名稱旁、作答區標題列，都顯示「收案平台」標記。
+  - 開 `/chat.html` 會被導回表單（表單才有「收案平台」標記）。
+- 問卷內容與其他入口完全相同。
+- v19.15–v19.16 曾有一頁「收案人員填寫」（`staff_diagnosis` 診斷文字、`staff_diagnosis_basis`
+  診斷依據）。v19.17（2026-11-23）移除：診斷改為事後查病歷，再填進研究 Excel，不在問卷中填寫。
 
 ### 6.4 文字題（題型 `longtext`）
 
-- 目前只有 `staff_diagnosis` 一題。文字經 `normalizeLongText` 正規化（換行統一、移除控制字元、去頭尾空白）。
+- 目前有兩題：`chronic_other_name`、`personal_cancer_other_name`（v19.16 起；v19.15–v19.16 的
+  `staff_diagnosis` 已於 v19.17 移除）。文字經 `normalizeLongText` 正規化（換行統一、移除控制字元、去頭尾空白）。
 - **不進** `answer_code_rows` 與任何 `*_feature_row`；文字放在 `rows`（`question_id`、`answer`），
   與其他題的作答一起送到 Power Automate。
 - 對話版 AI 分類器拒收此題型（`lib/chat-classify.js`），自由文字不送往模型。

@@ -34,20 +34,20 @@ function activeIds(app) {
 }
 
 test("the follow-up is the same at every entrance, research-intake included", () => {
-  const ordinary = loadApp();
-  const intake = loadApp({ staffDiagnosisEntrance: true });
-  const ids = (app) => app.questions.filter((question) => question.id.startsWith("chronic_")).map((question) => question.id);
-  assert.deepEqual(plain(ids(intake)), plain(ids(ordinary)));
-  assert(!ordinary.questions.some((question) => "intakeOnly" in question), "nothing is intake-only any more");
+  // One questionnaire for every entrance: nothing is switched by the entrance.
+  const app = loadApp();
+  assert(!app.questions.some((question) => "intakeOnly" in question), "nothing is intake-only any more");
+  assert(!app.questions.some((question) => question.module === "staff"), "a research-staff question is back");
 });
 
 test("one table and two coded rows for each of the 15 conditions", () => {
   const app = intakeApp();
   assert.equal(app.questions.filter((question) => question.matrixGroup).length, 30);
   assert(app.questions.some((question) => question.id === "chronic_followup_matrix"));
-  // 91 before v19.15, +30 cells, +1 staff_diagnosis_basis; v19.16 +2 (the
-  // other cancer type's care and last episode; the disease names are text).
-  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 1 + 2);
+  // 91 before v19.15, +30 cells; v19.16 +2 (the other cancer type's care and
+  // last episode; the disease names are text). The staff diagnosis basis
+  // (v19.15-v19.16) was removed in v19.17.
+  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 2);
 
   // Every chronic_conditions option except 以上皆無 has its pair of rows.
   const chronic = app.questions.find((item) => item.id === "chronic_conditions");
@@ -140,7 +140,7 @@ test("an answer left behind by unchecking a condition does not ride along", () =
 test("the follow-up never reaches the model request, and chronic_* features are unchanged", () => {
   const fill = (app) => {
     for (const question of app.questions) {
-      if (!question.field || question.matrixGroup || question.module === "staff") continue;
+      if (!question.field || question.matrixGroup) continue;
       let value;
       if (question.type === "multi") value = [question.options?.[0]];
       else if (question.options) value = question.options[0];
@@ -173,7 +173,7 @@ test("the conversational version asks the follow-up too, one cell at a time", ()
   const { createChatSession } = require("./chat-session");
   const app = loadApp();
   for (const question of app.questions) {
-    if (!question.field || question.matrixGroup || question.module === "staff" || question.id === "chronic_conditions") continue;
+    if (!question.field || question.matrixGroup || question.id === "chronic_conditions") continue;
     let value;
     if (question.type === "multi") value = [question.options?.[0]];
     else if (question.options) value = question.options[0];

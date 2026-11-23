@@ -232,11 +232,14 @@ configuration one.
 
 An entry may add `"staffDiagnosis": true` (2026-11-19). That entrance behaves
 exactly like 雙和's -- the name is asked, the Email question shows the listed
-mailbox, the report goes there -- and the questionnaire gains a last page the
-research staff fill in: the participant's current diagnosis as free text, and
-its basis as a single choice. Every other entrance never sees that page, and the
-server refuses staff answers from it; a research-intake submission without them
-is refused too. Research-intake sessions are sent from `/chat.html` to the form.
+mailbox, the report goes there -- and its page shows a 收案平台 badge beside our
+name and in the answer area's title bar. Research-intake sessions are sent from
+`/chat.html` to the form, which carries the badge.
+
+The flag kept its name from v19.15-v19.16, when it also added a page the
+research staff filled in (a diagnosis and its basis). That page was removed in
+v19.17 (2026-11-23): the diagnosis is filled in later from medical records,
+outside the form.
 
 ```json
 {

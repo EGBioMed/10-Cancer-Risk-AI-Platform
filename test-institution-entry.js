@@ -232,17 +232,18 @@ test("the session that scan opened knows where its report goes", async () => {
   });
 });
 
-test("a research-intake entrance tells the page to add the staff page; 雙和 does not", async () => {
+test("a research-intake entrance locks the email like 雙和, and tells the page nothing more", async () => {
+  // Until v19.17 (2026-11-23) it also said staff_diagnosis: true, which added
+  // the research staff's page; that page is gone.
   const { body } = await deliveryFor(sessionFrom(await scan(RESEARCH_CODE)));
   assert.deepEqual(body, {
     ok: true,
     forced: true,
     label: "研究收案",
-    email: "intake@example.org",
-    staff_diagnosis: true
+    email: "intake@example.org"
   });
   const clinic = await deliveryFor(sessionFrom(await scan(SHUANGHO_CODE)));
-  assert.equal("staff_diagnosis" in clinic.body, false);
+  assert.deepEqual(Object.keys(clinic.body).sort(), ["email", "forced", "label", "ok"]);
 });
 
 test("a research-intake session is sent from the chat page to the form; a 雙和 session is not", async () => {

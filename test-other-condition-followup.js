@@ -26,7 +26,7 @@ function setAnswer(app, id, value) {
 
 function fillEverything(app, { chronic = ["以上皆無"], cancer = null } = {}) {
   for (const question of app.questions) {
-    if (!question.field || question.matrixGroup || question.module === "staff" || question.type === "longtext") continue;
+    if (!question.field || question.matrixGroup || question.type === "longtext") continue;
     if (NEW_CODE_IDS.includes(question.id)) continue;
     let value;
     if (question.type === "multi") value = [question.options?.[0]];

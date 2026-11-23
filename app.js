@@ -5,10 +5,12 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
+  // v19.17 (2026-11-23): the research-staff diagnosis page is removed; the
+  // diagnosis is filled in later from medical records, outside this form.
   // v19.16 (2026-11-19): "other chronic disease" and "other cancer type" ask
   // which disease it is, and the other cancer gets the care / last-episode
   // follow-up. v19.15: the chronic follow-up table and the research-staff page.
-  questionnaire_version: "questionnaire/2026-11-19-v19.16-phase1",
+  questionnaire_version: "questionnaire/2026-11-23-v19.17-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -33,9 +35,6 @@ const modules = [
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
   { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
-  // Shown only at a research-intake entrance (see staffDiagnosisEntrance): the
-  // research staff's own page, filled after the respondent hands the device over.
-  { id: "staff", title: "收案人員填寫", summary: "由收案人員填寫診斷與診斷依據。", staffOnly: true },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -1079,37 +1078,6 @@ const otherCancerQuestions = [
   }
 ];
 
-// Set at startup from /api/session/delivery: true only when this session came
-// in through an entrance configured as a research-intake entrance
-// (INSTITUTION_REPORT_RECIPIENTS, "staffDiagnosis": true). The browser cannot
-// switch it on for itself in a way that counts -- the server refuses staff
-// answers from any other session (lib/report-recipients.js).
-let staffDiagnosisEntrance = false;
-const isStaffDiagnosisEntrance = () => staffDiagnosisEntrance;
-
-// The research staff's page, last before the confirmation page, at research-
-// intake entrances only (2026-11-18, carried over from the separate intake
-// questionnaire that v19.15 folded back in). The diagnosis is free text (type
-// "longtext": in `rows`, never a code or a feature); how it was established is
-// a coded single choice, so an analysis can keep only pathology-confirmed cases.
-const staffDiagnosisQuestions = [
-  {
-    id: "staff_diagnosis", module: "staff", type: "longtext", required: true, maxLength: 200, dropWhenInapplicable: true,
-    title: "【收案人員填寫】此受試者目前的診斷", titleEn: "[Research staff] This participant's current diagnosis",
-    note: "以下由收案人員填寫：受試者請到此停止，將裝置交給收案人員。請填寫目前的診斷（例如癌別）；若非癌症請寫明，尚未確定請填「待確認」。請不要填寫姓名、病歷號等可辨識身分的資料。",
-    noteEn: "To be completed by research staff: participants, please stop here and hand the device to the staff. Enter the current diagnosis (for example, the cancer type); state it if not cancer, or enter \"pending\" if not yet known. Do not enter names, medical record numbers or anything else that identifies the participant.",
-    placeholder: "例如：大腸直腸癌", placeholderEn: "For example: colorectal cancer",
-    field: "staff.diagnosis", appliesIf: isStaffDiagnosisEntrance
-  },
-  {
-    id: "staff_diagnosis_basis", module: "staff", type: "single", required: true, dropWhenInapplicable: true,
-    title: "【收案人員填寫】上述診斷的依據", titleEn: "[Research staff] What the diagnosis above is based on",
-    note: "請選擇最接近的一項。", noteEn: "Choose the closest one.",
-    options: ["病理確診", "影像或臨床診斷", "僅依病人口述", "尚未確診"],
-    field: "staff.diagnosis_basis", appliesIf: isStaffDiagnosisEntrance
-  }
-];
-
 const questions = [
   {
     id: "consent_acknowledgement",
@@ -1188,9 +1156,7 @@ const questions = [
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
-  { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" },
-
-  ...staffDiagnosisQuestions
+  { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
 ];
 
 const i18n = {
@@ -1300,7 +1266,6 @@ const i18n = {
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
       contact: ["Contact Information", "Enter the email address for the report."],
-      staff: ["Research staff", "Diagnosis and its basis, entered by the research staff."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -1398,7 +1363,6 @@ const i18n = {
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
-      "病理確診": "Confirmed by pathology", "影像或臨床診斷": "Imaging or clinical diagnosis", "僅依病人口述": "Reported by the participant only", "尚未確診": "Not yet confirmed",
       "1 個月內": "Within 1 month", "1–6 個月": "1-6 months ago", "6–12 個月": "6-12 months ago", "1 年以上": "Over 1 year ago",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
@@ -1485,9 +1449,9 @@ const frozenSubmissionVectorCounts = Object.freeze({
   rule_input_columns: 30
 });
 // Long free-text answers ("longtext") are a different kind of data from every
-// other answer: not a code and not a number: staff_diagnosis (typed by the
-// research staff at a research-intake entrance) and, since v19.16, the names of
-// an "other" chronic disease or cancer type. Each travels in
+// other answer: not a code and not a number. Since v19.17 (2026-11-23) they are
+// the names of an "other" chronic disease or cancer type (the research staff's
+// diagnosis, v19.15-v19.16, was removed). Each travels in
 // `rows` (question, text) like every other answer, and is kept out of
 // answer_code_rows (which promises codes) and out of every feature row.
 const LONGTEXT_DEFAULT_MAX_LENGTH = 500;
@@ -1604,13 +1568,6 @@ function getModuleCopy(module) {
 // startup; see renderQuickInput's email branch and lib/report-recipients.js.
 let forcedReportRecipient = null;
 
-// The section list without the research staff's section, except at a
-// research-intake entrance: everyone else would see a numbered step they never
-// reach.
-function getShownModules() {
-  return modules.filter((module) => !module.staffOnly || staffDiagnosisEntrance);
-}
-
 async function loadForcedReportRecipient() {
   try {
     const response = await fetch("/api/session/delivery");
@@ -1618,7 +1575,6 @@ async function loadForcedReportRecipient() {
     const payload = await response.json();
     if (!payload || payload.forced !== true || !payload.email || !payload.label) return;
     forcedReportRecipient = { email: payload.email, label: payload.label };
-    staffDiagnosisEntrance = payload.staff_diagnosis === true;
   } catch (error) {
     // Unreachable or unparseable: fall back to asking for an address. The
     // server still redirects the report, so nothing is delivered wrongly --
@@ -1627,10 +1583,8 @@ async function loadForcedReportRecipient() {
     // anyone testing the entrance.
     return;
   }
-  // The email question may already be on screen by the time this returns, and
-  // the section list gains the staff section at a research-intake entrance.
+  // The email question may already be on screen by the time this returns.
   if (getCurrentQuestion()?.type === "email") renderQuestion();
-  else if (staffDiagnosisEntrance && typeof renderModules === "function" && getCurrentQuestion()) renderModules();
 }
 
 function getQuestionCopy(question) {
@@ -1874,8 +1828,8 @@ function translateFollowUp(parsed) {
 
 function getCurrentModuleIndex() {
   const question = getCurrentQuestion();
-  if (!question) return getShownModules().findIndex((item) => item.id === "confirm");
-  return getShownModules().findIndex((item) => item.id === question.module);
+  if (!question) return modules.findIndex((item) => item.id === "confirm");
+  return modules.findIndex((item) => item.id === question.module);
 }
 
 function getModuleFeedback(fromModuleId, toModuleId) {
@@ -1977,7 +1931,7 @@ function renderConsentNotice() {
 
 function renderModules() {
   const activeModuleIndex = getCurrentModuleIndex();
-  moduleList.innerHTML = getShownModules().map((module, index) => {
+  moduleList.innerHTML = modules.map((module, index) => {
     const state = index < activeModuleIndex ? "is-done" : index === activeModuleIndex ? "is-active" : "";
     const [moduleTitle] = getModuleCopy(module);
     return `
@@ -1988,7 +1942,7 @@ function renderModules() {
     `;
   }).join("");
 
-  const activeModule = getShownModules()[activeModuleIndex] || modules.at(-1);
+  const activeModule = modules[activeModuleIndex] || modules.at(-1);
   const [title, summary] = getModuleCopy(activeModule);
   sectionTitle.textContent = title;
   sectionSummary.textContent = summary;
@@ -2009,7 +1963,7 @@ function renderQuestion() {
   inputZone.hidden = false;
   inputZone.classList.toggle("input-zone--consent", question.id === "consent_acknowledgement");
   panelFooter.hidden = false;
-  const cannotSkip = question.id === "consent_acknowledgement" || ["name", "email"].includes(question.type) || question.module === "staff";
+  const cannotSkip = question.id === "consent_acknowledgement" || ["name", "email"].includes(question.type);
   skipBtn.hidden = !question.required || cannotSkip;
   skipBtn.disabled = cannotSkip;
   guideMessage.textContent = question.module === "symptoms"
@@ -2692,8 +2646,8 @@ function saveAnswer(value, source, structured = null) {
 }
 
 function renderConfirmation() {
-  const moduleIndex = getShownModules().findIndex((item) => item.id === "confirm");
-  moduleList.innerHTML = getShownModules().map((module, index) => `
+  const moduleIndex = modules.findIndex((item) => item.id === "confirm");
+  moduleList.innerHTML = modules.map((module, index) => `
     <li class="${index < moduleIndex ? "is-done" : index === moduleIndex ? "is-active" : ""}">
       <span class="module-index">${index < moduleIndex ? "✓" : index + 1}</span>
       <span>${getModuleCopy(module)[0]}</span>
@@ -3661,8 +3615,8 @@ async function renderResult() {
       : "地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。")
     : (currentLang === "en" ? i18n.en.ui.completedInbox : "請留意信箱收件匣與垃圾郵件匣。");
 
-  const moduleIndex = getShownModules().findIndex((item) => item.id === "result");
-  moduleList.innerHTML = getShownModules().map((module, index) => `
+  const moduleIndex = modules.findIndex((item) => item.id === "result");
+  moduleList.innerHTML = modules.map((module, index) => `
     <li class="${index < moduleIndex ? "is-done" : index === moduleIndex ? "is-active" : ""}">
       <span class="module-index">${index < moduleIndex ? "✓" : index + 1}</span>
       <span>${getModuleCopy(module)[0]}</span>
@@ -3784,9 +3738,7 @@ backBtn.addEventListener("click", () => {
 
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
-  // The staff page is not the respondent's to skip: a diagnosis not yet known
-  // is written as 待確認 / chosen as 尚未確診, never left as 不確定.
-  if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type) || question?.module === "staff") return;
+  if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type)) return;
   if (question?.type === "grouped-matrix") {
     saveGroupedMatrixAnswers(question, getApplicableCompositeRows(question).map(() => "不確定"), "uncertain");
     finishCompositeQuestion(question);

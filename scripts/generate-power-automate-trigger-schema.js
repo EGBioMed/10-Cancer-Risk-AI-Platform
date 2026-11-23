@@ -122,7 +122,7 @@ schema.properties.contract_version.enum = [POWER_AUTOMATE_CONTRACT_VERSION];
 // still sends the previous version, which they now accept), then deploy the
 // site. Render validates the exact current version before forwarding, so this
 // widens nothing a respondent can send. Drop the old entry at the next change.
-const FLOW_TRANSITION_QUESTIONNAIRE_VERSIONS = ["questionnaire/2026-11-19-v19.15-phase1"];
+const FLOW_TRANSITION_QUESTIONNAIRE_VERSIONS = ["questionnaire/2026-11-19-v19.16-phase1"];
 schema.properties.questionnaire_version.enum = [
   ...schema.properties.questionnaire_version.enum,
   ...FLOW_TRANSITION_QUESTIONNAIRE_VERSIONS.filter((version) => !schema.properties.questionnaire_version.enum.includes(version))

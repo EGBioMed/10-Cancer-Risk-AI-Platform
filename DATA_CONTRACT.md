@@ -428,3 +428,22 @@ re-pasted into the flows before the site is deployed. **Paste
 `deployed-flow-trigger-public.schema.json` into flow B (free line)** -- on
 2026-11-19 the public one ended up in flow A and every institution submission
 was refused with `TriggerInputSchemaMismatch` until it was swapped back.
+
+## 13. v19.17: the research staff's page removed (2026-11-23)
+
+The research staff's diagnosis page is removed from the questionnaire. The
+diagnosis is filled in later from medical records, outside the form.
+
+- `questionnaire_version` is `questionnaire/2026-11-23-v19.17-phase1`.
+- `staff_diagnosis` (free text) and `staff_diagnosis_basis` (coded) are gone:
+  `answer_code_rows` has 123 rows (was 124), and neither question can appear in
+  `rows`.
+- The server no longer checks staff answers: a research-intake entrance
+  (`"staffDiagnosis": true`) submits exactly what every other entrance does,
+  with the report sent to its listed mailbox. `/api/session/delivery` no longer
+  returns `staff_diagnosis`.
+- No feature row changes.
+
+The Power Automate trigger schemas accept both v19.17 and v19.16; re-paste them
+before the site is deployed (flow A: `deployed-flow-trigger.schema.json`, flow
+B: `deployed-flow-trigger-public.schema.json`).

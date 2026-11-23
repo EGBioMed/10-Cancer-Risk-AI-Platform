@@ -3,27 +3,26 @@ const assert = require("node:assert/strict");
 const { loadApp } = require("./lib/load-app-sandbox");
 const { UNCLASSIFIABLE_TYPES } = require("./lib/chat-classify");
 
-// The "longtext" question type (2026-11-18): a free-text answer. Since v19.16
-// (2026-11-19) there are three: staff_diagnosis, typed by the research staff at
-// a research-intake entrance (test-staff-diagnosis.js covers where it travels),
-// and the names of an "other" chronic disease or cancer type
-// (test-other-condition-followup.js). What these tests pin down:
+// The "longtext" question type (2026-11-18): a free-text answer. Since v19.17
+// (2026-11-23) there are two: the names of an "other" chronic disease or cancer
+// type (test-other-condition-followup.js covers where they travel). The
+// research staff's diagnosis, a longtext question in v19.15-v19.16, is gone. What these tests pin down:
 //   1. a longtext answer is never a coded answer;
 //   2. its text is normalized the same way on every path;
 //   3. its limits come from the question definition.
 
-const staffDiagnosis = (app) => app.questions.find((item) => item.id === "staff_diagnosis");
+const otherChronicName = (app) => app.questions.find((item) => item.id === "chronic_other_name");
 
-test("the longtext questions are the staff diagnosis and the two other-disease names, kept out of answer_code_rows", () => {
-  const app = loadApp({ staffDiagnosisEntrance: true });
+test("the longtext questions are the two other-disease names, kept out of answer_code_rows", () => {
+  const app = loadApp();
   assert.deepEqual(
     JSON.parse(JSON.stringify(app.questions.filter((question) => question.type === "longtext").map((question) => question.id))),
-    ["personal_cancer_other_name", "chronic_other_name", "staff_diagnosis"]
+    ["personal_cancer_other_name", "chronic_other_name"]
   );
   assert(!app.canonicalAnswerQuestions.some((question) => question.type === "longtext"));
-  const question = staffDiagnosis(app);
-  app.answers[question.field] = app.makeAnswerEntry(question, "肺癌", "longtext_input");
-  assert(!app.buildAnswerCodeRows().some((row) => row.question_id === "staff_diagnosis"));
+  const question = otherChronicName(app);
+  app.answers[question.field] = app.makeAnswerEntry(question, "骨質疏鬆", "longtext_input");
+  assert(!app.buildAnswerCodeRows().some((row) => row.question_id === "chronic_other_name"));
 });
 
 test("normalizeLongText folds line endings, drops control characters and trims", () => {
@@ -35,12 +34,12 @@ test("normalizeLongText folds line endings, drops control characters and trims",
 });
 
 test("the length limit and required check come from the question definition", () => {
-  const app = loadApp({ staffDiagnosisEntrance: true });
-  const question = staffDiagnosis(app);
-  assert.equal(app.getLongTextMaxLength(question), 200);
-  assert.notEqual(app.getLongTextValidationMessage(question, "  "), "", "a blank diagnosis is accepted");
-  assert.equal(app.getLongTextValidationMessage(question, "癌".repeat(200)), "");
-  assert.match(app.getLongTextValidationMessage(question, "癌".repeat(201)), /200/);
+  const app = loadApp();
+  const question = otherChronicName(app);
+  assert.equal(app.getLongTextMaxLength(question), 50);
+  assert.notEqual(app.getLongTextValidationMessage(question, "  "), "", "a blank name is accepted");
+  assert.equal(app.getLongTextValidationMessage(question, "癌".repeat(50)), "");
+  assert.match(app.getLongTextValidationMessage(question, "癌".repeat(51)), /50/);
   // An optional longtext with no maxLength gets the default.
   const optional = { type: "longtext", required: false };
   assert.equal(app.getLongTextMaxLength(optional), 500);
