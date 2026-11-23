@@ -273,6 +273,16 @@
         },
         "report_language": {
           "type": "string"
+        },
+        "medical_record_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "hospital": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
         }
       },
       "required": [

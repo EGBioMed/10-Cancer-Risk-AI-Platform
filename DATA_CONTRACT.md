@@ -429,20 +429,29 @@ re-pasted into the flows before the site is deployed. **Paste
 2026-11-19 the public one ended up in flow A and every institution submission
 was refused with `TriggerInputSchemaMismatch` until it was swapped back.
 
-## 13. v19.17: the research staff's page removed (2026-11-23)
+## 13. v19.17: the staff page asks for identity, not a diagnosis (2026-11-23)
 
-The research staff's diagnosis page is removed from the questionnaire. The
-diagnosis is filled in later from medical records, outside the form.
+At a research-intake entrance the research staff's page now asks for the
+participant's name, medical record number and hospital. The diagnosis is filled
+in later from the medical record, outside the form.
 
 - `questionnaire_version` is `questionnaire/2026-11-23-v19.17-phase1`.
 - `staff_diagnosis` (free text) and `staff_diagnosis_basis` (coded) are gone:
   `answer_code_rows` has 123 rows (was 124), and neither question can appear in
   `rows`.
-- The server no longer checks staff answers: a research-intake entrance
-  (`"staffDiagnosis": true`) submits exactly what every other entrance does,
-  with the report sent to its listed mailbox. `/api/session/delivery` no longer
-  returns `staff_diagnosis`.
+- `contact_row` may carry two more keys, `medical_record_number` (at most 30
+  characters) and `hospital` (at most 50). They are present only for a
+  research-intake entrance (`"staffDiagnosis": true`); the server requires both
+  there and refuses them from every other entrance with a 422. They never
+  appear in `rows`, `answer_code_rows` or any feature row.
+- At a research-intake entrance the participant's name comes from the staff
+  page (`staff_patient_name`); everywhere else from `full_name` as before.
+- `/api/session/delivery` returns `research_intake: true` for a research-intake
+  entrance (v19.15-v19.16 returned `staff_diagnosis: true`).
 - No feature row changes.
+
+Whether the flow writes `medical_record_number` and `hospital` into the research
+Excel depends on the flow's own mapping; check it with a Compose action.
 
 The Power Automate trigger schemas accept both v19.17 and v19.16; re-paste them
 before the site is deployed (flow A: `deployed-flow-trigger.schema.json`, flow

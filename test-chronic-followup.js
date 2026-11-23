@@ -34,10 +34,13 @@ function activeIds(app) {
 }
 
 test("the follow-up is the same at every entrance, research-intake included", () => {
-  // One questionnaire for every entrance: nothing is switched by the entrance.
-  const app = loadApp();
-  assert(!app.questions.some((question) => "intakeOnly" in question), "nothing is intake-only any more");
-  assert(!app.questions.some((question) => question.module === "staff"), "a research-staff question is back");
+  // The research-intake entrance adds only the staff's identity page; the
+  // chronic follow-up is the same.
+  const ordinary = loadApp();
+  const intake = loadApp({ researchIntakeEntrance: true });
+  const active = (app) => app.getActiveQuestions().map((question) => question.id).filter((id) => id.startsWith("chronic_"));
+  assert.deepEqual(plain(active(intake)), plain(active(ordinary)));
+  assert(!ordinary.questions.some((question) => "intakeOnly" in question), "nothing is intake-only any more");
 });
 
 test("one table and two coded rows for each of the 15 conditions", () => {

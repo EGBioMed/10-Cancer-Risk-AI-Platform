@@ -232,15 +232,17 @@ test("the session that scan opened knows where its report goes", async () => {
   });
 });
 
-test("a research-intake entrance locks the email like 雙和, and tells the page nothing more", async () => {
-  // Until v19.17 (2026-11-23) it also said staff_diagnosis: true, which added
-  // the research staff's page; that page is gone.
+test("a research-intake entrance locks the email like 雙和 and tells the page to add the staff page", async () => {
+  // research_intake since v19.17 (2026-11-23; the staff page asks for the
+  // participant's name, medical record number and hospital). v19.15-v19.16
+  // said staff_diagnosis for a diagnosis page.
   const { body } = await deliveryFor(sessionFrom(await scan(RESEARCH_CODE)));
   assert.deepEqual(body, {
     ok: true,
     forced: true,
     label: "研究收案",
-    email: "intake@example.org"
+    email: "intake@example.org",
+    research_intake: true
   });
   const clinic = await deliveryFor(sessionFrom(await scan(SHUANGHO_CODE)));
   assert.deepEqual(Object.keys(clinic.body).sort(), ["email", "forced", "label", "ok"]);

@@ -125,7 +125,7 @@ test("participant name is a required contact-only bilingual field", () => {
   ]);
   assert(!canonicalAnswerQuestions.some((question) => question.id === "full_name"));
   assert(source.includes("field: question.field"));
-  assert(source.includes('!["contact.full_name", "contact.email"].includes(entry.field)'));
+  assert(source.includes('.filter((entry) => !String(entry.field || "").startsWith("contact.")'));
   assert(source.includes('!["full_name", "email"].includes(entry.question_id)'));
   assert(source.includes('errors.push("direct identifiers must not appear in answer rows")'));
 });

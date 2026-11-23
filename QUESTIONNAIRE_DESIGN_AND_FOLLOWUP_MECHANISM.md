@@ -342,10 +342,15 @@ const derivedParents = {
   `"staffDiagnosis": true`。效果：
   - 和雙和一樣：仍問姓名；Email 題變成唯讀，顯示機構信箱；報告照常產生，寄到該信箱。
   - 頁首公司名稱旁、作答區標題列，都顯示「收案平台」標記。
-  - 開 `/chat.html` 會被導回表單（表單才有「收案平台」標記）。
-- 問卷內容與其他入口完全相同。
-- v19.15–v19.16 曾有一頁「收案人員填寫」（`staff_diagnosis` 診斷文字、`staff_diagnosis_basis`
-  診斷依據）。v19.17（2026-11-23）移除：診斷改為事後查病歷，再填進研究 Excel，不在問卷中填寫。
+  - 開 `/chat.html` 會被導回表單（表單才有「收案平台」標記與人員頁）。
+  - 資料確認頁之前多一頁「收案人員填寫」（v19.17，2026-11-23），不能略過：
+    - `staff_patient_name`：受試者姓名（取代受試者自己填的姓名題）
+    - `staff_medical_record_number`：病歷號碼（30 字內）
+    - `staff_hospital`：醫院（50 字內）
+- 這三項都是可辨識個人的資料：放在 `contact_row`（與 Email 一起），**不進** `rows`、
+  `answer_code_rows` 或任何特徵列，也不進模型。伺服器依入口檢查：收案入口必填，其他入口送來一律 422。
+- 診斷不在問卷中填寫，改為事後查病歷，再填進研究 Excel。v19.15–v19.16 的人員頁原本問的是
+  診斷文字與診斷依據（`staff_diagnosis`、`staff_diagnosis_basis`），已移除。
 
 ### 6.4 文字題（題型 `longtext`）
 
