@@ -231,12 +231,22 @@ configuration one.
 ### Research-intake entrances: `"staffDiagnosis": true`
 
 An entry may add `"staffDiagnosis": true` (2026-11-19). That entrance behaves
-exactly like 雙和's -- the name is asked, the Email question shows the listed
-mailbox, the report goes there -- and the questionnaire gains a last page the
-research staff fill in: the participant's current diagnosis as free text, and
-its basis as a single choice. Every other entrance never sees that page, and the
-server refuses staff answers from it; a research-intake submission without them
-is refused too. Research-intake sessions are sent from `/chat.html` to the form.
+like 雙和's -- the Email question shows the listed mailbox and the report goes
+there -- and:
+
+- its page shows a 收案平台 badge beside our name and in the answer area's
+  title bar;
+- its questionnaire ends with a page the research staff fill in (v19.17,
+  2026-11-23): the participant's name, medical record number and hospital. The
+  name replaces the participant's own name question at this entrance;
+- research-intake sessions are sent from `/chat.html` to the form.
+
+The medical record number and hospital travel in `contact_row`, beside the name
+and email. The server requires both from a research-intake entrance and refuses
+them from every other one (422, `researchIdentifierProblems` in
+`lib/report-recipients.js`). In v19.15-v19.16 the staff page asked for a
+diagnosis and its basis instead; the diagnosis is now filled in later from the
+medical record.
 
 ```json
 {

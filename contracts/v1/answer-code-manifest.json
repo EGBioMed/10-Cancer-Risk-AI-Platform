@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-19-v19.16-phase1",
+  "questionnaire_version": "questionnaire/2026-11-23-v19.17-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 129,
-  "canonical_answer_question_count": 124,
+  "question_count": 127,
+  "canonical_answer_question_count": 123,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -4074,47 +4074,6 @@
       "required_when_applicable": true,
       "title_zh": "請填寫您的 Email",
       "title_en": "Please enter your email"
-    },
-    {
-      "question_id": "staff_diagnosis",
-      "field": "staff.diagnosis",
-      "module": "staff",
-      "answer_type": "free_text",
-      "required_when_applicable": true,
-      "title_zh": "【收案人員填寫】此受試者目前的診斷",
-      "title_en": "[Research staff] This participant's current diagnosis",
-      "max_length": 200
-    },
-    {
-      "question_id": "staff_diagnosis_basis",
-      "field": "staff.diagnosis_basis",
-      "module": "staff",
-      "answer_type": "code",
-      "required_when_applicable": true,
-      "title_zh": "【收案人員填寫】上述診斷的依據",
-      "title_en": "[Research staff] What the diagnosis above is based on",
-      "options": [
-        {
-          "code": "staff_diagnosis_basis.option_01",
-          "label_zh": "病理確診",
-          "label_en": "Confirmed by pathology"
-        },
-        {
-          "code": "staff_diagnosis_basis.option_02",
-          "label_zh": "影像或臨床診斷",
-          "label_en": "Imaging or clinical diagnosis"
-        },
-        {
-          "code": "staff_diagnosis_basis.option_03",
-          "label_zh": "僅依病人口述",
-          "label_en": "Reported by the participant only"
-        },
-        {
-          "code": "staff_diagnosis_basis.option_04",
-          "label_zh": "尚未確診",
-          "label_en": "Not yet confirmed"
-        }
-      ]
     }
   ]
 }

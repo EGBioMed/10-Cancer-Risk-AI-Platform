@@ -12,8 +12,8 @@
     "questionnaire_version": {
       "type": "string",
       "enum": [
-        "questionnaire/2026-11-19-v19.16-phase1",
-        "questionnaire/2026-11-19-v19.15-phase1"
+        "questionnaire/2026-11-23-v19.17-phase1",
+        "questionnaire/2026-11-19-v19.16-phase1"
       ]
     },
     "consent_version": {
@@ -258,6 +258,16 @@
         },
         "report_language": {
           "type": "string"
+        },
+        "medical_record_number": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "hospital": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 50
         }
       },
       "required": [

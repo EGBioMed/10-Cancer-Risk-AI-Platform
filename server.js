@@ -50,7 +50,7 @@ const {
   institutionForEntrance,
   recipientForInstitution,
   applyReportRecipient,
-  staffAnswerProblems
+  researchIdentifierProblems
 } = require("./lib/report-recipients");
 const { createAnthropicClassifier, DEFAULT_MODEL, DEFAULT_EFFORT } = require("./lib/classifier");
 // 與瀏覽器端 app.js 共用同一份實作（UMD，見 api-symptoms.js 開頭）。
@@ -530,19 +530,24 @@ async function receiveSubmission(req, res, sessionPayload) {
   const forcedRecipient = recipientForSession(sessionPayload);
   if (forcedRecipient) applyReportRecipient(submission, forcedRecipient);
 
-  // The research staff's page exists only at a research-intake entrance
-  // ("staffDiagnosis": true in the same whitelist). The entrance, not the
-  // page, decides: staff answers from anywhere else are refused, and an
-  // intake submission without them is refused too.
-  const staffProblems = staffAnswerProblems(submission, forcedRecipient);
-  if (staffProblems.length > 0) {
+  // The research staff's medical record number and hospital (v19.17) exist
+  // only at a research-intake entrance ("staffDiagnosis": true). The entrance,
+  // not the page, decides: refused from anywhere else, required there.
+  const identifierProblems = researchIdentifierProblems(submission.contact_row, forcedRecipient);
+  if (identifierProblems.length > 0) {
     sendJson(res, 422, {
       ok: false,
       error: "Research-staff answers do not match this entrance.",
-      details: staffProblems
+      details: identifierProblems
     });
     return;
   }
+  const researchIdentifiers = forcedRecipient && forcedRecipient.staffDiagnosis === true
+    ? {
+      medical_record_number: submission.contact_row.medical_record_number.trim(),
+      hospital: submission.contact_row.hospital.trim()
+    }
+    : null;
 
   const validFullName = getValidSubmissionFullName(submission);
   if (!validFullName) {
@@ -562,7 +567,10 @@ async function receiveSubmission(req, res, sessionPayload) {
   }
   submission.full_name = validFullName;
   submission.email = validEmail;
-  submission.contact_row = buildContactRow(submission, validFullName, validEmail);
+  submission.contact_row = {
+    ...buildContactRow(submission, validFullName, validEmail),
+    ...(researchIdentifiers || {})
+  };
   const featureValidationError = validateAiApiFeatureRow(submission.ai_api_feature_row);
   if (featureValidationError) {
     sendJson(res, 422, {
@@ -670,9 +678,10 @@ async function receiveSubmission(req, res, sessionPayload) {
 function serveStatic(req, res) {
   const requestUrl = new URL(req.url, `http://${req.headers.host || "localhost"}`);
   const pathname = decodeURIComponent(requestUrl.pathname);
-  // The conversational page has no research-staff page, so a research-intake
-  // session there could not finish: the server requires the staff answers
-  // from that entrance. It goes to the form instead.
+  // A research-intake session is kept on the form, where the 收案平台 badge
+  // tells the staff they are at the right entrance; the chat page has no
+  // badge. (Added 2026-11-19 because chat had no research-staff page; that
+  // page was removed in v19.17, and the redirect stays for the badge.)
   if (pathname === "/chat.html") {
     const recipient = recipientForSession(getSessionPayload(req));
     if (recipient && recipient.staffDiagnosis) {
@@ -1290,7 +1299,7 @@ const server = http.createServer(async (req, res) => {
     const payload = getSessionPayload(req);
     const recipient = recipientForSession(payload);
     sendJson(res, 200, recipient
-      ? { ok: true, forced: true, label: recipient.label, email: recipient.email, ...(recipient.staffDiagnosis ? { staff_diagnosis: true } : {}) }
+      ? { ok: true, forced: true, label: recipient.label, email: recipient.email, ...(recipient.staffDiagnosis ? { research_intake: true } : {}) }
       : { ok: true, forced: false });
     return;
   }

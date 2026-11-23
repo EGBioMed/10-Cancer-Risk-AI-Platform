@@ -5,10 +5,13 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
 
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
+  // v19.17 (2026-11-23): the research-staff diagnosis page is replaced by a
+  // staff page for the participant's identity (name, medical record number,
+  // hospital); the diagnosis is filled in later from medical records.
   // v19.16 (2026-11-19): "other chronic disease" and "other cancer type" ask
   // which disease it is, and the other cancer gets the care / last-episode
   // follow-up. v19.15: the chronic follow-up table and the research-staff page.
-  questionnaire_version: "questionnaire/2026-11-19-v19.16-phase1",
+  questionnaire_version: "questionnaire/2026-11-23-v19.17-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -33,9 +36,10 @@ const modules = [
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
   { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
-  // Shown only at a research-intake entrance (see staffDiagnosisEntrance): the
-  // research staff's own page, filled after the respondent hands the device over.
-  { id: "staff", title: "收案人員填寫", summary: "由收案人員填寫診斷與診斷依據。", staffOnly: true },
+  // Shown only at a research-intake entrance (see researchIntakeEntrance): the
+  // research staff enter the participant's identity after the device is handed
+  // over, so the record can be matched to the medical record later.
+  { id: "staff", title: "收案人員填寫", summary: "由收案人員填寫受試者姓名、病歷號碼與醫院。", staffOnly: true },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -1079,34 +1083,47 @@ const otherCancerQuestions = [
   }
 ];
 
-// Set at startup from /api/session/delivery: true only when this session came
-// in through an entrance configured as a research-intake entrance
-// (INSTITUTION_REPORT_RECIPIENTS, "staffDiagnosis": true). The browser cannot
-// switch it on for itself in a way that counts -- the server refuses staff
-// answers from any other session (lib/report-recipients.js).
-let staffDiagnosisEntrance = false;
-const isStaffDiagnosisEntrance = () => staffDiagnosisEntrance;
+// Set at startup from /api/session/delivery: true only for a session from a
+// research-intake entrance (INSTITUTION_REPORT_RECIPIENTS, "staffDiagnosis":
+// true). The browser cannot switch it on in a way that counts: the server
+// accepts the staff page's medical record number and hospital only from such
+// an entrance, and requires them there (lib/report-recipients.js).
+let researchIntakeEntrance = false;
+const isResearchIntakeEntrance = () => researchIntakeEntrance;
 
-// The research staff's page, last before the confirmation page, at research-
-// intake entrances only (2026-11-18, carried over from the separate intake
-// questionnaire that v19.15 folded back in). The diagnosis is free text (type
-// "longtext": in `rows`, never a code or a feature); how it was established is
-// a coded single choice, so an analysis can keep only pathology-confirmed cases.
-const staffDiagnosisQuestions = [
+// The research staff's page at a research-intake entrance (v19.17,
+// 2026-11-23): the participant's name, medical record number and hospital, so
+// the diagnosis can be filled in later from the medical record. All three are
+// direct identifiers: they live in the contact data with the email
+// (contact_row), never in `rows`, answer_code_rows or any feature row. The
+// name replaces the participant's own name question at this entrance
+// (getParticipantFullName).
+const STAFF_MEDICAL_RECORD_NUMBER_MAX_LENGTH = 30;
+const STAFF_HOSPITAL_MAX_LENGTH = 50;
+const staffIdentityQuestions = [
   {
-    id: "staff_diagnosis", module: "staff", type: "longtext", required: true, maxLength: 200, dropWhenInapplicable: true,
-    title: "【收案人員填寫】此受試者目前的診斷", titleEn: "[Research staff] This participant's current diagnosis",
-    note: "以下由收案人員填寫：受試者請到此停止，將裝置交給收案人員。請填寫目前的診斷（例如癌別）；若非癌症請寫明，尚未確定請填「待確認」。請不要填寫姓名、病歷號等可辨識身分的資料。",
-    noteEn: "To be completed by research staff: participants, please stop here and hand the device to the staff. Enter the current diagnosis (for example, the cancer type); state it if not cancer, or enter \"pending\" if not yet known. Do not enter names, medical record numbers or anything else that identifies the participant.",
-    placeholder: "例如：大腸直腸癌", placeholderEn: "For example: colorectal cancer",
-    field: "staff.diagnosis", appliesIf: isStaffDiagnosisEntrance
+    id: "staff_patient_name", module: "staff", type: "name", required: true, excludeFromCanonicalContract: true,
+    title: "【收案人員填寫】受試者姓名", titleEn: "[Research staff] Participant's name",
+    note: "以下由收案人員填寫：受試者請到此停止，將裝置交給收案人員。姓名、病歷號碼與醫院會與 Email 一起存放於限制權限的聯絡資料，與研究資料分開，不會作為模型特徵。",
+    noteEn: "To be completed by research staff: participants, please stop here and hand the device to the staff. The name, medical record number and hospital are kept with the email in the restricted contact data, apart from the research data, and are never used as model features.",
+    placeholder: "請輸入受試者姓名", placeholderEn: "Participant's full name",
+    field: "contact.staff_full_name", appliesIf: isResearchIntakeEntrance
   },
   {
-    id: "staff_diagnosis_basis", module: "staff", type: "single", required: true, dropWhenInapplicable: true,
-    title: "【收案人員填寫】上述診斷的依據", titleEn: "[Research staff] What the diagnosis above is based on",
-    note: "請選擇最接近的一項。", noteEn: "Choose the closest one.",
-    options: ["病理確診", "影像或臨床診斷", "僅依病人口述", "尚未確診"],
-    field: "staff.diagnosis_basis", appliesIf: isStaffDiagnosisEntrance
+    id: "staff_medical_record_number", module: "staff", type: "shorttext", required: true, excludeFromCanonicalContract: true,
+    maxLength: STAFF_MEDICAL_RECORD_NUMBER_MAX_LENGTH,
+    title: "【收案人員填寫】病歷號碼", titleEn: "[Research staff] Medical record number",
+    note: "請依醫院病歷系統填寫。", noteEn: "As recorded in the hospital's medical record system.",
+    placeholder: "請輸入病歷號碼", placeholderEn: "Medical record number",
+    field: "contact.medical_record_number", appliesIf: isResearchIntakeEntrance
+  },
+  {
+    id: "staff_hospital", module: "staff", type: "shorttext", required: true, excludeFromCanonicalContract: true,
+    maxLength: STAFF_HOSPITAL_MAX_LENGTH,
+    title: "【收案人員填寫】醫院", titleEn: "[Research staff] Hospital",
+    note: "請填寫病歷所屬醫院的名稱。", noteEn: "The hospital that holds this medical record.",
+    placeholder: "請輸入醫院名稱", placeholderEn: "Hospital name",
+    field: "contact.hospital", appliesIf: isResearchIntakeEntrance
   }
 ];
 
@@ -1122,7 +1139,7 @@ const questions = [
     options: consentOptions,
     minSelected: 3
   },
-  { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" },
+  { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名", appliesIf: () => !researchIntakeEntrance },
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
@@ -1190,7 +1207,7 @@ const questions = [
 
   { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" },
 
-  ...staffDiagnosisQuestions
+  ...staffIdentityQuestions
 ];
 
 const i18n = {
@@ -1300,7 +1317,7 @@ const i18n = {
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
       contact: ["Contact Information", "Enter the email address for the report."],
-      staff: ["Research staff", "Diagnosis and its basis, entered by the research staff."],
+      staff: ["Research staff", "Participant's name, medical record number and hospital, entered by the research staff."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -1398,7 +1415,6 @@ const i18n = {
       "我了解本服務僅提供癌症相關風險因子的個人化整理與健康教育資訊；結果不代表罹患癌症的機率，不用於癌症診斷、篩檢、早期偵測、疾病預測或治療決策，亦不能取代醫師評估或任何標準醫療檢查。": "I understand that this service only provides personalized organization of cancer-related risk factors and health education information. The result does not represent the probability of developing cancer, is not used for cancer diagnosis, screening, early detection, disease prediction, or treatment decision-making, and cannot replace a physician’s evaluation or any standard medical examination.",
       "從不": "Never", "很少": "Rarely", "有時": "Sometimes", "經常": "Often", "總是": "Always",
       "是": "Yes", "否": "No", "不確定": "Not sure", "不清楚": "Not sure",
-      "病理確診": "Confirmed by pathology", "影像或臨床診斷": "Imaging or clinical diagnosis", "僅依病人口述": "Reported by the participant only", "尚未確診": "Not yet confirmed",
       "1 個月內": "Within 1 month", "1–6 個月": "1-6 months ago", "6–12 個月": "6-12 months ago", "1 年以上": "Over 1 year ago",
       "男性": "Male", "女性": "Female",
       "亞洲裔": "Asian", "白人": "White", "黑人或非洲裔": "Black or of African descent", "其他族群": "Another racial group", "選擇不回答": "Prefer not to answer",
@@ -1485,9 +1501,9 @@ const frozenSubmissionVectorCounts = Object.freeze({
   rule_input_columns: 30
 });
 // Long free-text answers ("longtext") are a different kind of data from every
-// other answer: not a code and not a number: staff_diagnosis (typed by the
-// research staff at a research-intake entrance) and, since v19.16, the names of
-// an "other" chronic disease or cancer type. Each travels in
+// other answer: not a code and not a number. Since v19.17 (2026-11-23) they are
+// the names of an "other" chronic disease or cancer type (the research staff's
+// diagnosis, v19.15-v19.16, was removed). Each travels in
 // `rows` (question, text) like every other answer, and is kept out of
 // answer_code_rows (which promises codes) and out of every feature row.
 const LONGTEXT_DEFAULT_MAX_LENGTH = 500;
@@ -1511,6 +1527,10 @@ function getLongTextMaxLength(question) {
 // capped at one, ends trimmed. Length is counted after normalizing, in UTF-16
 // units -- what the textarea's maxlength attribute counts too, so the counter
 // the respondent sees and the limit enforced here cannot disagree.
+function normalizeShortText(value) {
+  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/gu, "").replace(/\s+/gu, " ").trim();
+}
+
 function normalizeLongText(value) {
   return String(value ?? "")
     .replace(/\r\n?/gu, "\n")
@@ -1608,7 +1628,7 @@ let forcedReportRecipient = null;
 // research-intake entrance: everyone else would see a numbered step they never
 // reach.
 function getShownModules() {
-  return modules.filter((module) => !module.staffOnly || staffDiagnosisEntrance);
+  return modules.filter((module) => !module.staffOnly || researchIntakeEntrance);
 }
 
 async function loadForcedReportRecipient() {
@@ -1618,7 +1638,7 @@ async function loadForcedReportRecipient() {
     const payload = await response.json();
     if (!payload || payload.forced !== true || !payload.email || !payload.label) return;
     forcedReportRecipient = { email: payload.email, label: payload.label };
-    staffDiagnosisEntrance = payload.staff_diagnosis === true;
+    researchIntakeEntrance = payload.research_intake === true;
   } catch (error) {
     // Unreachable or unparseable: fall back to asking for an address. The
     // server still redirects the report, so nothing is delivered wrongly --
@@ -1627,10 +1647,12 @@ async function loadForcedReportRecipient() {
     // anyone testing the entrance.
     return;
   }
-  // The email question may already be on screen by the time this returns, and
+  // The question on screen may already be one this changes (the email, or the
+  // participant's own name question, which the staff page replaces here), and
   // the section list gains the staff section at a research-intake entrance.
-  if (getCurrentQuestion()?.type === "email") renderQuestion();
-  else if (staffDiagnosisEntrance && typeof renderModules === "function" && getCurrentQuestion()) renderModules();
+  const onScreen = getCurrentQuestion();
+  if (onScreen?.type === "email" || (researchIntakeEntrance && onScreen?.id === "full_name")) renderQuestion();
+  else if (researchIntakeEntrance && typeof renderModules === "function" && onScreen) renderModules();
 }
 
 function getQuestionCopy(question) {
@@ -2245,6 +2267,34 @@ function renderQuickInput(question) {
         return;
       }
       saveAnswer(value, "name_input");
+    });
+    return;
+  }
+
+  // A short one-line text: the research staff's medical record number and
+  // hospital. Same treatment as the name field -- whitespace collapsed, no
+  // angle brackets or control characters -- with the question's own maxLength.
+  if (question.type === "shorttext") {
+    const maxLength = Number.isInteger(question.maxLength) ? question.maxLength : 50;
+    const placeholder = questionCopy.placeholder || (currentLang === "en" ? "Please enter your answer" : "請輸入您的回答");
+    quickOptions.innerHTML = `
+      <div class="number-entry">
+        <input id="shortTextInput" type="text" autocomplete="off" maxlength="${maxLength}" placeholder="${escapeHtml(placeholder)}" />
+        <button class="secondary-action" id="saveShortTextBtn" type="button">${ui("saveContinue")}</button>
+      </div>
+    `;
+    const input = document.querySelector("#shortTextInput");
+    const saved = answers[question.field]?.value;
+    input.value = typeof saved === "string" ? saved : "";
+    document.querySelector("#saveShortTextBtn").addEventListener("click", () => {
+      const value = normalizeShortText(input.value);
+      if (!value || value.length > maxLength || /[<>]/u.test(value)) {
+        showInlineNotice(currentLang === "en"
+          ? `Please enter up to ${maxLength} characters, without < or >.`
+          : `請輸入 ${maxLength} 字以內，且不含 < 或 >。`);
+        return;
+      }
+      saveAnswer(value, "shorttext_input");
     });
     return;
   }
@@ -3033,7 +3083,10 @@ function isDroppedInapplicableEntry(entry) {
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
   return Object.values(answers)
-    .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field)
+    // Every contact.* field -- the name, the email, and the research staff's
+    // medical record number and hospital -- is a direct identifier and stays
+    // out of the research rows.
+    .filter((entry) => !String(entry.field || "").startsWith("contact.")
       && !["full_name", "email"].includes(entry.question_id)
       && !isDroppedInapplicableEntry(entry))
     .map((entry) => ({
@@ -3405,14 +3458,28 @@ function buildPersonalCancerTypes() {
   return Array.isArray(entry.value) ? entry.value.join("; ") : String(entry.value);
 }
 
+// The participant's name: typed by the research staff at a research-intake
+// entrance (staff_patient_name), by the participant everywhere else
+// (full_name). Two fields rather than one shared one, so each question is
+// answered or not on its own -- the conversation's progress counts by field.
+function getParticipantFullName() {
+  return getAnswerValue(answers, researchIntakeEntrance ? "contact.staff_full_name" : "contact.full_name") || "";
+}
+
 function buildContactRow(optimizedFeatureRow, submittedAt) {
   return {
     record_id: optimizedFeatureRow.record_id,
-    full_name: getAnswerValue(answers, "contact.full_name") || "",
+    full_name: getParticipantFullName(),
     email: getAnswerValue(answers, "contact.email") || "",
     submitted_at: submittedAt,
     language: currentLang,
-    report_language: currentLang === "en" ? "en" : "zh-Hant"
+    report_language: currentLang === "en" ? "en" : "zh-Hant",
+    // Only at a research-intake entrance, and only there does the server
+    // accept them (lib/report-recipients.js, researchIdentifierProblems).
+    ...(researchIntakeEntrance ? {
+      medical_record_number: getAnswerValue(answers, "contact.medical_record_number") || "",
+      hospital: getAnswerValue(answers, "contact.hospital") || ""
+    } : {})
   };
 }
 
@@ -3434,7 +3501,7 @@ function storeSubmissionForIntegration() {
   const submission = {
     ...SUBMISSION_VERSIONS,
     submitted_at: submittedAt,
-    full_name: getAnswerValue(answers, "contact.full_name") || "",
+    full_name: getParticipantFullName(),
     email: getAnswerValue(answers, "contact.email") || "",
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
@@ -3784,8 +3851,6 @@ backBtn.addEventListener("click", () => {
 
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
-  // The staff page is not the respondent's to skip: a diagnosis not yet known
-  // is written as 待確認 / chosen as 尚未確診, never left as 不確定.
   if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type) || question?.module === "staff") return;
   if (question?.type === "grouped-matrix") {
     saveGroupedMatrixAnswers(question, getApplicableCompositeRows(question).map(() => "不確定"), "uncertain");
