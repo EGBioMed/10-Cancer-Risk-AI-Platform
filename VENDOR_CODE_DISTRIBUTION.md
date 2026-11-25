@@ -166,10 +166,10 @@ https://ai-cancer-risk.eg-bio.com/access/021x29d312fc5yj9vkajrht90gpc3mkc
 
 ### 報告統一寄送
 
-雙和的報告不寄給受檢者，統一寄到院方信箱由他們列印。這是伺服器端的機構白名單，設在 Render 的環境變數。**2026-11-04 已設定上線**，值如下（單行，不可換行）：
+雙和的報告不寄給受檢者，統一寄到院方信箱由他們列印。這是伺服器端的機構白名單，設在 Render 的環境變數。**2026-11-04 已設定上線，2026-11-25 收件信箱由 `4800@s.tmu.edu.tw` 改為 `hmc@s.tmu.edu.tw`**，值如下（單行，不可換行）：
 
 ```
-INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@s.tmu.edu.tw","codes":["021x29d312fc5yj9vkajrht90gpc3mkc"],"grants":[63]}}
+INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"hmc@s.tmu.edu.tw","codes":["021x29d312fc5yj9vkajrht90gpc3mkc"],"grants":[63]}}
 ```
 
 ⚠ **2026-10-20 改過格式。** 之前這裡寫的是用 grant_id 當 key 的 `{"63":{...}}`，那個形狀現在不會被解析，啟動時會記一筆錯誤然後整筆丟掉——症狀是受檢者照常被問 Email。改用上面這個：key 是機構代號，底下列這家機構用的代碼。`codes` 和 `grants` 擇一即可（這裡兩個都寫是因為雙和那組 32 字元代碼兩條路都能進，寫滿最省事）。
@@ -190,10 +190,11 @@ INSTITUTION_REPORT_RECIPIENTS={"shuangho":{"label":"雙和醫院","email":"4800@
 告寄送是兩回事，所以是另一份白名單，設在 Render 的環境變數：
 
 ```
-INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"],"logoScale":1.3,"footer":{"summary":{"zh":"專注於高科技基因檢測服務，精準守護華人健康。","en":"Specialists in high-tech genetic testing, safeguarding the health of Chinese communities with precision."},"email":"HuaKangDNA@gmail.com","phone":"0909-956-886","qr":"brand/hwakang-qr.png","phoneLabel":{"zh":"諮詢專線","en":"Consultation line"},"emailLabel":{"zh":"信箱","en":"Email"}}}}
+INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-colour.svg","logoOnDark":"brand/numia-health-white.svg","codes":["EGNUMEDJ","EGNUMEDEMO"],"hostName":"english","footer":{"summary":"Preventive blood testing, physician care and ongoing health guidance, all from home.","website":"https://numiahealth.ca/"}},"hwakang":{"name":"華康生醫","logo":"brand/hwakang-colour.png","logoOnDark":"brand/hwakang-white.png","codes":["EGHK3FV","EGHKDEMO"],"grants":["43","74"],"logoScale":1.3,"footer":{"summary":{"zh":"專注於高科技基因檢測服務，精準守護華人健康。","en":"Specialists in high-tech genetic testing, safeguarding the health of Chinese communities with precision."},"email":"HuaKangDNA@gmail.com","phone":"0909-956-886","qr":"brand/hwakang-qr.png","phoneLabel":{"zh":"諮詢專線","en":"Consultation line"},"emailLabel":{"zh":"信箱","en":"Email"}}},"shuangho":{"name":"雙和健康檢查中心","logo":"brand/shuangho-colour.svg","logoOnDark":"brand/shuangho-white.svg","codes":["021x29d312fc5yj9vkajrht90gpc3mkc"],"grants":[63]}}
 ```
 
-上面是 2026-11-16 的實際設定。整串是一個值，貼進 Render 時中間不能有換行。
+上面是 2026-11-16 的設定，2026-11-25 加上 `shuangho`。整串是一個值，貼進 Render
+時中間不能有換行。
 
 沒設這個變數，或某一筆壞掉，頁面就是原本的樣子——不會擋啟動，但會在 Logs 記一
 行 `Branding config:` 開頭的錯誤。
@@ -224,6 +225,29 @@ INSTITUTION_BRANDING={"numia":{"name":"Numia Health","logo":"brand/numia-health-
 
 填了不認得的值（例如 `"zh"`）不會把整筆退掉，是退回 `bilingual` 並在 Logs 記一
 行——為了省我們自己名字的四個字而讓夥伴的 logo 消失，不划算。
+
+### 雙和用的是字標，不是圖標
+
+雙和只給得出投影片截圖（311×180 的 WEBP，標誌本身約 200×60 實際像素，英文副標
+已經糊掉，右邊還被切到）。那個檔案在 26px 的標頭上會是一團模糊，反白版更沒辦法
+從壓縮過的白底截圖裡摳出來。所以 2026-11-25 改成**一行字標**：單純「雙和健康檢
+查中心」八個字，照他們的綠色。
+
+字是 **Noto Sans TC**（SIL Open Font License，可嵌入可商用）SemiBold，用
+fontTools 轉成外框路徑再寫進 SVG——轉成路徑之後就不依賴看的人裝了什麼字型，各家
+手機瀏覽器拿到的寬高一模一樣。
+
+顏色 `#1E7D7A` 是從那張截圖裡標誌筆畫的最暗像素取樣來的，**不是雙和給的色票**。
+他們哪天給了正式色票，改這兩個 SVG 裡的 `fill` 就好，其他都不用動。
+
+**沒有設 `logoScale`。** 華康要 1.3 是因為他們的組合標把高度花在上面的圖案上，
+字只剩一半高；字標沒有這個問題，整個高度都是字。把 `applyInstitutionBranding()`
+套在真的 `index.html` 上、配真的 `styles.css` 量出來是桌機 19.8px、手機 16.3px，
+而我們自己那行字是 16px、icon 是 21px——已經比我們自己的大了，再放大就變成夥伴
+的標比我們顯眼，那正是 `logoScale` 上限要擋的事。
+
+手機（<840px）上這一列會換行，字標自己佔第二行，320px / 367px / 390px 量過都一
+樣，不會擠到語言切換鈕——語言切換鈕本來就是另一個區塊。
 
 ### 替聯名夥伴鑄新碼，記得回來加這裡
 
