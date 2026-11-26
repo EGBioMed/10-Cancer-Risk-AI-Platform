@@ -60,18 +60,6 @@ services:
         sync: false
       - key: INSTITUTION_REPORT_RECIPIENTS
         sync: false
-      # INTAKE_ENTRANCES: which access codes open the research-intake
-      # questionnaire (lib/questionnaire-mode.js). Losing it turns every intake
-      # entrance back into the questionnaire on sale -- asking for an Email --
-      # without raising an error.
-      - key: INTAKE_ENTRANCES
-        sync: false
-      # INTAKE_POWER_AUTOMATE_WEBHOOK_URL: the research-intake flow's HTTP trigger --
-      # a separate flow from the two report flows above, which must never be
-      # put here. Losing it makes every intake submission fail with a
-      # "not open yet" message.
-      - key: INTAKE_POWER_AUTOMATE_WEBHOOK_URL
-        sync: false
 
       # --- Operator tooling run from this service's Shell --------------------
       # scripts/grant-access.js prints entry links against PUBLIC_BASE_URL.
@@ -126,6 +114,34 @@ services:
       - key: CHAT_CLASSIFIER_MODEL
         sync: false
       - key: CHAT_CLASSIFIER_EFFORT
+        sync: false
+
+      # --- JoiiUp SSO hand-off -----------------------------------------------
+      # Eight of these were given values on 2026-11-18 and never declared here,
+      # which left the entrance one Blueprint sync away from the 2026-09-09
+      # failure mode: the dashboard values pruned, nothing visibly broken until
+      # the next restart, and then every hand-off refused to a page that looks
+      # exactly like a bad token.
+      - key: SSO_JOIIUP_ALGORITHMS
+        sync: false
+      - key: SSO_JOIIUP_KEYS
+        sync: false
+      - key: SSO_JOIIUP_ISSUER
+        sync: false
+      - key: SSO_JOIIUP_AUDIENCE
+        sync: false
+      - key: SSO_JOIIUP_ORG_GRANTS
+        sync: false
+      - key: SSO_JOIIUP_DEEP_LINK
+        sync: false
+      - key: SSO_JOIIUP_REQUIRE_JTI
+        sync: false
+      - key: SSO_JOIIUP_STORE_SUBJECT
+        sync: false
+      # Raises the verifier's token-lifetime cap above its 15-minute default.
+      # Set only while a partner cannot mint short-lived tokens. Bounded at
+      # 7 days in lib/sso-entrance.js, and announced on every boot.
+      - key: SSO_JOIIUP_MAX_LIFETIME_SECONDS
         sync: false
 
     # Deliberately NOT declared, and why:

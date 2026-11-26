@@ -3,24 +3,15 @@ if (!globalThis.EGAnswerCodes || typeof globalThis.EGAnswerCodes.getOptionCode !
   throw new Error("Answer-code module failed to load before app.js.");
 }
 
-// Which questionnaire this page is: "sale" (the paid/public assessment, the only
-// one that exists in production today) or "intake" (research recruitment: no
-// Email, no report, extra follow-ups). Anything other than an explicit "intake"
-// is "sale", so a page nobody configured keeps behaving exactly as before.
-// The server sets EG_QUESTIONNAIRE_MODE in the page it serves, from the
-// entrance the session came in through (lib/questionnaire-mode.js); the
-// browser cannot choose. Read here, first, because the version string, the
-// module list and the question list all depend on it.
-const QUESTIONNAIRE_MODE = globalThis.EG_QUESTIONNAIRE_MODE === "intake" ? "intake" : "sale";
-
 const SUBMISSION_VERSIONS = Object.freeze({
   contract_version: "assessment-submission/1.2.0",
-  // The intake questionnaire is versioned apart: it has different questions
-  // (no name or Email, the chronic follow-up table, a free-text question) and
-  // its own code list, contracts/intake/answer-code-manifest.json.
-  questionnaire_version: QUESTIONNAIRE_MODE === "intake"
-    ? "questionnaire/2026-11-18-v19.14-intake1"
-    : "questionnaire/2026-11-16-v19.14-phase1",
+  // v19.17 (2026-11-23): the research-staff diagnosis page is replaced by a
+  // staff page for the participant's identity (name, medical record number,
+  // hospital); the diagnosis is filled in later from medical records.
+  // v19.16 (2026-11-19): "other chronic disease" and "other cancer type" ask
+  // which disease it is, and the other cancer gets the care / last-episode
+  // follow-up. v19.15: the chronic follow-up table and the research-staff page.
+  questionnaire_version: "questionnaire/2026-11-23-v19.17-phase1",
   consent_version: "consent/2026-08-26",
   answer_code_schema_version: "question-answer-codes/1.0.0",
   feature_schema_version: "model-features/1.0.0",
@@ -44,10 +35,11 @@ const modules = [
   { id: "mental", title: "心理健康", summary: "記錄近期壓力、睡眠與情緒困擾頻率。" },
   { id: "diet", title: "飲食習慣", summary: "分別整理主要飲食型態、肉類與加工食品、高糖高脂食物、蔬果乳豆類及飲品習慣。" },
   { id: "history", title: "病史與家族史", summary: "確認個人癌症、慢性疾病與家族癌症史。" },
-  // Intake asks no contact details; its last section holds the free-text question.
-  QUESTIONNAIRE_MODE === "intake"
-    ? { id: "closing", title: "其他補充", summary: "最近身體狀況的補充說明（可留白）。" }
-    : { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
+  { id: "contact", title: "聯絡資料", summary: "填寫接收結果報告的 Email。" },
+  // Shown only at a research-intake entrance (see researchIntakeEntrance): the
+  // research staff enter the participant's identity after the device is handed
+  // over, so the record can be matched to the medical record later.
+  { id: "staff", title: "收案人員填寫", summary: "由收案人員填寫受試者姓名、病歷號碼與醫院。", staffOnly: true },
   { id: "confirm", title: "資料確認", summary: "送出前，請確認填答內容。" },
   { id: "result", title: "完成送出", summary: "感謝您的填答。" }
 ];
@@ -986,7 +978,8 @@ const symptomQuestionsWithInlineFollowUps = symptomQuestions.flatMap((question) 
 // would silently renumber one question's codes and not the others'.
 const psychFrequencyOptions = ["從不", "很少", "有時", "經常", "總是"];
 
-// Intake-only follow-up on chronic_conditions: for every condition the
+// Follow-up on chronic_conditions (2026-11-18; every entrance since v19.15,
+// 2026-11-19): for every condition the
 // respondent checked, whether they have seen a doctor for it and how long ago
 // it last flared up. One table (chronic_followup_matrix) instead of two
 // questions per condition, so checking five conditions costs one page, not
@@ -1021,14 +1014,14 @@ const chronicFollowUpRowQuestions = chronicFollowUpConditions.flatMap(([key, key
   return [
     {
       id: `chronic_care_${key}`, module: "history", type: "single", required: true, displayInComposite: true,
-      intakeOnly: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
+      dropWhenInapplicable: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
       matrixColumn: "care", matrixColumnLabel: "是否已就診", matrixColumnLabelEn: "Seen a doctor for it?",
       title: `${labelZh}：是否已就診？`, titleEn: `${labelEn}: have you seen a doctor for it?`,
       field: `medical_history.chronic_followup.${key}.care`, options: chronicCareOptions, appliesIf
     },
     {
       id: `chronic_last_episode_${key}`, module: "history", type: "single", required: true, displayInComposite: true,
-      intakeOnly: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
+      dropWhenInapplicable: true, matrixGroup: key, matrixGroupLabel: labelZh, matrixGroupLabelEn: labelEn,
       matrixColumn: "last_episode", matrixColumnLabel: "最近一次發病距今", matrixColumnLabelEn: "Last flare-up",
       title: `${labelZh}：最近一次發病距今多久？`, titleEn: `${labelEn}: how long ago was the last flare-up?`,
       field: `medical_history.chronic_followup.${key}.last_episode`, options: chronicLastEpisodeOptions, appliesIf
@@ -1038,7 +1031,7 @@ const chronicFollowUpRowQuestions = chronicFollowUpConditions.flatMap(([key, key
 const chronicFollowUpQuestions = [
   {
     id: "chronic_followup_matrix", module: "history", type: "grouped-matrix", required: true, isComposite: true,
-    intakeOnly: true,
+    dropWhenInapplicable: true,
     title: "您勾選的慢性疾病：就診狀況與最近一次發病",
     titleEn: "The chronic conditions you selected: care and last flare-up",
     note: "請針對每一項疾病回答。「最近一次發病」指最近一次症狀明顯或需要就醫處理的時間；不記得請選「不確定」。",
@@ -1048,7 +1041,91 @@ const chronicFollowUpQuestions = [
   },
   ...chronicFollowUpRowQuestions
 ];
-const intakeChronicFollowUpQuestions = QUESTIONNAIRE_MODE === "intake" ? chronicFollowUpQuestions : [];
+
+// "Other" is the one option whose answer says nothing about what the person
+// has (v19.16, 2026-11-19). Ticking "其他慢性疾病" or "其他癌種" now asks which
+// disease it is -- a short text ("longtext": in `rows` only, never a code or a
+// feature) -- before the care and last-episode follow-up. The chronic one
+// keeps its row in the follow-up table above; the cancer one asks the same two
+// questions on its own, for that cancer only.
+const OTHER_CONDITION_NAME_MAX_LENGTH = 50;
+const otherChronicNameQuestion = {
+  id: "chronic_other_name", module: "history", type: "longtext", required: true, maxLength: OTHER_CONDITION_NAME_MAX_LENGTH,
+  dropWhenInapplicable: true,
+  title: "您勾選的「其他慢性疾病」是什麼疾病？", titleEn: "Which disease is the \"other chronic disease\" you selected?",
+  note: "請填寫疾病名稱；有多項請用頓號（、）分開。", noteEn: "Enter the name of the disease; separate several with commas.",
+  placeholder: "請填寫疾病名稱", placeholderEn: "Name of the disease",
+  field: "medical_history.chronic_other_name",
+  appliesIf: () => hasSelected("medical_history.chronic_conditions", "其他慢性疾病")
+};
+const isOtherPersonalCancer = () => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history"))
+  && hasSelected("medical_history.personal_cancer_types", "其他癌種");
+const otherCancerQuestions = [
+  {
+    id: "personal_cancer_other_name", module: "history", type: "longtext", required: true, maxLength: OTHER_CONDITION_NAME_MAX_LENGTH,
+    dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」是什麼癌症？", titleEn: "Which cancer is the \"other cancer type\" you selected?",
+    note: "請填寫癌症名稱；有多項請用頓號（、）分開。", noteEn: "Enter the name of the cancer; separate several with commas.",
+    placeholder: "請填寫癌症名稱", placeholderEn: "Name of the cancer",
+    field: "medical_history.personal_cancer_other_name", appliesIf: isOtherPersonalCancer
+  },
+  {
+    id: "personal_cancer_other_care", module: "history", type: "single", required: true, dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」：是否已就診？", titleEn: "The \"other cancer type\" you selected: have you seen a doctor for it?",
+    field: "medical_history.personal_cancer_other.care", options: chronicCareOptions, appliesIf: isOtherPersonalCancer
+  },
+  {
+    id: "personal_cancer_other_last_episode", module: "history", type: "single", required: true, dropWhenInapplicable: true,
+    title: "您勾選的「其他癌種」：最近一次發病距今多久？", titleEn: "The \"other cancer type\" you selected: how long ago was the last episode?",
+    note: "「最近一次發病」指最近一次症狀明顯或需要就醫處理的時間；不記得請選「不確定」。",
+    noteEn: "\"Last episode\" means the most recent time symptoms were noticeable or needed medical care; choose \"Not sure\" if you do not remember.",
+    field: "medical_history.personal_cancer_other.last_episode", options: chronicLastEpisodeOptions, appliesIf: isOtherPersonalCancer
+  }
+];
+
+// Set at startup from /api/session/delivery: true only for a session from a
+// research-intake entrance (INSTITUTION_REPORT_RECIPIENTS, "staffDiagnosis":
+// true). The browser cannot switch it on in a way that counts: the server
+// accepts the staff page's medical record number and hospital only from such
+// an entrance, and requires them there (lib/report-recipients.js).
+let researchIntakeEntrance = false;
+const isResearchIntakeEntrance = () => researchIntakeEntrance;
+
+// The research staff's page at a research-intake entrance (v19.17,
+// 2026-11-23): the participant's name, medical record number and hospital, so
+// the diagnosis can be filled in later from the medical record. All three are
+// direct identifiers: they live in the contact data with the email
+// (contact_row), never in `rows`, answer_code_rows or any feature row. The
+// name replaces the participant's own name question at this entrance
+// (getParticipantFullName).
+const STAFF_MEDICAL_RECORD_NUMBER_MAX_LENGTH = 30;
+const STAFF_HOSPITAL_MAX_LENGTH = 50;
+const staffIdentityQuestions = [
+  {
+    id: "staff_patient_name", module: "staff", type: "name", required: true, excludeFromCanonicalContract: true,
+    title: "【收案人員填寫】受試者姓名", titleEn: "[Research staff] Participant's name",
+    note: "以下由收案人員填寫：受試者請到此停止，將裝置交給收案人員。姓名、病歷號碼與醫院會與 Email 一起存放於限制權限的聯絡資料，與研究資料分開，不會作為模型特徵。",
+    noteEn: "To be completed by research staff: participants, please stop here and hand the device to the staff. The name, medical record number and hospital are kept with the email in the restricted contact data, apart from the research data, and are never used as model features.",
+    placeholder: "請輸入受試者姓名", placeholderEn: "Participant's full name",
+    field: "contact.staff_full_name", appliesIf: isResearchIntakeEntrance
+  },
+  {
+    id: "staff_medical_record_number", module: "staff", type: "shorttext", required: true, excludeFromCanonicalContract: true,
+    maxLength: STAFF_MEDICAL_RECORD_NUMBER_MAX_LENGTH,
+    title: "【收案人員填寫】病歷號碼", titleEn: "[Research staff] Medical record number",
+    note: "請依醫院病歷系統填寫。", noteEn: "As recorded in the hospital's medical record system.",
+    placeholder: "請輸入病歷號碼", placeholderEn: "Medical record number",
+    field: "contact.medical_record_number", appliesIf: isResearchIntakeEntrance
+  },
+  {
+    id: "staff_hospital", module: "staff", type: "shorttext", required: true, excludeFromCanonicalContract: true,
+    maxLength: STAFF_HOSPITAL_MAX_LENGTH,
+    title: "【收案人員填寫】醫院", titleEn: "[Research staff] Hospital",
+    note: "請填寫病歷所屬醫院的名稱。", noteEn: "The hospital that holds this medical record.",
+    placeholder: "請輸入醫院名稱", placeholderEn: "Hospital name",
+    field: "contact.hospital", appliesIf: isResearchIntakeEntrance
+  }
+];
 
 const questions = [
   {
@@ -1062,10 +1139,7 @@ const questions = [
     options: consentOptions,
     minSelected: 3
   },
-  // Sale only: the intake questionnaire collects no name (2026-11-18).
-  ...(QUESTIONNAIRE_MODE === "sale" ? [
-    { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名" }
-  ] : []),
+  { id: "full_name", module: "basic", type: "name", required: true, excludeFromCanonicalContract: true, title: "請填寫受試者姓名", note: "姓名僅用於診所辨識受試者與製作報告，會與 Email 一起存放於限制權限的聯絡資料表，並與醫療資料分開，不會作為模型特徵或研究資料。", field: "contact.full_name", placeholder: "請輸入姓名", appliesIf: () => !researchIntakeEntrance },
   { id: "birth_year", module: "basic", type: "number", required: true, title: "您的出生年（西元）", note: "請輸入 4 位數西元年，例如 1980。", field: "demographics.birth_year", placeholder: "輸入您的答案" },
   { id: "height_cm", module: "basic", type: "number", required: true, title: "身高（公分）", note: "請輸入目前身高。", field: "demographics.height_cm", placeholder: "例如 165" },
   { id: "weight_kg", module: "basic", type: "number", required: true, title: "體重（公斤）", note: "請輸入目前體重。", field: "demographics.weight_kg", placeholder: "例如 60" },
@@ -1118,10 +1192,11 @@ const questions = [
 
   { id: "personal_cancer", module: "history", type: "single", required: true, title: "您目前是否正在罹患癌症，或過去曾被診斷為癌症？", note: "請依照目前或過去是否曾被醫療人員診斷為癌症回答。", field: "medical_history.personal_cancer_history", options: ["是，目前正在治療或追蹤中", "是，過去曾被診斷，目前已完成治療或追蹤", "否，未曾被診斷為癌症"] },
   { id: "personal_cancer_types", module: "history", type: "multi", required: true, title: "目前或過去曾被診斷的癌別為何？", note: "可複選；若不確定癌別，請選其他癌種。", field: "medical_history.personal_cancer_types", options: cancerOptions, appliesIf: (answers) => isPersonalCancerYes(getAnswerValue(answers, "medical_history.personal_cancer_history")) },
+  ...otherCancerQuestions,
   { id: "chronic_conditions", module: "history", type: "multi", required: true, title: "是否有以下慢性疾病？", note: "可複選；若無相關病史可選以上皆無。", field: "medical_history.chronic_conditions", options: ["高血壓", "糖尿病／高血糖", "高血脂／高膽固醇", "肝病（B 型肝炎／C 型肝炎／肝硬化）", "胃食道逆流", "心臟病／心律不整", "甲狀腺疾病", "氣喘／慢性肺阻塞（COPD）", "痛風／高尿酸", "關節炎（含類風濕性）", "憂鬱症／焦慮症", "中風病史", "腎臟病／洗腎", "自體免疫疾病（乾燥症、紅斑性狼瘡等）", "以上皆無", "其他慢性疾病"] },
   { id: "liver_disease_etiology", module: "history", type: "multi", required: true, title: "您曾被診斷的肝病種類為何？", titleEn: "Which liver condition were you diagnosed with?", note: "可複選；請依醫療人員告知的診斷回答。", noteEn: "Select all that apply based on diagnoses given by a healthcare professional.", field: "medical_history.liver_disease_etiology", noneOption: "不確定肝病種類", options: liverEtiologyOptions, appliesIf: () => hasSelected("medical_history.chronic_conditions", "肝病") },
-  // Intake only; an empty spread in the questionnaire on sale (see QUESTIONNAIRE_MODE).
-  ...intakeChronicFollowUpQuestions,
+  otherChronicNameQuestion,
+  ...chronicFollowUpQuestions,
   { id: "vnext_diagnosed_conditions", module: "history", type: "multi", required: true, title: "是否曾有以下經醫療人員確認的病史或事件？", titleEn: "Have you had any of the following clinician-confirmed conditions or events?", note: "可複選。骨折依最近 12 個月回答，其餘依是否曾被醫療人員診斷回答。", noteEn: "Select all that apply. For fracture, consider the past 12 months; for the others, report whether a clinician has ever diagnosed the condition.", field: "medical_history.vnext_diagnosed_conditions", noneOption: symptomNoneOption, unknownOption: symptomUnknownOption, options: [...vnextHistoryFeatureDefinitions.map(([label]) => label), symptomNoneOption, symptomUnknownOption] },
   // Sits after vnext_diagnosed_conditions, which asks about chronic pancreatitis.
   ...acutePancreatitisQuestions,
@@ -1130,21 +1205,9 @@ const questions = [
   { id: "family_cancer", module: "history", type: "single", required: true, title: "家族成員（一等親內）是否有癌症史？", note: "一等親包含父母、兄弟姊妹、子女。", field: "family_history.has_cancer_history", options: ["是", "否", "不清楚"] },
   { id: "family_self_types", module: "history", type: "multi", required: false, title: "承上題，若有家族成員（一等親內）癌症史，請列出是什麼癌症？", note: "可複選。", field: "family_history.cancer_types_self_side", options: cancerOptions, appliesIf: (answers) => getAnswerValue(answers, "family_history.has_cancer_history") === "是" },
 
-  // Sale: the Email the report goes to. Intake: no Email and no report; the
-  // last question is free text instead (type "longtext": kept out of every
-  // coded and feature row -- see buildFreeTextAnswers).
-  ...(QUESTIONNAIRE_MODE === "sale" ? [
-    { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" }
-  ] : [
-    {
-      id: "intake_recent_discomfort", module: "closing", type: "longtext", required: false, maxLength: 500,
-      title: "最近是否有任何身體不適？", titleEn: "Have you had any physical discomfort recently?",
-      note: "可留白。若有，請簡短描述哪裡不舒服、大約持續多久。請不要填寫姓名、電話等可以辨識您身分的資料。",
-      noteEn: "You may leave this blank. If so, briefly describe where and for about how long. Please do not include your name, phone number or anything else that identifies you.",
-      placeholder: "例如：最近兩週容易胃脹。", placeholderEn: "For example: bloating for the past two weeks.",
-      field: "intake.recent_discomfort"
-    }
-  ])
+  { id: "email", module: "contact", type: "email", required: true, title: "請填寫您的 Email", note: "結果報告將寄送至此 Email。", field: "contact.email", placeholder: "name@example.com" },
+
+  ...staffIdentityQuestions
 ];
 
 const i18n = {
@@ -1254,7 +1317,7 @@ const i18n = {
       diet: ["Dietary Habits", "Review dietary pattern, meat and processed foods, high-sugar and high-fat foods, plant foods, dairy, and beverages."],
       history: ["Medical and Family History", "Confirm personal cancer history, chronic diseases, and family cancer history."],
       contact: ["Contact Information", "Enter the email address for the report."],
-      closing: ["Anything else", "A note on how you have been feeling recently (optional)."],
+      staff: ["Research staff", "Participant's name, medical record number and hospital, entered by the research staff."],
       confirm: ["Data Review", "Please review your answers before submission."],
       result: ["Completed", "Thank you for your response."]
     },
@@ -1438,13 +1501,11 @@ const frozenSubmissionVectorCounts = Object.freeze({
   rule_input_columns: 30
 });
 // Long free-text answers ("longtext") are a different kind of data from every
-// other answer: not a code, not a number, and liable to carry names, phone
-// numbers or hospitals the respondent types in. So they are kept out of
-// answer_code_rows (which promises codes), out of `rows` (which Power Automate
-// copies into mail and reports), and out of every feature row; the only way out
-// of the browser is buildFreeTextAnswers(), which a submission has to ask for
-// on purpose. Blank is recorded as unknown, never as "no discomfort" -- the
-// same rule as 不確定 elsewhere.
+// other answer: not a code and not a number. Since v19.17 (2026-11-23) they are
+// the names of an "other" chronic disease or cancer type (the research staff's
+// diagnosis, v19.15-v19.16, was removed). Each travels in
+// `rows` (question, text) like every other answer, and is kept out of
+// answer_code_rows (which promises codes) and out of every feature row.
 const LONGTEXT_DEFAULT_MAX_LENGTH = 500;
 const longTextQuestionIds = new Set(
   questions.filter((question) => question.type === "longtext").map((question) => question.id)
@@ -1466,6 +1527,10 @@ function getLongTextMaxLength(question) {
 // capped at one, ends trimmed. Length is counted after normalizing, in UTF-16
 // units -- what the textarea's maxlength attribute counts too, so the counter
 // the respondent sees and the limit enforced here cannot disagree.
+function normalizeShortText(value) {
+  return String(value ?? "").replace(/[\u0000-\u001f\u007f]/gu, "").replace(/\s+/gu, " ").trim();
+}
+
 function normalizeLongText(value) {
   return String(value ?? "")
     .replace(/\r\n?/gu, "\n")
@@ -1487,23 +1552,6 @@ function getLongTextValidationMessage(question, value) {
       : `請將回答控制在 ${maxLength} 字以內。`;
   }
   return "";
-}
-
-function buildFreeTextAnswers() {
-  return questions
-    .filter((question) => longTextQuestionIds.has(question.id))
-    .map((question) => {
-      const applicable = !question.appliesIf || question.appliesIf(answers);
-      if (!applicable) return { question_id: question.id, status: "not_applicable", value: null };
-      const entry = answers[question.field];
-      const text = entry && entry.source !== "uncertain" ? normalizeLongText(entry.value) : "";
-      if (!text) return { question_id: question.id, status: "unknown", value: null };
-      return {
-        question_id: question.id,
-        status: "answered",
-        value: text.slice(0, getLongTextMaxLength(question))
-      };
-    });
 }
 
 const answers = {};
@@ -1576,6 +1624,13 @@ function getModuleCopy(module) {
 // startup; see renderQuickInput's email branch and lib/report-recipients.js.
 let forcedReportRecipient = null;
 
+// The section list without the research staff's section, except at a
+// research-intake entrance: everyone else would see a numbered step they never
+// reach.
+function getShownModules() {
+  return modules.filter((module) => !module.staffOnly || researchIntakeEntrance);
+}
+
 async function loadForcedReportRecipient() {
   try {
     const response = await fetch("/api/session/delivery");
@@ -1583,6 +1638,7 @@ async function loadForcedReportRecipient() {
     const payload = await response.json();
     if (!payload || payload.forced !== true || !payload.email || !payload.label) return;
     forcedReportRecipient = { email: payload.email, label: payload.label };
+    researchIntakeEntrance = payload.research_intake === true;
   } catch (error) {
     // Unreachable or unparseable: fall back to asking for an address. The
     // server still redirects the report, so nothing is delivered wrongly --
@@ -1591,8 +1647,12 @@ async function loadForcedReportRecipient() {
     // anyone testing the entrance.
     return;
   }
-  // The email question may already be on screen by the time this returns.
-  if (getCurrentQuestion()?.type === "email") renderQuestion();
+  // The question on screen may already be one this changes (the email, or the
+  // participant's own name question, which the staff page replaces here), and
+  // the section list gains the staff section at a research-intake entrance.
+  const onScreen = getCurrentQuestion();
+  if (onScreen?.type === "email" || (researchIntakeEntrance && onScreen?.id === "full_name")) renderQuestion();
+  else if (researchIntakeEntrance && typeof renderModules === "function" && onScreen) renderModules();
 }
 
 function getQuestionCopy(question) {
@@ -1836,8 +1896,8 @@ function translateFollowUp(parsed) {
 
 function getCurrentModuleIndex() {
   const question = getCurrentQuestion();
-  if (!question) return modules.findIndex((item) => item.id === "confirm");
-  return modules.findIndex((item) => item.id === question.module);
+  if (!question) return getShownModules().findIndex((item) => item.id === "confirm");
+  return getShownModules().findIndex((item) => item.id === question.module);
 }
 
 function getModuleFeedback(fromModuleId, toModuleId) {
@@ -1939,7 +1999,7 @@ function renderConsentNotice() {
 
 function renderModules() {
   const activeModuleIndex = getCurrentModuleIndex();
-  moduleList.innerHTML = modules.map((module, index) => {
+  moduleList.innerHTML = getShownModules().map((module, index) => {
     const state = index < activeModuleIndex ? "is-done" : index === activeModuleIndex ? "is-active" : "";
     const [moduleTitle] = getModuleCopy(module);
     return `
@@ -1950,7 +2010,7 @@ function renderModules() {
     `;
   }).join("");
 
-  const activeModule = modules[activeModuleIndex] || modules.at(-1);
+  const activeModule = getShownModules()[activeModuleIndex] || modules.at(-1);
   const [title, summary] = getModuleCopy(activeModule);
   sectionTitle.textContent = title;
   sectionSummary.textContent = summary;
@@ -1971,7 +2031,7 @@ function renderQuestion() {
   inputZone.hidden = false;
   inputZone.classList.toggle("input-zone--consent", question.id === "consent_acknowledgement");
   panelFooter.hidden = false;
-  const cannotSkip = question.id === "consent_acknowledgement" || ["name", "email"].includes(question.type);
+  const cannotSkip = question.id === "consent_acknowledgement" || ["name", "email"].includes(question.type) || question.module === "staff";
   skipBtn.hidden = !question.required || cannotSkip;
   skipBtn.disabled = cannotSkip;
   guideMessage.textContent = question.module === "symptoms"
@@ -2207,6 +2267,34 @@ function renderQuickInput(question) {
         return;
       }
       saveAnswer(value, "name_input");
+    });
+    return;
+  }
+
+  // A short one-line text: the research staff's medical record number and
+  // hospital. Same treatment as the name field -- whitespace collapsed, no
+  // angle brackets or control characters -- with the question's own maxLength.
+  if (question.type === "shorttext") {
+    const maxLength = Number.isInteger(question.maxLength) ? question.maxLength : 50;
+    const placeholder = questionCopy.placeholder || (currentLang === "en" ? "Please enter your answer" : "請輸入您的回答");
+    quickOptions.innerHTML = `
+      <div class="number-entry">
+        <input id="shortTextInput" type="text" autocomplete="off" maxlength="${maxLength}" placeholder="${escapeHtml(placeholder)}" />
+        <button class="secondary-action" id="saveShortTextBtn" type="button">${ui("saveContinue")}</button>
+      </div>
+    `;
+    const input = document.querySelector("#shortTextInput");
+    const saved = answers[question.field]?.value;
+    input.value = typeof saved === "string" ? saved : "";
+    document.querySelector("#saveShortTextBtn").addEventListener("click", () => {
+      const value = normalizeShortText(input.value);
+      if (!value || value.length > maxLength || /[<>]/u.test(value)) {
+        showInlineNotice(currentLang === "en"
+          ? `Please enter up to ${maxLength} characters, without < or >.`
+          : `請輸入 ${maxLength} 字以內，且不含 < 或 >。`);
+        return;
+      }
+      saveAnswer(value, "shorttext_input");
     });
     return;
   }
@@ -2654,8 +2742,8 @@ function saveAnswer(value, source, structured = null) {
 }
 
 function renderConfirmation() {
-  const moduleIndex = modules.findIndex((item) => item.id === "confirm");
-  moduleList.innerHTML = modules.map((module, index) => `
+  const moduleIndex = getShownModules().findIndex((item) => item.id === "confirm");
+  moduleList.innerHTML = getShownModules().map((module, index) => `
     <li class="${index < moduleIndex ? "is-done" : index === moduleIndex ? "is-active" : ""}">
       <span class="module-index">${index < moduleIndex ? "✓" : index + 1}</span>
       <span>${getModuleCopy(module)[0]}</span>
@@ -2675,16 +2763,12 @@ function renderConfirmation() {
       </div>
       <div class="analysis-use-note">
         <strong>${currentLang === "en" ? "How your information will be used" : "送出後如何整理資料"}</strong>
-        <p>${QUESTIONNAIRE_MODE === "intake"
-          ? (currentLang === "en"
-            ? "After submission, the information on this page will be kept as research data. No personal report is produced or sent."
-            : "送出後，本頁資料將作為研究資料保存，不會產生或寄送個人報告。")
-          : currentLang === "en"
+        <p>${currentLang === "en"
           ? "After submission, the information listed on this page will be converted into structured health risk factors and used to create a personalized summary with the ten-cancer models. The service does not use this information to determine whether you have cancer."
           : "送出後，系統會將本頁資料轉換為結構化健康風險因子，並使用十大癌症模型產生個人化摘要。本服務不會依據這些資料判斷您是否罹患癌症。"}</p>
       </div>
       <div class="answer-review-list">
-        ${Object.values(answers).filter((entry) => !isInapplicableIntakeEntry(entry)).map((entry) => `
+        ${Object.values(answers).filter((entry) => !isDroppedInapplicableEntry(entry)).map((entry) => `
           <div class="answer-review-item">
             <b>${getEntryDisplayLabel(entry)}</b>
             ${longTextQuestionIds.has(entry.question_id)
@@ -2724,8 +2808,6 @@ function calculateAge() {
 }
 
 function validateContactEmail() {
-  // Intake asks for no Email and sends no report.
-  if (QUESTIONNAIRE_MODE === "intake") return "";
   const email = String(getAnswerValue(answers, "contact.email") || "").trim();
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return currentLang === "en"
@@ -2987,23 +3069,26 @@ function checkOptimizedFeatureRow(row) {
   return messages;
 }
 
-// An intake-only answer whose question no longer applies -- the respondent
-// answered a chronic-condition follow-up, then went back and unchecked the
-// condition. answer_code_rows already reports it as not_applicable; this keeps
-// it out of `rows` and the confirmation page as well. Limited to intakeOnly
-// questions on purpose: the questionnaire on sale keeps its existing behavior.
-function isInapplicableIntakeEntry(entry) {
+// An answer whose question no longer applies -- the respondent answered a
+// chronic-condition follow-up, then went back and unchecked the condition.
+// answer_code_rows already reports it as not_applicable; this keeps it out of
+// `rows` and the confirmation page as well. Limited to questions marked
+// dropWhenInapplicable on purpose: every older question keeps its existing
+// behavior.
+function isDroppedInapplicableEntry(entry) {
   const question = questions.find((item) => item.id === entry.question_id);
-  return Boolean(question?.intakeOnly && question.appliesIf && !question.appliesIf(answers));
+  return Boolean(question?.dropWhenInapplicable && question.appliesIf && !question.appliesIf(answers));
 }
 
 function buildSubmissionRows() {
   const submittedAt = new Date().toISOString();
   return Object.values(answers)
-    .filter((entry) => !["contact.full_name", "contact.email"].includes(entry.field)
+    // Every contact.* field -- the name, the email, and the research staff's
+    // medical record number and hospital -- is a direct identifier and stays
+    // out of the research rows.
+    .filter((entry) => !String(entry.field || "").startsWith("contact.")
       && !["full_name", "email"].includes(entry.question_id)
-      && !longTextQuestionIds.has(entry.question_id)
-      && !isInapplicableIntakeEntry(entry))
+      && !isDroppedInapplicableEntry(entry))
     .map((entry) => ({
     submitted_at: submittedAt,
     question_id: entry.question_id,
@@ -3373,39 +3458,29 @@ function buildPersonalCancerTypes() {
   return Array.isArray(entry.value) ? entry.value.join("; ") : String(entry.value);
 }
 
+// The participant's name: typed by the research staff at a research-intake
+// entrance (staff_patient_name), by the participant everywhere else
+// (full_name). Two fields rather than one shared one, so each question is
+// answered or not on its own -- the conversation's progress counts by field.
+function getParticipantFullName() {
+  return getAnswerValue(answers, researchIntakeEntrance ? "contact.staff_full_name" : "contact.full_name") || "";
+}
+
 function buildContactRow(optimizedFeatureRow, submittedAt) {
   return {
     record_id: optimizedFeatureRow.record_id,
-    full_name: getAnswerValue(answers, "contact.full_name") || "",
+    full_name: getParticipantFullName(),
     email: getAnswerValue(answers, "contact.email") || "",
     submitted_at: submittedAt,
     language: currentLang,
-    report_language: currentLang === "en" ? "en" : "zh-Hant"
+    report_language: currentLang === "en" ? "en" : "zh-Hant",
+    // Only at a research-intake entrance, and only there does the server
+    // accept them (lib/report-recipients.js, researchIdentifierProblems).
+    ...(researchIntakeEntrance ? {
+      medical_record_number: getAnswerValue(answers, "contact.medical_record_number") || "",
+      hospital: getAnswerValue(answers, "contact.hospital") || ""
+    } : {})
   };
-}
-
-// The research-intake submission (lib/intake-contract.js has the full
-// description and the server-side check). Much smaller than the sale one: no
-// name, no Email, no feature rows, no report fields -- the coded answers, the
-// free text kept apart from them, and the consent record. record_id is not
-// sent: the server assigns it.
-const INTAKE_CONTRACT_VERSION = "intake-submission/1.0.0";
-
-function buildIntakeSubmission() {
-  const submittedAt = new Date().toISOString();
-  const submission = {
-    contract_version: INTAKE_CONTRACT_VERSION,
-    questionnaire_version: SUBMISSION_VERSIONS.questionnaire_version,
-    consent_version: SUBMISSION_VERSIONS.consent_version,
-    answer_code_schema_version: SUBMISSION_VERSIONS.answer_code_schema_version,
-    submitted_at: submittedAt,
-    language: currentLang,
-    consent_record: buildConsentRecord(submittedAt),
-    answer_code_rows: buildAnswerCodeRows(),
-    free_text_answers: buildFreeTextAnswers()
-  };
-  if (typeof window !== "undefined") window.latestSubmission = submission;
-  return submission;
 }
 
 function storeSubmissionForIntegration() {
@@ -3426,7 +3501,7 @@ function storeSubmissionForIntegration() {
   const submission = {
     ...SUBMISSION_VERSIONS,
     submitted_at: submittedAt,
-    full_name: getAnswerValue(answers, "contact.full_name") || "",
+    full_name: getParticipantFullName(),
     email: getAnswerValue(answers, "contact.email") || "",
     language: currentLang,
     report_language: currentLang === "en" ? "en" : "zh-Hant",
@@ -3551,24 +3626,13 @@ function buildSubmitErrorMessage(responsePayload, status, lang) {
       : `已超過 ${hours} 小時的填答時間限制，這次的作答並未送出。請重新整理頁面後再次填答。`;
   }
 
-  // The server refuses research-intake answers until their own destination
-  // exists (server.js, receiveSubmission). Trying again cannot help, so the
-  // message does not suggest it.
-  if (responsePayload && responsePayload.code === "intake_submission_not_configured") {
-    return lang === "en"
-      ? "Submitting this research questionnaire is not open yet, so these answers were not sent. Please let the research staff know."
-      : "本研究問卷目前尚未開放送出，這次的作答並未送出。請告知研究人員。";
-  }
-
   return lang === "en"
     ? `Submission failed (reference ${status}). Please try again or contact support.`
     : `資料送出失敗（參考代碼 ${status}），請再試一次或聯繫服務人員。`;
 }
 
 async function submitSubmission(submission) {
-  // The sale payload is checked here against its frozen vectors. The intake
-  // payload has none of those; the server checks it in full.
-  if (submission.contract_version !== INTAKE_CONTRACT_VERSION) validateSubmissionBeforeSend(submission);
+  validateSubmissionBeforeSend(submission);
   const response = await fetch(SUBMISSION_ENDPOINT, {
     method: "POST",
     headers: {
@@ -3617,7 +3681,7 @@ async function renderResult() {
     showSubmitError(measurementError);
     return;
   }
-  const submission = QUESTIONNAIRE_MODE === "intake" ? buildIntakeSubmission() : storeSubmissionForIntegration();
+  const submission = storeSubmissionForIntegration();
   const runButton = document.querySelector("#runModelBtn");
   if (runButton) {
     runButton.disabled = true;
@@ -3658,15 +3722,14 @@ async function renderResult() {
     : (currentLang === "en"
       ? `Your submission was received. The report will be sent to ${submission.email} after processing.`
       : `本次健康探索已收件，報告處理完成後將寄送至 ${submission.email}。`);
-  const intakeResult = QUESTIONNAIRE_MODE === "intake";
   const resultSecondaryNote = storedLocallyOnly
     ? (currentLang === "en"
       ? "The local AI model and email service have not finished migration, so this submission will not generate an email report yet."
       : "地端 AI 模型與寄信服務尚未完成移轉，因此本次暫不會寄出報告。")
     : (currentLang === "en" ? i18n.en.ui.completedInbox : "請留意信箱收件匣與垃圾郵件匣。");
 
-  const moduleIndex = modules.findIndex((item) => item.id === "result");
-  moduleList.innerHTML = modules.map((module, index) => `
+  const moduleIndex = getShownModules().findIndex((item) => item.id === "result");
+  moduleList.innerHTML = getShownModules().map((module, index) => `
     <li class="${index < moduleIndex ? "is-done" : index === moduleIndex ? "is-active" : ""}">
       <span class="module-index">${index < moduleIndex ? "✓" : index + 1}</span>
       <span>${getModuleCopy(module)[0]}</span>
@@ -3674,22 +3737,15 @@ async function renderResult() {
   `).join("");
   sectionTitle.textContent = currentLang === "en" ? i18n.en.ui.completedSection : "完成送出";
   sectionSummary.textContent = currentLang === "en" ? i18n.en.ui.completedSummary : "感謝您的填答。";
-  guideMessage.textContent = intakeResult
-    ? (currentLang === "en" ? "Your answers were submitted. Thank you for taking part in this study." : "您的填答已送出，感謝您參與本研究。")
-    : resultGuide;
+  guideMessage.textContent = resultGuide;
 
   questionArea.innerHTML = `
     <div class="result-panel">
       <p class="eyebrow">${currentLang === "en" ? i18n.en.ui.completedSection : "已完成"}</p>
       <h2 class="question-title">${currentLang === "en" ? i18n.en.ui.completedTitle : "感謝您的填答"}</h2>
-      <p class="question-note">${intakeResult
-        ? (currentLang === "en" ? `Your answers were received. Reference: ${escapeHtml(referenceId)}.` : `您的填答已收件，參考編號：${escapeHtml(referenceId)}。`)
-        : resultPrimaryNote}</p>
-      <p class="question-note">${intakeResult
-        ? (currentLang === "en" ? "This research questionnaire does not produce or send a personal report." : "本研究問卷不會產生或寄送個人報告。")
-        : resultSecondaryNote}</p>
+      <p class="question-note">${resultPrimaryNote}</p>
+      <p class="question-note">${resultSecondaryNote}</p>
       <button class="text-link result-info-link" type="button" data-open-service-info>${currentLang === "en" ? i18n.en.ui.completedServiceInfo : "了解報告內容與服務限制"}</button>
-      ${intakeResult ? "" /* the intake payload has none of these sale rows */ : `
       <script type="application/json" id="submissionRowsJson">${safeJsonForHtml(submission.rows)}</script>
       <script type="application/json" id="structuredFeaturesJson">${safeJsonForHtml({
         schema_version: "10Cancer_AI_structure_data_v1_compatible",
@@ -3703,7 +3759,6 @@ async function renderResult() {
         research_row: submission.research_feature_row,
         data_quality: submission.data_quality
       })}</script>
-      `}
     </div>
   `;
   inputZone.hidden = true;
@@ -3796,7 +3851,7 @@ backBtn.addEventListener("click", () => {
 
 skipBtn.addEventListener("click", () => {
   const question = getCurrentQuestion();
-  if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type)) return;
+  if (question?.id === "consent_acknowledgement" || ["name", "email"].includes(question?.type) || question?.module === "staff") return;
   if (question?.type === "grouped-matrix") {
     saveGroupedMatrixAnswers(question, getApplicableCompositeRows(question).map(() => "不確定"), "uncertain");
     finishCompositeQuestion(question);

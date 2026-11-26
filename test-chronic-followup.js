@@ -2,11 +2,12 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { loadApp } = require("./lib/load-app-sandbox");
 
-// Intake questionnaire: after chronic_conditions, one table asks, for each
+// Every entrance since v19.15 (2026-11-19; the research-intake questionnaire
+// first, 2026-11-18): after chronic_conditions, one table asks, for each
 // checked condition, whether the respondent has seen a doctor for it and how
-// long ago it last flared up (2026-11-18; ranges 1 個月內 / 1–6 個月 /
-// 6–12 個月 / 1 年以上 / 不確定). What these tests pin down:
-//   1. the questionnaire on sale is unchanged -- none of this exists there;
+// long ago it last flared up (ranges 1 個月內 / 1–6 個月 / 6–12 個月 /
+// 1 年以上 / 不確定). What these tests pin down:
+//   1. it is the same at every entrance -- no separate questionnaire;
 //   2. a row is asked only for a condition that was checked;
 //   3. every cell is a coded answer, with not_applicable / unknown kept apart;
 //   4. nothing here reaches the model request.
@@ -15,7 +16,7 @@ const CHRONIC_FIELD = "medical_history.chronic_conditions";
 const plain = (value) => (value === undefined ? undefined : JSON.parse(JSON.stringify(value)));
 
 function intakeApp() {
-  return loadApp({ questionnaireMode: "intake" });
+  return loadApp();
 }
 
 function checkConditions(app, labels) {
@@ -32,27 +33,24 @@ function activeIds(app) {
   return app.getActiveQuestions().map((question) => question.id);
 }
 
-test("the questionnaire on sale has no chronic follow-up and an unchanged contract", () => {
-  const app = loadApp();
-  assert.equal(app.QUESTIONNAIRE_MODE, "sale");
-  assert(!app.questions.some((question) => question.intakeOnly));
-  assert(!app.questions.some((question) => question.id.startsWith("chronic_care_")));
-  assert.equal(app.canonicalAnswerQuestions.length, 91);
+test("the follow-up is the same at every entrance, research-intake included", () => {
+  // The research-intake entrance adds only the staff's identity page; the
+  // chronic follow-up is the same.
+  const ordinary = loadApp();
+  const intake = loadApp({ researchIntakeEntrance: true });
+  const active = (app) => app.getActiveQuestions().map((question) => question.id).filter((id) => id.startsWith("chronic_"));
+  assert.deepEqual(plain(active(intake)), plain(active(ordinary)));
+  assert(!ordinary.questions.some((question) => "intakeOnly" in question), "nothing is intake-only any more");
 });
 
-test("an unrecognized mode falls back to the questionnaire on sale", () => {
-  const app = loadApp({ questionnaireMode: "INTAKE " });
-  assert.equal(app.QUESTIONNAIRE_MODE, "sale");
-  assert(!app.questions.some((question) => question.intakeOnly));
-});
-
-test("intake adds one table and two coded rows for each of the 15 conditions", () => {
-  const sale = loadApp();
+test("one table and two coded rows for each of the 15 conditions", () => {
   const app = intakeApp();
-  assert.equal(app.QUESTIONNAIRE_MODE, "intake");
-  // +31 for the table and its 30 cells, -2 for name and Email, +1 free text.
-  assert.equal(app.questions.length, sale.questions.length + 31 - 2 + 1);
-  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30);
+  assert.equal(app.questions.filter((question) => question.matrixGroup).length, 30);
+  assert(app.questions.some((question) => question.id === "chronic_followup_matrix"));
+  // 91 before v19.15, +30 cells; v19.16 +2 (the other cancer type's care and
+  // last episode; the disease names are text). The staff diagnosis basis
+  // (v19.15-v19.16) was removed in v19.17.
+  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 2);
 
   // Every chronic_conditions option except 以上皆無 has its pair of rows.
   const chronic = app.questions.find((item) => item.id === "chronic_conditions");
@@ -63,10 +61,11 @@ test("intake adds one table and two coded rows for each of the 15 conditions", (
   assert.deepEqual(plain(groupLabels), plain(diseases));
 });
 
-test("the table sits right after the liver follow-up and shows only when a condition is checked", () => {
+test("the table sits after the liver follow-up and the other disease's name, and shows only when a condition is checked", () => {
   const app = intakeApp();
   const order = app.questions.map((question) => question.id);
-  assert.equal(order.indexOf("chronic_followup_matrix"), order.indexOf("liver_disease_etiology") + 1);
+  assert.equal(order.indexOf("chronic_other_name"), order.indexOf("liver_disease_etiology") + 1);
+  assert.equal(order.indexOf("chronic_followup_matrix"), order.indexOf("chronic_other_name") + 1);
 
   assert(!activeIds(app).includes("chronic_followup_matrix"), "shown before chronic_conditions was answered");
   checkConditions(app, ["以上皆無"]);
@@ -144,7 +143,7 @@ test("an answer left behind by unchecking a condition does not ride along", () =
 test("the follow-up never reaches the model request, and chronic_* features are unchanged", () => {
   const fill = (app) => {
     for (const question of app.questions) {
-      if (!question.field || question.intakeOnly || question.type === "longtext") continue;
+      if (!question.field || question.matrixGroup) continue;
       let value;
       if (question.type === "multi") value = [question.options?.[0]];
       else if (question.options) value = question.options[0];
@@ -158,6 +157,7 @@ test("the follow-up never reaches the model request, and chronic_* features are 
     }
     checkConditions(app, ["高血壓", "糖尿病／高血糖"]);
   };
+  // Same answers, once without the follow-up answered and once with it.
   const sale = loadApp();
   fill(sale);
   const intake = intakeApp();
@@ -170,4 +170,25 @@ test("the follow-up never reaches the model request, and chronic_* features are 
   delete saleRequest.record_id;
   delete intakeRequest.record_id;
   assert.deepEqual(intakeRequest, saleRequest);
+});
+
+test("the conversational version asks the follow-up too, one cell at a time", () => {
+  const { createChatSession } = require("./chat-session");
+  const app = loadApp();
+  for (const question of app.questions) {
+    if (!question.field || question.matrixGroup || question.id === "chronic_conditions") continue;
+    let value;
+    if (question.type === "multi") value = [question.options?.[0]];
+    else if (question.options) value = question.options[0];
+    else if (question.type === "email") value = "contract-test@example.com";
+    else if (question.type === "name") value = "王小明";
+    else if (question.id.includes("birth_year")) value = "1980";
+    else if (question.id.includes("height")) value = "165";
+    else if (question.id.includes("weight")) value = "60";
+    else value = "1";
+    app.answers[question.field] = app.makeAnswerEntry(question, value, "contract_test");
+  }
+  checkConditions(app, ["痛風／高尿酸"]);
+  const session = createChatSession({ app });
+  assert.equal(session.next().question.id, "chronic_care_gout");
 });

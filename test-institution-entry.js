@@ -24,11 +24,19 @@ const { parseEntryCode, isExemptFromGate, hashToken, normalizeCode } = require("
 
 const SHUANGHO_CODE = "egshuangho2026xxxxxxxxxxxxxxxxxx";
 const UNLISTED_CODE = "egsomeoneelse9";
+const RESEARCH_CODE = "egresearchintake01";
 const WHITELIST = {
   shuangho: {
     label: "雙和醫院",
     email: "reports@shuangho.example.org",
     codes: [SHUANGHO_CODE]
+  },
+  // A research-intake entrance: 雙和's shape plus the staff page.
+  research: {
+    label: "研究收案",
+    email: "intake@example.org",
+    codes: [RESEARCH_CODE],
+    staffDiagnosis: true
   }
 };
 
@@ -37,7 +45,8 @@ const WHITELIST = {
 // refuses a code that does not exist.
 const GRANTS = new Map([
   [hashToken(SHUANGHO_CODE), { ok: true, grantId: 61, deliveryMode: "institution" }],
-  [hashToken(UNLISTED_CODE), { ok: true, grantId: 77, deliveryMode: "institution" }]
+  [hashToken(UNLISTED_CODE), { ok: true, grantId: 77, deliveryMode: "institution" }],
+  [hashToken(RESEARCH_CODE), { ok: true, grantId: 88, deliveryMode: "institution" }]
 ]);
 
 function freePort() {
@@ -221,6 +230,50 @@ test("the session that scan opened knows where its report goes", async () => {
     label: "雙和醫院",
     email: "reports@shuangho.example.org"
   });
+});
+
+test("a research-intake entrance locks the email like 雙和 and tells the page to add the staff page", async () => {
+  // research_intake since v19.17 (2026-11-23; the staff page asks for the
+  // participant's name, medical record number and hospital). v19.15-v19.16
+  // said staff_diagnosis for a diagnosis page.
+  const { body } = await deliveryFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert.deepEqual(body, {
+    ok: true,
+    forced: true,
+    label: "研究收案",
+    email: "intake@example.org",
+    research_intake: true
+  });
+  const clinic = await deliveryFor(sessionFrom(await scan(SHUANGHO_CODE)));
+  assert.deepEqual(Object.keys(clinic.body).sort(), ["email", "forced", "label", "ok"]);
+});
+
+test("a research-intake session is sent from the chat page to the form; a 雙和 session is not", async () => {
+  const chatFor = (cookie) => fetch(`${base}/chat.html`, { redirect: "manual", headers: { Cookie: cookie } });
+  const research = await chatFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert.equal(research.status, 302);
+  const clinic = await chatFor(sessionFrom(await scan(SHUANGHO_CODE)));
+  assert.equal(clinic.status, 200);
+});
+
+test("the 收案平台 badge is in the header and the answer area's title bar for a research-intake session only", async () => {
+  const pageFor = async (cookie) => (await fetch(`${base}/`, { headers: cookie ? { Cookie: cookie } : {} })).text();
+  const badge = '<span class="brand-intake-badge">收案平台</span>';
+  const research = await pageFor(sessionFrom(await scan(RESEARCH_CODE)));
+  assert(research.includes(badge), "no badge at the research-intake entrance");
+  // Beside our name, in the hero's brand row.
+  const start = research.indexOf('<div class="brand-row">');
+  const row = research.slice(start, research.indexOf("</div>", start));
+  assert(row.includes(badge), "the badge is not in the header's brand row");
+  // And again in the answer area's title bar, beside "AI Health Guide".
+  const titleStart = research.indexOf('<div class="panel-header__title">');
+  const title = research.slice(titleStart, research.indexOf("</div>", titleStart));
+  assert(titleStart > 0 && title.includes(badge), "the badge is not in the answer area's title bar");
+  assert.equal(research.split(badge).length - 1, 2, "expected the badge exactly twice");
+  for (const [name, page] of [["雙和", await pageFor(sessionFrom(await scan(SHUANGHO_CODE)))], ["no session", await pageFor(null)]]) {
+    assert(!page.includes("brand-intake-badge"), `badge shown for ${name}`);
+    assert(!page.includes("<!--BRAND:INTAKE"), `marker left in the page for ${name}`);
+  }
 });
 
 test("an institution code nobody whitelisted still gets in, and is asked for an email", async () => {

@@ -54,7 +54,8 @@ function buildValidSubmission() {
       accepted_item_ids: ["data_use", "model_limitations", "non_medical_use"]
     },
     answer_code_rows: answerCodeManifest.questions
-      .filter((question) => !["consent_acknowledgement", "email"].includes(question.question_id))
+      .filter((question) => question.answer_type !== "free_text"
+        && !["consent_acknowledgement", "email"].includes(question.question_id))
       .map((question) => ({
         question_id: question.question_id,
         status: "unknown",
@@ -128,17 +129,6 @@ test("generated answer-code manifest is synchronized with app.js", () => {
   });
   const after = fs.readFileSync(manifestPath, "utf8");
   assert.equal(after, before, "Run the generator, review the changed codes, and bump the questionnaire/code schema version.");
-});
-
-test("generated intake answer-code manifest is synchronized with app.js", () => {
-  const manifestPath = path.join(__dirname, "contracts", "intake", "answer-code-manifest.json");
-  const before = fs.readFileSync(manifestPath, "utf8");
-  execFileSync(process.execPath, [path.join(__dirname, "scripts", "generate-answer-code-manifest.js"), "--mode", "intake"], {
-    cwd: __dirname,
-    stdio: "pipe"
-  });
-  const after = fs.readFileSync(manifestPath, "utf8");
-  assert.equal(after, before, "Run npm run generate:answer-codes:intake, review the changed codes, and bump the intake questionnaire version.");
 });
 
 test("Power Automate answer-row limits match the canonical answer contract", () => {

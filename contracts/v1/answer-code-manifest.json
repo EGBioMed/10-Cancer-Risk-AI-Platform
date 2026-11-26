@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-16-v19.14-phase1",
+  "questionnaire_version": "questionnaire/2026-11-23-v19.17-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 93,
-  "canonical_answer_question_count": 91,
+  "question_count": 127,
+  "canonical_answer_question_count": 123,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -2579,6 +2579,78 @@
       ]
     },
     {
+      "question_id": "personal_cancer_other_name",
+      "field": "medical_history.personal_cancer_other_name",
+      "module": "history",
+      "answer_type": "free_text",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」是什麼癌症？",
+      "title_en": "Which cancer is the \"other cancer type\" you selected?",
+      "max_length": 50
+    },
+    {
+      "question_id": "personal_cancer_other_care",
+      "field": "medical_history.personal_cancer_other.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」：是否已就診？",
+      "title_en": "The \"other cancer type\" you selected: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "personal_cancer_other_last_episode",
+      "field": "medical_history.personal_cancer_other.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他癌種」：最近一次發病距今多久？",
+      "title_en": "The \"other cancer type\" you selected: how long ago was the last episode?",
+      "options": [
+        {
+          "code": "personal_cancer_other_last_episode.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "personal_cancer_other_last_episode.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
       "question_id": "chronic_conditions",
       "field": "medical_history.chronic_conditions",
       "module": "history",
@@ -2712,6 +2784,946 @@
           "code": "none",
           "label_zh": "不確定肝病種類",
           "label_en": "Not sure of the liver disease type"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_other_name",
+      "field": "medical_history.chronic_other_name",
+      "module": "history",
+      "answer_type": "free_text",
+      "required_when_applicable": true,
+      "title_zh": "您勾選的「其他慢性疾病」是什麼疾病？",
+      "title_en": "Which disease is the \"other chronic disease\" you selected?",
+      "max_length": 50
+    },
+    {
+      "question_id": "chronic_care_hypertension",
+      "field": "medical_history.chronic_followup.hypertension.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "高血壓：是否已就診？",
+      "title_en": "Hypertension: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_hypertension",
+      "field": "medical_history.chronic_followup.hypertension.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "高血壓：最近一次發病距今多久？",
+      "title_en": "Hypertension: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_hypertension.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_hypertension.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_hypertension.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_hypertension.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_diabetes",
+      "field": "medical_history.chronic_followup.diabetes.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "糖尿病／高血糖：是否已就診？",
+      "title_en": "Diabetes / high blood sugar: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_diabetes",
+      "field": "medical_history.chronic_followup.diabetes.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "糖尿病／高血糖：最近一次發病距今多久？",
+      "title_en": "Diabetes / high blood sugar: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_diabetes.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_diabetes.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_diabetes.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_diabetes.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_hyperlipidemia",
+      "field": "medical_history.chronic_followup.hyperlipidemia.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "高血脂／高膽固醇：是否已就診？",
+      "title_en": "High lipids / cholesterol: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_hyperlipidemia",
+      "field": "medical_history.chronic_followup.hyperlipidemia.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "高血脂／高膽固醇：最近一次發病距今多久？",
+      "title_en": "High lipids / cholesterol: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_hyperlipidemia.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_hyperlipidemia.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_hyperlipidemia.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_hyperlipidemia.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_liver_disease",
+      "field": "medical_history.chronic_followup.liver_disease.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "肝病（B 型肝炎／C 型肝炎／肝硬化）：是否已就診？",
+      "title_en": "Liver disease: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_liver_disease",
+      "field": "medical_history.chronic_followup.liver_disease.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "肝病（B 型肝炎／C 型肝炎／肝硬化）：最近一次發病距今多久？",
+      "title_en": "Liver disease: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_liver_disease.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_liver_disease.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_liver_disease.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_liver_disease.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_gerd",
+      "field": "medical_history.chronic_followup.gerd.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "胃食道逆流：是否已就診？",
+      "title_en": "Gastroesophageal reflux: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_gerd",
+      "field": "medical_history.chronic_followup.gerd.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "胃食道逆流：最近一次發病距今多久？",
+      "title_en": "Gastroesophageal reflux: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_gerd.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_gerd.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_gerd.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_gerd.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_heart_disease",
+      "field": "medical_history.chronic_followup.heart_disease.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "心臟病／心律不整：是否已就診？",
+      "title_en": "Heart disease / arrhythmia: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_heart_disease",
+      "field": "medical_history.chronic_followup.heart_disease.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "心臟病／心律不整：最近一次發病距今多久？",
+      "title_en": "Heart disease / arrhythmia: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_heart_disease.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_heart_disease.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_heart_disease.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_heart_disease.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_thyroid",
+      "field": "medical_history.chronic_followup.thyroid.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "甲狀腺疾病：是否已就診？",
+      "title_en": "Thyroid disease: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_thyroid",
+      "field": "medical_history.chronic_followup.thyroid.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "甲狀腺疾病：最近一次發病距今多久？",
+      "title_en": "Thyroid disease: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_thyroid.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_thyroid.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_thyroid.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_thyroid.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_asthma_copd",
+      "field": "medical_history.chronic_followup.asthma_copd.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "氣喘／慢性肺阻塞（COPD）：是否已就診？",
+      "title_en": "Asthma / COPD: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_asthma_copd",
+      "field": "medical_history.chronic_followup.asthma_copd.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "氣喘／慢性肺阻塞（COPD）：最近一次發病距今多久？",
+      "title_en": "Asthma / COPD: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_asthma_copd.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_asthma_copd.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_asthma_copd.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_asthma_copd.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_gout",
+      "field": "medical_history.chronic_followup.gout.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "痛風／高尿酸：是否已就診？",
+      "title_en": "Gout / high uric acid: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_gout",
+      "field": "medical_history.chronic_followup.gout.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "痛風／高尿酸：最近一次發病距今多久？",
+      "title_en": "Gout / high uric acid: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_gout.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_gout.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_gout.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_gout.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_arthritis",
+      "field": "medical_history.chronic_followup.arthritis.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "關節炎（含類風濕性）：是否已就診？",
+      "title_en": "Arthritis: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_arthritis",
+      "field": "medical_history.chronic_followup.arthritis.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "關節炎（含類風濕性）：最近一次發病距今多久？",
+      "title_en": "Arthritis: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_arthritis.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_arthritis.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_arthritis.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_arthritis.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_mental",
+      "field": "medical_history.chronic_followup.mental.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "憂鬱症／焦慮症：是否已就診？",
+      "title_en": "Depression / anxiety: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_mental",
+      "field": "medical_history.chronic_followup.mental.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "憂鬱症／焦慮症：最近一次發病距今多久？",
+      "title_en": "Depression / anxiety: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_mental.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_mental.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_mental.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_mental.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_stroke",
+      "field": "medical_history.chronic_followup.stroke.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "中風病史：是否已就診？",
+      "title_en": "Stroke: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_stroke",
+      "field": "medical_history.chronic_followup.stroke.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "中風病史：最近一次發病距今多久？",
+      "title_en": "Stroke: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_stroke.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_stroke.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_stroke.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_stroke.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_kidney",
+      "field": "medical_history.chronic_followup.kidney.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "腎臟病／洗腎：是否已就診？",
+      "title_en": "Kidney disease / dialysis: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_kidney",
+      "field": "medical_history.chronic_followup.kidney.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "腎臟病／洗腎：最近一次發病距今多久？",
+      "title_en": "Kidney disease / dialysis: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_kidney.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_kidney.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_kidney.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_kidney.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_autoimmune",
+      "field": "medical_history.chronic_followup.autoimmune.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "自體免疫疾病（乾燥症、紅斑性狼瘡等）：是否已就診？",
+      "title_en": "Autoimmune disease: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_autoimmune",
+      "field": "medical_history.chronic_followup.autoimmune.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "自體免疫疾病（乾燥症、紅斑性狼瘡等）：最近一次發病距今多久？",
+      "title_en": "Autoimmune disease: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_autoimmune.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_autoimmune.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_autoimmune.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_autoimmune.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_care_other_unclassified",
+      "field": "medical_history.chronic_followup.other_unclassified.care",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "其他慢性疾病：是否已就診？",
+      "title_en": "Other chronic disease: have you seen a doctor for it?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "chronic_last_episode_other_unclassified",
+      "field": "medical_history.chronic_followup.other_unclassified.last_episode",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "其他慢性疾病：最近一次發病距今多久？",
+      "title_en": "Other chronic disease: how long ago was the last flare-up?",
+      "options": [
+        {
+          "code": "chronic_last_episode_other_unclassified.option_01",
+          "label_zh": "1 個月內",
+          "label_en": "Within 1 month"
+        },
+        {
+          "code": "chronic_last_episode_other_unclassified.option_02",
+          "label_zh": "1–6 個月",
+          "label_en": "1-6 months ago"
+        },
+        {
+          "code": "chronic_last_episode_other_unclassified.option_03",
+          "label_zh": "6–12 個月",
+          "label_en": "6-12 months ago"
+        },
+        {
+          "code": "chronic_last_episode_other_unclassified.option_04",
+          "label_zh": "1 年以上",
+          "label_en": "Over 1 year ago"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
         }
       ]
     },

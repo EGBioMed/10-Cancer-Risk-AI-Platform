@@ -125,7 +125,7 @@ test("participant name is a required contact-only bilingual field", () => {
   ]);
   assert(!canonicalAnswerQuestions.some((question) => question.id === "full_name"));
   assert(source.includes("field: question.field"));
-  assert(source.includes('!["contact.full_name", "contact.email"].includes(entry.field)'));
+  assert(source.includes('.filter((entry) => !String(entry.field || "").startsWith("contact.")'));
   assert(source.includes('!["full_name", "email"].includes(entry.question_id)'));
   assert(source.includes('errors.push("direct identifiers must not appear in answer rows")'));
 });
@@ -147,10 +147,15 @@ test("submission validation count follows the canonical questionnaire definition
   // A literal on purpose: adding a question should have to be stated here, not
   // absorbed silently. 76 -> 77 -> 78 -> 81 (2026-10-27, three psychological
   // items) -> 87 (2026-11-16, six pancreatic early-symptom follow-ups) -> 91
-  // (2026-11-16, acute pancreatitis and its three follow-ups). The
-  // three contracts that pin the same number are cross-checked against this
-  // manifest in test-contract.js.
-  assert.equal(canonicalAnswerQuestions.length, 91);
+  // (2026-11-16, acute pancreatitis and its three follow-ups) -> 122
+  // (2026-11-19, v19.15: the chronic follow-up table's 30 rows and the staff
+  // diagnosis basis; the staff diagnosis itself is free text, not a code) -> 124
+  // (2026-11-19, v19.16: the other cancer type's care and last episode; the
+  // two other-disease names are free text) -> 123 (2026-11-23, v19.17: the
+  // staff diagnosis basis removed with the staff page). The three contracts
+  // that pin the same number are cross-checked against this manifest in
+  // test-contract.js.
+  assert.equal(canonicalAnswerQuestions.length, 123);
   assert.equal(manifest.canonical_answer_question_count, canonicalAnswerQuestions.length);
   assert.equal(byId("race").excludeFromCanonicalContract, true);
   assert.equal(byId("full_name").excludeFromCanonicalContract, true);

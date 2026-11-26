@@ -305,53 +305,57 @@ const derivedParents = {
 
 ---
 
-## 六、收案版問卷（research intake，2026-11-18 新增）
+## 六、慢性病追問與收案入口（v19.15，2026-11-19）
 
-> 本節只說明收案版。上方第一～五節的版本號與題數（v19.5、79 題）已過期，現行販售版為
-> `questionnaire/2026-11-16-v19.14-phase1`；該部分待另行全面更新。
+> 本節只說明 v19.15 的新增部分。上方第一～五節的版本號與題數（v19.5、79 題）已過期，現行版本為
+> `questionnaire/2026-11-19-v19.15-phase1`；該部分待另行全面更新。
+>
+> 沿革：2026-11-18 曾做成獨立的「收案版問卷」（獨立入口開關 `INTAKE_ENTRANCES`、獨立送出格式、
+> 獨立 Power Automate 流程、不問姓名與 Email、不產生報告、最後一題開放性文字）。2026-11-19
+> 依決定改為整合進現行平台：沒有獨立問卷，收案入口比照雙和醫院的入口處理；開放性問題拿掉；
+> 慢性病追問改為所有入口都有。
 
-### 6.1 哪份問卷由入口決定
+### 6.1 所有入口共用同一份問卷
 
-- `app.js` 頂端的 `QUESTIONNAIRE_MODE` 只有 `"sale"`（販售版）與 `"intake"`（收案版）兩種值；
-  只有頁面明確設定 `EG_QUESTIONNAIRE_MODE = "intake"` 才是收案版，其餘一律是販售版。
-- 這個值由伺服器寫進頁面：入口代碼若列在環境變數 `INTAKE_ENTRANCES`，兌換時研究代號
-  （`stu`）會封入已簽章的 session cookie，之後送出的 `index.html` 才帶收案模式
-  （`lib/questionnaire-mode.js`）。瀏覽器無法自行切換。
-- 收案 session 開啟 `/chat.html` 會被導回表單（對話版只有販售版題目）。
+- 只有一份問卷、一個 `questionnaire_version`、一份代碼目錄 `contracts/v1/answer-code-manifest.json`
+  （125 題／122 列 coded answers）、一條送出路徑（`/api/submit` → 原本的 Power Automate 流程）。
+- 中文、英文、各聯名入口、對話版（`/chat.html`）都會問慢性病追問。對話版逐格一題一題問
+  （追問格本身是有 `field` 的單選題）。
 
-### 6.2 收案版與販售版的差異
-
-| 項目 | 販售版 | 收案版 |
-|---|---|---|
-| `questionnaire_version` | `…-v19.14-phase1` | `questionnaire/2026-11-18-v19.14-intake1` |
-| 姓名 `full_name`、Email `email` | 有 | 無 |
-| 慢性病追問表 `chronic_followup_matrix` | 無 | 有（6.3） |
-| 最後一題 | Email | 開放性文字題 `intake_recent_discomfort`（6.4） |
-| 最後一個章節 | `contact` 聯絡資料 | `closing` 其他補充 |
-| 代碼目錄 | `contracts/v1/answer-code-manifest.json`（93 題／91 列） | `contracts/intake/answer-code-manifest.json`（123 題／121 列） |
-| 報告 | 產生並寄送 | 不產生、不寄送 |
-
-收案版代碼目錄用 `npm run generate:answer-codes:intake` 產生；`test-contract.js` 會檢查它與
-`app.js` 同步。
-
-### 6.3 慢性病追問表
+### 6.2 慢性病追問表
 
 - `chronic_conditions` 勾選的每一項疾病（14 項慢性病＋「其他慢性疾病」）各問兩格：
   - `chronic_care_<key>`：是否已就診（是／否／不確定）
   - `chronic_last_episode_<key>`：最近一次發病距今（1 個月內／1–6 個月／6–12 個月／1 年以上／不確定）
-- 畫面上是一題（題型 `grouped-matrix`），每個勾選的疾病一張卡片；底層每格仍是獨立單選題
+- 表單上是一題（題型 `grouped-matrix`），每個勾選的疾病一張卡片；底層每格仍是獨立單選題
   （`displayInComposite: true`），沿用 `mental_frequency_matrix` 的模式，所以每格都有凍結代碼。
 - 沒勾的疾病：`not_applicable`；選「不確定」或略過：`unknown`。
-- 使用者回頭取消勾選後，殘留的追問答案不會進 `rows`、不會出現在確認頁（`isInapplicableIntakeEntry`）；
-  重新存這一頁時直接刪除。
+- 使用者回頭取消勾選後，殘留的追問答案不會進 `rows`、不會出現在確認頁
+  （`dropWhenInapplicable` ＋ `isDroppedInapplicableEntry`）；重新存這一頁時直接刪除。
 - 判斷「有沒有勾」用的關鍵字與 `buildOptimizedFeatureRow` 的 `chronic_*` 推導相同；
-  `chronic_*` 推導本身沒有改動，追問答案不進 `ai_api_feature_row`。
+  `chronic_*` 推導本身沒有改動，追問答案不進 `ai_api_feature_row`，模型輸入不變。
 - 放在 `liver_disease_etiology` 之後。
 
-### 6.4 開放性文字題（題型 `longtext`）
+### 6.3 收案入口：比照雙和
 
-- 選填，上限 500 字（`maxLength`），可留白；留白、略過、未作答一律記為 `unknown`，不視為「沒有不適」。
-- 文字經 `normalizeLongText` 正規化（換行統一、移除控制字元、去頭尾空白）。
-- **不進** `answer_code_rows`、`rows`、任何 `*_feature_row`；唯一出口是 `buildFreeTextAnswers()`，
-  在送出資料中放在獨立的 `free_text_answers`。
+- 收案入口就是 `INSTITUTION_REPORT_RECIPIENTS` 裡的一筆機構設定（與雙和相同），多一個
+  `"staffDiagnosis": true`。效果：
+  - 和雙和一樣：仍問姓名；Email 題變成唯讀，顯示機構信箱；報告照常產生，寄到該信箱。
+  - 頁首公司名稱旁、作答區標題列，都顯示「收案平台」標記。
+  - 開 `/chat.html` 會被導回表單（表單才有「收案平台」標記與人員頁）。
+  - 資料確認頁之前多一頁「收案人員填寫」（v19.17，2026-11-23），不能略過：
+    - `staff_patient_name`：受試者姓名（取代受試者自己填的姓名題）
+    - `staff_medical_record_number`：病歷號碼（30 字內）
+    - `staff_hospital`：醫院（50 字內）
+- 這三項都是可辨識個人的資料：放在 `contact_row`（與 Email 一起），**不進** `rows`、
+  `answer_code_rows` 或任何特徵列，也不進模型。伺服器依入口檢查：收案入口必填，其他入口送來一律 422。
+- 診斷不在問卷中填寫，改為事後查病歷，再填進研究 Excel。v19.15–v19.16 的人員頁原本問的是
+  診斷文字與診斷依據（`staff_diagnosis`、`staff_diagnosis_basis`），已移除。
+
+### 6.4 文字題（題型 `longtext`）
+
+- 目前有兩題：`chronic_other_name`、`personal_cancer_other_name`（v19.16 起；v19.15–v19.16 的
+  `staff_diagnosis` 已於 v19.17 移除）。文字經 `normalizeLongText` 正規化（換行統一、移除控制字元、去頭尾空白）。
+- **不進** `answer_code_rows` 與任何 `*_feature_row`；文字放在 `rows`（`question_id`、`answer`），
+  與其他題的作答一起送到 Power Automate。
 - 對話版 AI 分類器拒收此題型（`lib/chat-classify.js`），自由文字不送往模型。
