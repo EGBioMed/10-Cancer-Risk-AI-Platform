@@ -7,6 +7,7 @@ const path = require("node:path");
 
 const {
   ENV_PREFIX,
+  MAX_CONFIGURABLE_LIFETIME_SECONDS,
   parseSsoConfig,
   codeForOrg,
   resolveSsoEntrance,
@@ -176,6 +177,97 @@ test("an absent audience is null rather than an empty string", () => {
   assert.equal(parseSsoConfig(env()).deepLink, null);
   assert.equal(parseSsoConfig(env({ [`${ENV_PREFIX}AUDIENCE`]: "eg-bio" })).audience, "eg-bio");
 });
+
+// ------------------------------------------------- the token lifetime ceiling
+
+test("no lifetime variable means the verifier keeps its own default", () => {
+  const config = parseSsoConfig(env());
+  assert.equal(config.maxLifetimeSeconds, null);
+  assert.deepEqual(config.warnings, []);
+  assert.equal(config.enabled, true);
+});
+
+test("a lifetime inside the ceiling is honoured, upwards and downwards", () => {
+  assert.equal(parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "604800" })).maxLifetimeSeconds, 604800);
+  // Tightening is the same knob. A deployment wanting less than fifteen
+  // minutes should not have to edit the verifier to get it.
+  const tight = parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "300" }));
+  assert.equal(tight.maxLifetimeSeconds, 300);
+  assert.deepEqual(tight.warnings, []);
+});
+
+test("raising the lifetime above the default is announced even when accepted", () => {
+  const config = parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "604800" }));
+  assert.equal(config.warnings.length, 1);
+  assert.match(config.warnings[0], /above the 900s default/);
+});
+
+test("a lifetime past the ceiling is refused and the default stands", () => {
+  const config = parseSsoConfig(env({
+    [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: String(MAX_CONFIGURABLE_LIFETIME_SECONDS + 1)
+  }));
+  assert.equal(config.maxLifetimeSeconds, null);
+  assert.equal(config.warnings.length, 1);
+  assert.match(config.warnings[0], /must be between 1 and 604800/);
+});
+
+test("a lifetime that is not a plain integer is refused, not coerced", () => {
+  // Number() would have taken every one of these.
+  for (const value of ["7e5", "0x384", "900.5", "-900", "0", "", " ", "forever"]) {
+    const config = parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: value }));
+    assert.equal(config.maxLifetimeSeconds, null, `${JSON.stringify(value)} should not configure a lifetime`);
+  }
+});
+
+test("a lifetime it cannot use leaves the entrance open, not disabled", () => {
+  // The opposite of how `problems` behave, and on purpose: a typo in an
+  // optional relaxation should not take the door down. The strict default is
+  // the safe half of that trade, and the warning is how anyone finds out.
+  const config = parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "forever" }));
+  assert.equal(config.enabled, true);
+  assert.deepEqual(config.problems, []);
+  assert.equal(config.warnings.length, 1);
+});
+
+test("a week-long token is refused by default and accepted once configured", () => {
+  const now = Math.floor(Date.now() / 1000);
+  const week = sign(liveClaims({ iat: now, exp: now + 604800 }));
+
+  const strict = resolveSsoEntrance(week, parseSsoConfig(env()), { replayGuard: createReplayGuard() });
+  assert.equal(strict.ok, false);
+  assert.equal(strict.reason, "lifetime_too_long");
+  assert.equal(strict.detail, 604800);
+
+  const relaxed = resolveSsoEntrance(
+    week,
+    parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "604800" })),
+    { replayGuard: createReplayGuard() }
+  );
+  assert.equal(relaxed.ok, true);
+  assert.equal(relaxed.code, ORG_CODE);
+});
+
+test("a raised ceiling does not excuse any other check", () => {
+  const now = Math.floor(Date.now() / 1000);
+  const config = parseSsoConfig(env({ [`${ENV_PREFIX}MAX_LIFETIME_SECONDS`]: "604800" }));
+  const guard = createReplayGuard();
+
+  // Expired is still expired: the exp check runs before the lifetime check, so
+  // a long-lived token that has run out fails as one.
+  const stale = sign(liveClaims({ iat: now - 604800, exp: now - 3600 }));
+  assert.equal(resolveSsoEntrance(stale, config, { replayGuard: guard }).reason, "expired");
+
+  // And the signature, the issuer and the replay guard are untouched.
+  const good = liveClaims({ iat: now, exp: now + 604800 });
+  assert.equal(resolveSsoEntrance(sign(good, { kid: "not-a-kid" }), config, { replayGuard: guard }).reason, "unknown_key");
+  assert.equal(
+    resolveSsoEntrance(sign(liveClaims({ iss: "someone-else" })), config, { replayGuard: guard }).reason,
+    "wrong_issuer"
+  );
+  assert.equal(resolveSsoEntrance(sign(good), config, { replayGuard: guard }).ok, true);
+  assert.equal(resolveSsoEntrance(sign(good), config, { replayGuard: guard }).reason, "replayed");
+});
+
 
 // ---------------------------------------------------------------- resolution
 

@@ -158,6 +158,9 @@ setInterval(() => consumedSessions.sweep(), 30 * 60 * 1000).unref();
 // and the honest answer at that door is the same one a broken link gets.
 const ssoConfig = parseSsoConfig(process.env);
 for (const problem of ssoConfig.problems) console.error("SSO config: " + problem);
+// Warnings do not disable the entrance, so the startup log is the only place
+// they are ever seen. A relaxed token lifetime says so here on every boot.
+for (const warning of ssoConfig.warnings) console.error("SSO config: " + warning);
 if (!ssoConfig.enabled && ssoConfig.missing.length > 0) {
   console.error("SSO entrance disabled, missing: " + ssoConfig.missing.join(", "));
 }
