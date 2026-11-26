@@ -49,8 +49,10 @@ test("one table and two coded rows for each of the 15 conditions", () => {
   assert(app.questions.some((question) => question.id === "chronic_followup_matrix"));
   // 91 before v19.15, +30 cells; v19.16 +2 (the other cancer type's care and
   // last episode; the disease names are text). The staff diagnosis basis
-  // (v19.15-v19.16) was removed in v19.17.
-  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 2);
+  // (v19.15-v19.16) was removed in v19.17. v19.18 adds 6: three bowel rule
+  // inputs, an untreated nasal polyp, and which relative had lung or liver
+  // cancer.
+  assert.equal(app.canonicalAnswerQuestions.length, 91 + 30 + 2 + 6);
 
   // Every chronic_conditions option except 以上皆無 has its pair of rows.
   const chronic = app.questions.find((item) => item.id === "chronic_conditions");

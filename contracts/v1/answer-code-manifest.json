@@ -1,14 +1,14 @@
 {
   "schema_version": "question-answer-codes/1.0.0",
-  "questionnaire_version": "questionnaire/2026-11-23-v19.17-phase1",
+  "questionnaire_version": "questionnaire/2026-11-23-v19.18-phase1",
   "status_values": [
     "answered",
     "unknown",
     "not_applicable"
   ],
   "display_labels_are_data_values": false,
-  "question_count": 127,
-  "canonical_answer_question_count": 123,
+  "question_count": 133,
+  "canonical_answer_question_count": 129,
   "code_policy": {
     "symptom_positive_options": "use the symptom feature column name",
     "universal_codes": [
@@ -587,6 +587,21 @@
           "code": "symptoms_bowel_abdominal.option_08",
           "label_zh": "便秘（排便困難或排便次數減少）",
           "label_en": "Constipation (difficulty passing stool or fewer bowel movements)"
+        },
+        {
+          "code": "symptoms_bowel_abdominal.option_09",
+          "label_zh": "經常腹瀉（稀便或水便，持續或反覆）",
+          "label_en": "Frequent diarrhea with loose or watery stools, persistent or recurrent"
+        },
+        {
+          "code": "symptoms_bowel_abdominal.option_10",
+          "label_zh": "排便次數明顯增加",
+          "label_en": "A clear increase in how often you have a bowel movement"
+        },
+        {
+          "code": "symptoms_bowel_abdominal.option_11",
+          "label_zh": "突然很想排便、難以忍住（排便急迫感）",
+          "label_en": "A sudden urgent need to have a bowel movement that is hard to hold"
         },
         {
           "code": "none",
@@ -1213,6 +1228,11 @@
           "label_en": "Persistent or recurrent ear pain without a clear ear-related cause"
         },
         {
+          "code": "symptom_aspiration_on_liquids",
+          "label_zh": "喝水或喝湯時容易嗆到",
+          "label_en": "Choking or coughing when drinking water or soup"
+        },
+        {
           "code": "none",
           "label_zh": "以上皆無",
           "label_en": "None of the above"
@@ -1324,6 +1344,36 @@
           "code": "symptom_nasal_discharge",
           "label_zh": "持續、反覆或單側鼻塞／鼻漏",
           "label_en": "Persistent, recurrent, or one-sided nasal blockage or discharge"
+        },
+        {
+          "code": "symptom_epistaxis",
+          "label_zh": "不明原因流鼻血",
+          "label_en": "Unexplained nosebleeds"
+        },
+        {
+          "code": "symptom_blood_streaked_nasal_discharge",
+          "label_zh": "鼻涕或痰中帶血絲",
+          "label_en": "Blood-streaked nasal discharge or phlegm"
+        },
+        {
+          "code": "symptom_unilateral_aural_fullness_or_hearing_loss",
+          "label_zh": "單側耳朵悶塞感或聽力變差",
+          "label_en": "A blocked feeling or reduced hearing in one ear"
+        },
+        {
+          "code": "symptom_tinnitus",
+          "label_zh": "耳鳴",
+          "label_en": "Ringing in the ears"
+        },
+        {
+          "code": "symptom_diplopia",
+          "label_zh": "看東西出現雙影（複視）",
+          "label_en": "Double vision"
+        },
+        {
+          "code": "symptom_unilateral_facial_numbness",
+          "label_zh": "單側臉部麻木",
+          "label_en": "Numbness on one side of the face"
         },
         {
           "code": "none",
@@ -1655,6 +1705,84 @@
       "required_when_applicable": true,
       "title_zh": "最近 6 個月內，您是否曾有便秘，例如排便困難或排便次數減少？",
       "title_en": "During the past 6 months, have you had constipation, such as difficulty passing stool or fewer bowel movements?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "diarrhea",
+      "field": "rule_inputs.symptom_diarrhea",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您是否經常腹瀉（稀便或水便，持續或反覆）？",
+      "title_en": "During the past 6 months, have you often had diarrhea with loose or watery stools, persistent or recurrent?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "stool_frequency_increased",
+      "field": "rule_inputs.symptom_stool_frequency_increased",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您的排便次數是否明顯增加？",
+      "title_en": "During the past 6 months, has the number of bowel movements you have clearly increased?",
+      "options": [
+        {
+          "code": "yes",
+          "label_zh": "是",
+          "label_en": "Yes"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "bowel_urgency",
+      "field": "rule_inputs.symptom_bowel_urgency",
+      "module": "symptoms",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "最近 6 個月內，您是否曾突然很想排便、難以忍住？",
+      "title_en": "During the past 6 months, have you had a sudden urgent need to have a bowel movement that was hard to hold?",
       "options": [
         {
           "code": "yes",
@@ -2575,6 +2703,21 @@
           "code": "personal_cancer_types.option_12",
           "label_zh": "其他癌種",
           "label_en": "Other cancer type"
+        },
+        {
+          "code": "personal_cancer_types.option_13",
+          "label_zh": "鼻咽癌",
+          "label_en": "Nasopharyngeal cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_14",
+          "label_zh": "卵巢癌",
+          "label_en": "Ovarian cancer"
+        },
+        {
+          "code": "personal_cancer_types.option_15",
+          "label_zh": "食道癌",
+          "label_en": "Esophageal cancer"
         }
       ]
     },
@@ -3939,6 +4082,37 @@
       ]
     },
     {
+      "question_id": "nasal_polyp",
+      "field": "rule_inputs.nasal_polyp_untreated",
+      "module": "history",
+      "answer_type": "code",
+      "required_when_applicable": true,
+      "title_zh": "醫師是否曾告訴您有鼻息肉？目前處理狀況是？",
+      "title_en": "Has a clinician ever told you that you have a nasal polyp, and was it treated?",
+      "options": [
+        {
+          "code": "nasal_polyp.option_01",
+          "label_zh": "是，但尚未治療",
+          "label_en": "是，但尚未治療"
+        },
+        {
+          "code": "nasal_polyp.option_02",
+          "label_zh": "是，已接受治療",
+          "label_en": "是，已接受治療"
+        },
+        {
+          "code": "no",
+          "label_zh": "否",
+          "label_en": "No"
+        },
+        {
+          "code": "unknown",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
       "question_id": "psa_history",
       "field": "rule_inputs.screen_psa_elevated",
       "module": "history",
@@ -4063,6 +4237,93 @@
           "code": "family_self_types.option_12",
           "label_zh": "其他癌種",
           "label_en": "Other cancer type"
+        },
+        {
+          "code": "family_self_types.option_13",
+          "label_zh": "鼻咽癌",
+          "label_en": "Nasopharyngeal cancer"
+        },
+        {
+          "code": "family_self_types.option_14",
+          "label_zh": "卵巢癌",
+          "label_en": "Ovarian cancer"
+        },
+        {
+          "code": "family_self_types.option_15",
+          "label_zh": "食道癌",
+          "label_en": "Esophageal cancer"
+        }
+      ]
+    },
+    {
+      "question_id": "family_lung_relatives",
+      "field": "rule_inputs.family_cancer_history_lung_sibling",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "罹患肺癌的一等親是哪一位？",
+      "title_en": "Which first-degree relative had lung cancer?",
+      "options": [
+        {
+          "code": "family_lung_relatives.option_01",
+          "label_zh": "父親",
+          "label_en": "Father"
+        },
+        {
+          "code": "family_lung_relatives.option_02",
+          "label_zh": "母親",
+          "label_en": "Mother"
+        },
+        {
+          "code": "family_lung_relatives.option_03",
+          "label_zh": "兄弟姊妹",
+          "label_en": "Sibling"
+        },
+        {
+          "code": "family_lung_relatives.option_04",
+          "label_zh": "子女",
+          "label_en": "Child"
+        },
+        {
+          "code": "none",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
+        }
+      ]
+    },
+    {
+      "question_id": "family_liver_relatives",
+      "field": "rule_inputs.family_cancer_history_liver_mother",
+      "module": "history",
+      "answer_type": "code_array",
+      "required_when_applicable": true,
+      "title_zh": "罹患肝癌的一等親是哪一位？",
+      "title_en": "Which first-degree relative had liver cancer?",
+      "options": [
+        {
+          "code": "family_liver_relatives.option_01",
+          "label_zh": "父親",
+          "label_en": "Father"
+        },
+        {
+          "code": "family_liver_relatives.option_02",
+          "label_zh": "母親",
+          "label_en": "Mother"
+        },
+        {
+          "code": "family_liver_relatives.option_03",
+          "label_zh": "兄弟姊妹",
+          "label_en": "Sibling"
+        },
+        {
+          "code": "family_liver_relatives.option_04",
+          "label_zh": "子女",
+          "label_en": "Child"
+        },
+        {
+          "code": "none",
+          "label_zh": "不確定",
+          "label_en": "Not sure"
         }
       ]
     },

@@ -456,3 +456,56 @@ Excel depends on the flow's own mapping; check it with a Compose action.
 The Power Automate trigger schemas accept both v19.17 and v19.16; re-paste them
 before the site is deployed (flow A: `deployed-flow-trigger.schema.json`, flow
 B: `deployed-flow-trigger-public.schema.json`).
+
+## 14. v19.18: the clinician review of head-and-neck and male reproductive factors (2026-11-23)
+
+Two clinicians reviewed the factor-and-symptom overview and named what was
+missing. Everything they asked for that does not need a consent or IRB change
+is in this version.
+
+- `questionnaire_version` is `questionnaire/2026-11-23-v19.18-phase1`.
+- `answer_code_rows` has **129** rows (was 123): six new questions.
+- `symptom_feature_row` has **91** columns (was 84): the nasopharyngeal cluster
+  (`symptom_epistaxis`, `symptom_blood_streaked_nasal_discharge`,
+  `symptom_unilateral_aural_fullness_or_hearing_loss`, `symptom_tinnitus`,
+  `symptom_diplopia`, `symptom_unilateral_facial_numbness`) and
+  `symptom_aspiration_on_liquids`.
+- `rule_input_row` has **36** columns (was 30): `symptom_diarrhea`,
+  `symptom_stool_frequency_increased`, `symptom_bowel_urgency`,
+  `nasal_polyp_untreated`, `family_cancer_history_lung_sibling`,
+  `family_cancer_history_liver_mother`.
+- `ai_api_feature_row` and `optimized_feature_row` are **unchanged at 71**, and
+  `vnext_feature_row` is unchanged at 33. Nothing here reaches the model.
+- `cancerOptions` gains 鼻咽癌, 卵巢癌 and 食道癌, **appended after 其他癌種**.
+  `answer-codes.js` derives `option_NN` from `indexOf`, so inserting them beside
+  the other cancers would have renumbered every code after them and changed what
+  stored rows mean. Display order is the price of code stability; a test pins
+  the positions.
+
+Why the three bowel symptoms are rule inputs rather than group options: an
+entry in a symptom group's `options` becomes a symptom feature column, and an
+entry in `extraOptions` does not. The rule layer asked for 排便急迫感, 排便次數增加
+and 腹瀉 separately (B-76, B-77, B-79-B-81); the model did not. They are shown
+as checkboxes in the bowel group and stored as rule inputs, the arrangement
+便秘 and 乳房疼痛 already use.
+
+Two of the new questions are conditional and relationship-specific:
+`family_lung_relatives` and `family_liver_relatives` appear only when 肺癌 or
+肝癌 was reported in the family. B-89 is a **sibling's** lung cancer and B-90 a
+**mother's** liver cancer, so a relative cannot be read off a general "which
+relatives had cancer" question — that would pair the wrong relative with the
+wrong cancer. When the cancer was not reported the column is `null`, not `0`.
+
+`nasal_polyp_untreated` has three states on purpose: untreated is `1`, treated
+is `0`, 不確定 is `null`. Rule B-87 scores an untreated polyp, so a treated one
+is evidence the rule does not fire rather than missing evidence.
+
+Not in this version, and why: 性病史、HIV、梅毒、性經驗 and 男性荷爾蒙用藥 were
+also asked for. They are special-category personal data, the consent notice
+does not mention collecting anything about sexual history, and the IRB
+submission would need changing first. HPV has the strongest evidence of the
+group and serves head-and-neck cancer rather than prostate.
+
+The Power Automate trigger schemas accept both v19.18 and v19.17; re-paste them
+before the site is deployed (flow A: `deployed-flow-trigger.schema.json`, flow
+B: `deployed-flow-trigger-public.schema.json`).

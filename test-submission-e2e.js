@@ -300,7 +300,7 @@ test("the three psychological items stay out of the model request and the frozen
   // 筆數沒有變，就是上面那句話的憑據。
   assert.equal(submission.optimized_feature_columns.length, 71);
   assert.equal(submission.vnext_feature_columns.length, 33);
-  assert.equal(submission.rule_input_columns.length, 30);
+  assert.equal(submission.rule_input_columns.length, 36);
 });
 
 // 2026-11-16 新增的胰臟癌早期症狀追問：勾了「食慾降低」或「容易過早飽足」才問，
@@ -366,7 +366,7 @@ test("the pancreatic follow-ups stay out of the model request and the frozen vec
   }
   assert.equal(submission.optimized_feature_columns.length, 71);
   assert.equal(submission.vnext_feature_columns.length, 33);
-  assert.equal(submission.rule_input_columns.length, 30);
+  assert.equal(submission.rule_input_columns.length, 36);
 });
 
 // 2026-11-16 補的兩題：油便（肝膽胰症狀的 extraOption）與急性胰臟炎（病史，勾「是」才追問
@@ -429,5 +429,97 @@ test("acute pancreatitis reaches the research row as coded answers and stays out
   }
   assert.equal(submission.optimized_feature_columns.length, 71);
   assert.equal(submission.vnext_feature_columns.length, 33);
-  assert.equal(submission.rule_input_columns.length, 30);
+  assert.equal(submission.rule_input_columns.length, 36);
+});
+
+// ---------------------------------------------------------------------------
+// v19.18 (2026-11-23): the clinician review of the head-and-neck and male
+// reproductive factor lists.
+// ---------------------------------------------------------------------------
+
+const NPC_CLUSTER = [
+  "symptom_epistaxis",
+  "symptom_blood_streaked_nasal_discharge",
+  "symptom_unilateral_aural_fullness_or_hearing_loss",
+  "symptom_tinnitus",
+  "symptom_diplopia",
+  "symptom_unilateral_facial_numbness"
+];
+const BOWEL_RULE_INPUTS = ["symptom_diarrhea", "symptom_stool_frequency_increased", "symptom_bowel_urgency"];
+
+// Which vector a new symptom lands in is the whole decision, and it is made by
+// where the line is written rather than by anything that reads like a choice:
+// an entry in a group's `options` becomes a symptom feature column, an entry in
+// `extraOptions` does not. The nasopharyngeal cluster is meant to be in the
+// symptom vector; the three bowel items are meant to stay out of it, because
+// the model takes a fixed feature set and only the rule layer asked for them.
+test("the nasopharyngeal cluster is a symptom column and the bowel rule inputs are not", () => {
+  const submission = submitAs("臺灣");
+
+  for (const column of [...NPC_CLUSTER, "symptom_aspiration_on_liquids"]) {
+    assert(column in submission.symptom_feature_row, `${column} 不在 symptom_feature_row`);
+    assert(!(column in submission.rule_input_row), `${column} 同時進了 rule_input_row`);
+    assert(!(column in submission.ai_api_feature_row), `${column} 跑進了送模型的本文`);
+  }
+
+  for (const column of BOWEL_RULE_INPUTS) {
+    assert(column in submission.rule_input_row, `${column} 不在 rule_input_row`);
+    assert(!(column in submission.symptom_feature_row),
+      `${column} 進了 symptom_feature_row -- 它應該放在 extraOptions，不是 options`);
+    assert(!(column in submission.ai_api_feature_row), `${column} 跑進了送模型的本文`);
+  }
+
+  assert.equal(submission.symptom_feature_columns.length, 91);
+  assert.equal(submission.rule_input_columns.length, 36);
+  assert.equal(submission.optimized_feature_columns.length, 71);
+});
+
+// Rule B-87 scores an untreated polyp. A treated one is evidence the rule does
+// not fire, which is a 0; "not sure" is an absence of evidence, which is null.
+// Collapsing the two would make every treated polyp look like missing data.
+test("a treated nasal polyp is a 0, not a null", () => {
+  const question = app.questions.find((item) => item.id === "nasal_polyp");
+  assert.equal(question.field, "rule_inputs.nasal_polyp_untreated");
+
+  for (const [answer, expected] of [["是，但尚未治療", 1], ["是，已接受治療", 0], ["否", 0], ["不確定", null]]) {
+    app.answers[question.field] = app.makeAnswerEntry(question, answer, "contract_test");
+    assert.equal(submitAs("臺灣").rule_input_row.nasal_polyp_untreated, expected, `「${answer}」對應錯誤`);
+  }
+});
+
+// B-89 is a sibling's lung cancer and B-90 is a mother's liver cancer, so the
+// relative has to be paired with the cancer. A relative list that does not名
+// the one the rule names is a 0; a question that was never asked, because that
+// cancer was not reported in the family, is null rather than 0 -- nobody said
+// no sibling had lung cancer, they said no one in the family had lung cancer.
+test("the family relative questions answer the rule the literature actually supports", () => {
+  const familyTypes = app.questions.find((item) => item.id === "family_self_types");
+  const lung = app.questions.find((item) => item.id === "family_lung_relatives");
+  const liver = app.questions.find((item) => item.id === "family_liver_relatives");
+
+  app.answers[familyTypes.field] = app.makeAnswerEntry(familyTypes, ["乳癌"], "contract_test");
+  assert.equal(lung.appliesIf(app.answers), false, "沒報肺癌卻問了是哪位親屬");
+  let row = submitAs("臺灣").rule_input_row;
+  assert.equal(row.family_cancer_history_lung_sibling, null);
+  assert.equal(row.family_cancer_history_liver_mother, null);
+
+  app.answers[familyTypes.field] = app.makeAnswerEntry(familyTypes, ["肺癌", "肝癌"], "contract_test");
+  assert.equal(lung.appliesIf(app.answers), true);
+  assert.equal(liver.appliesIf(app.answers), true);
+
+  app.answers[lung.field] = app.makeAnswerEntry(lung, ["兄弟姊妹"], "contract_test");
+  app.answers[liver.field] = app.makeAnswerEntry(liver, ["父親"], "contract_test");
+  row = submitAs("臺灣").rule_input_row;
+  assert.equal(row.family_cancer_history_lung_sibling, 1);
+  assert.equal(row.family_cancer_history_liver_mother, 0, "父親的肝癌不是 B-90 說的那一位");
+
+  app.answers[lung.field] = app.makeAnswerEntry(lung, ["父親", "母親"], "contract_test");
+  app.answers[liver.field] = app.makeAnswerEntry(liver, ["母親", "子女"], "contract_test");
+  row = submitAs("臺灣").rule_input_row;
+  assert.equal(row.family_cancer_history_lung_sibling, 0);
+  assert.equal(row.family_cancer_history_liver_mother, 1);
+
+  app.answers[lung.field] = app.makeAnswerEntry(lung, ["不確定"], "contract_test");
+  assert.equal(submitAs("臺灣").rule_input_row.family_cancer_history_lung_sibling, null,
+    "「不確定」不是「沒有兄弟姊妹得肺癌」");
 });
