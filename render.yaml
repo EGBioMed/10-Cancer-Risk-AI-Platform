@@ -92,6 +92,18 @@ services:
       # failure mode: the dashboard values pruned, nothing visibly broken until
       # the next restart, and then every hand-off refused to a page that looks
       # exactly like a bad token.
+      #
+      # The guard reported all clear the whole time. lib/sso-entrance.js
+      # composes these names from a prefix constant rather than writing them
+      # out, and the scan in test-render-config.js could not see a composed
+      # name until 2026-11-18 -- the same blind spot
+      # ACCESS_GATE_SESSION_SECRET sat in before 2026-09-09.
+      #
+      # Losing any one of them raises no error. The entrance needs ALGORITHMS,
+      # KEYS, ISSUER and ORG_GRANTS to report itself enabled; with one missing
+      # it stops admitting anyone, and the partner sees the same refusal page
+      # as a bad signature. /api/health reports sso_entrance_configured so
+      # that question has an answer without reading the startup log.
       - key: SSO_JOIIUP_ALGORITHMS
         sync: false
       - key: SSO_JOIIUP_KEYS
