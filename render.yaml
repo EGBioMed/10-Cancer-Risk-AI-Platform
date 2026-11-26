@@ -86,6 +86,34 @@ services:
       - key: CHAT_CLASSIFIER_EFFORT
         sync: false
 
+      # --- JoiiUp SSO hand-off -----------------------------------------------
+      # Eight of these were given values on 2026-11-18 and never declared here,
+      # which left the entrance one Blueprint sync away from the 2026-09-09
+      # failure mode: the dashboard values pruned, nothing visibly broken until
+      # the next restart, and then every hand-off refused to a page that looks
+      # exactly like a bad token.
+      - key: SSO_JOIIUP_ALGORITHMS
+        sync: false
+      - key: SSO_JOIIUP_KEYS
+        sync: false
+      - key: SSO_JOIIUP_ISSUER
+        sync: false
+      - key: SSO_JOIIUP_AUDIENCE
+        sync: false
+      - key: SSO_JOIIUP_ORG_GRANTS
+        sync: false
+      - key: SSO_JOIIUP_DEEP_LINK
+        sync: false
+      - key: SSO_JOIIUP_REQUIRE_JTI
+        sync: false
+      - key: SSO_JOIIUP_STORE_SUBJECT
+        sync: false
+      # Raises the verifier's token-lifetime cap above its 15-minute default.
+      # Set only while a partner cannot mint short-lived tokens. Bounded at
+      # 7 days in lib/sso-entrance.js, and announced on every boot.
+      - key: SSO_JOIIUP_MAX_LIFETIME_SECONDS
+        sync: false
+
     # Deliberately NOT declared, and why:
     #
     #   PORT      Render injects it. Declaring it would let a sync create a

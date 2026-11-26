@@ -478,3 +478,63 @@ npm run access:topup -- --code EGHK3FV --add-uses 1000 --created-by "abbie"
 3. 舊碼仍然可以被兌換——這是已知限制，評估影響時要把它算進去
 
 所以**謹慎決定要不要把代碼印在公開通路上**，這個決定沒有回頭路。
+
+## 6. JoiiUp 交握的 token 效期上限
+
+`lib/sso-token.js` 對 token 的生命週期（`exp` − `iat`）有一道硬性上限，預設
+**900 秒**。它刻意不看對方寫的 `exp`：如果對方的簽發器哪天設錯，我們不該跟著
+把效期放到一週。
+
+2026-11-26 JoiiUp 寄來十張測試 token，效期是**七天**（604800 秒），而且雙方排
+不出共同的十五分鐘視窗來現簽現測。所以加了這個環境變數：
+
+```
+SSO_JOIIUP_MAX_LIFETIME_SECONDS=604800
+```
+
+**這是暫時的。** 等 JoiiUp 的 App 後端可以即時簽發短效 token（他們說正式版是
+5 或 10 分鐘），就把這個變數**整個刪掉**，不要改成別的數字——刪掉才會回到
+`lib/sso-token.js` 的預設值，而那才是這套東西該有的樣子。
+
+三道護欄：
+
+- **有天花板。** 上限 604800 秒（7 天），寫在 `lib/sso-entrance.js` 的
+  `MAX_CONFIGURABLE_LIFETIME_SECONDS`。超過就不吃，不管怎麼設都不可能變成「永遠」。
+- **它也能收緊。** 1 秒以上都接受，所以想要比十五分鐘更短的部署，設在這裡就好，
+  不用去改驗證器。
+- **設錯不會變成放行，也不會把門關掉。** 不是純數字、或超出範圍，就退回 900 秒
+  預設值，並在啟動日誌寫一行。這些走 `warnings` 不走 `problems`——打錯字不該讓整
+  個入口下線，而「門還在、但用的是嚴格預設值」是這個取捨裡安全的那一半。
+
+只要這個值高於 900，**每次啟動**日誌都會印：
+
+```
+SSO config: SSO_JOIIUP_MAX_LIFETIME_SECONDS is 604800s, above the 900s default: ...
+```
+
+看到這行就代表還沒收掉。
+
+### 怎麼確認設定真的生效
+
+**在 Render Shell**（不是自己的終端機），只印 key 不印代碼：
+
+```
+node -e 'const {parseSsoConfig}=require("./lib/sso-entrance");const c=parseSsoConfig(process.env);console.log("enabled:",c.enabled);console.log("missing:",c.missing);console.log("problems:",c.problems);console.log("warnings:",c.warnings);console.log("maxLifetimeSeconds:",c.maxLifetimeSeconds);console.log("issuer:",JSON.stringify(c.issuer));console.log("audience:",JSON.stringify(c.audience));console.log("algorithms:",c.algorithms);console.log("kids:",[...c.keys.keys()]);console.log("org keys:",[...c.orgGrants.keys()]);'
+```
+
+`org keys` 要跟對方 token 裡 `org` 的**字面值完全一樣、分大小寫**。2026-11-18
+他們說測試企業是「JoiiUp」，2026-11-26 送來的 token 寫的卻是 `JOIIUP_TEST`，
+這兩個對 `codeForOrg` 來說是不同的東西。對不上就是 `unknown_org`，而使用者看到
+的畫面跟簽章錯誤、過期、重放**完全一樣**。
+
+### 這條路一樣吃額度
+
+每成功交握一次就兌換一次 `SSO_JOIIUP_ORG_GRANTS` 查出來的那組碼。十張測試
+token 全部測完就是十次。
+
+### render.yaml 原本漏宣告
+
+八個 `SSO_JOIIUP_*` 在 2026-11-18 給了值，卻一直沒寫進 `render.yaml`。Render 的
+Blueprint 同步會**剪掉**沒宣告的變數，值安靜消失，要到下一次重啟才看得出來——
+跟 2026-09-09 那次 `ACCESS_GATE_SESSION_SECRET` 被剪掉是同一種死法。這次連同新
+的那一個，九個一起補上了。
